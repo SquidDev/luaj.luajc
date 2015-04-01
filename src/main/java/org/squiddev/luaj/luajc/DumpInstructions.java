@@ -16,7 +16,7 @@ public class DumpInstructions {
 		"FORLOOP", "FORPREP", "TFORLOOP", "SETLIST", "CLOSE", "CLOSURE", "VARARG",
 	};
 
-	public static enum ArgType {
+	public enum ArgType {
 		Unused,
 		General,
 		Register,

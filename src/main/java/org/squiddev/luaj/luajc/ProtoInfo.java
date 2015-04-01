@@ -529,6 +529,7 @@ public class ProtoInfo {
 
 	/**
 	 * Check if this is an assignment to an upvalue
+	 *
 	 * @param pc   The current PC
 	 * @param slot The slot the upvalue is stored in
 	 * @return If an upvalue is assigned to at this point
@@ -540,6 +541,7 @@ public class ProtoInfo {
 
 	/**
 	 * Check if this is the creation of an upvalue
+	 *
 	 * @param pc   The current PC
 	 * @param slot The slot the upvalue is stored in
 	 * @return If this is where the upvalue is created

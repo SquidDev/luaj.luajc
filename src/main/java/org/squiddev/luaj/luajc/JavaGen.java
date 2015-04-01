@@ -156,8 +156,9 @@ public class JavaGen {
 					case Lua.OP_LOADNIL: /*	A B	R(A):= ...:= R(B):= nil			*/
 						builder.loadNil();
 						for (; a <= b; a++) {
-							if (a < b)
+							if (a < b) {
 								builder.dup();
+							}
 							builder.storeLocal(pc, a);
 						}
 						break;
@@ -198,12 +199,14 @@ public class JavaGen {
 						break;
 
 					case Lua.OP_CONCAT: /*	A B C	R(A):= R(B).. ... ..R(C)			*/
-						for (int k = b; k <= c; k++)
+						for (int k = b; k <= c; k++) {
 							builder.loadLocal(pc, k);
+						}
 						if (c > b + 1) {
 							builder.tobuffer();
-							for (int k = c; --k >= b; )
+							for (int k = c; --k >= b; ) {
 								builder.concatbuffer();
+							}
 							builder.tovalue();
 						} else {
 							builder.concatvalue();
@@ -258,8 +261,9 @@ public class JavaGen {
 							case 1:
 							case 2:
 							case 3:
-								for (int i = 1; i < b; i++)
+								for (int i = 1; i < b; i++) {
 									builder.loadLocal(pc, a + i);
+								}
 								break;
 							default: // fixed arg count > 3
 								builder.newVarargs(pc, a + 1, b - 1);
@@ -273,10 +277,11 @@ public class JavaGen {
 
 						// call or invoke
 						boolean useinvoke = narg < 0 || c < 1 || c > 2;
-						if (useinvoke)
+						if (useinvoke) {
 							builder.invoke(narg);
-						else
+						} else {
 							builder.call(narg);
+						}
 
 						// handle results
 						switch (c) {
@@ -284,14 +289,16 @@ public class JavaGen {
 								builder.pop();
 								break;
 							case 2:
-								if (useinvoke)
+								if (useinvoke) {
 									builder.arg(1);
+								}
 								builder.storeLocal(pc, a);
 								break;
 							default: // fixed result count - unpack args
 								for (int i = 1; i < c; i++) {
-									if (i + 1 < c)
+									if (i + 1 < c) {
 										builder.dup();
+									}
 									builder.arg(i);
 									builder.storeLocal(pc, a + i - 1);
 								}
@@ -392,8 +399,9 @@ public class JavaGen {
 						// a[2] = a[3] = v[1], leave varargs on stack
 						builder.createUpvalues(pc, a + 3, c);
 						builder.loadVarresult();
-						if (c >= 2)
+						if (c >= 2) {
 							builder.dup();
+						}
 						builder.arg(1);
 						builder.dup();
 						builder.storeLocal(pc, a + 2);
@@ -401,8 +409,9 @@ public class JavaGen {
 
 						// v[2]..v[c], use varargs from stack
 						for (int j = 2; j <= c; j++) {
-							if (j < c)
+							if (j < c) {
 								builder.dup();
+							}
 							builder.arg(j);
 							builder.storeLocal(pc, a + 2 + j);
 						}
@@ -467,7 +476,7 @@ public class JavaGen {
 	}
 
 	private void loadVarargResults(JavaBuilder builder, int pc, int a, int vresultbase) {
-		if (vresultbase <= a) {
+		if (vresultbase < a) {
 			builder.loadVarresult();
 			builder.subargs(a + 1 - vresultbase);
 		} else if (vresultbase == a) {
@@ -478,9 +487,10 @@ public class JavaGen {
 	}
 
 	private void loadLocalOrConstant(Prototype p, JavaBuilder builder, int pc, int borc) {
-		if (borc <= 0xff)
+		if (borc <= 0xff) {
 			builder.loadLocal(pc, borc);
-		else
+		} else {
 			builder.loadConstant(p.k[borc & 0xff]);
+		}
 	}
 }

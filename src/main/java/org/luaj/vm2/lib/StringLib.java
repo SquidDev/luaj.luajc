@@ -513,7 +513,7 @@ public class StringLib extends OneArgFunction {
 			buf.append(s);
 		}
 
-		public static final void pad(Buffer buf, char c, int n) {
+		public static void pad(Buffer buf, char c, int n) {
 			byte b = (byte) c;
 			while (n-- > 0) {
 				buf.append(b);
@@ -1175,7 +1175,6 @@ public class StringLib extends OneArgFunction {
 						}
 						soffset++;
 						poffset = ep;
-						continue;
 				}
 			}
 		}

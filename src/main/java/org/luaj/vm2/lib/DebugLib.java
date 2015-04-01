@@ -510,7 +510,7 @@ public class DebugLib extends VarArgFunction {
 
 		// find the stack info
 		DebugState ds = getDebugState(thread);
-		DebugInfo di = null;
+		DebugInfo di;
 		if (func.isnumber()) {
 			int level = func.checkint();
 			di = level > 0 ?
@@ -733,7 +733,7 @@ public class DebugLib extends VarArgFunction {
 	 * @return String containing the stack trace.
 	 */
 	public static String traceback(LuaThread thread, int level) {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		DebugState ds = getDebugState(thread);
 		sb.append("stack traceback:");
 		DebugInfo di = ds.getDebugInfo(level);
