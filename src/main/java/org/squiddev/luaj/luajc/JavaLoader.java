@@ -35,7 +35,7 @@ public class JavaLoader extends ClassLoader {
 	 * Validate the sources on load
 	 * This helps debug but will slow down compilation massively
 	 */
-	public boolean verifySources = false;
+	public boolean verifySources = true;
 
 	/**
 	 * The environment to load files from
