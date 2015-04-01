@@ -1,12 +1,3 @@
-package org.squiddev.luaj.luajc.luaj.luajc;
-
-import org.luaj.vm2.LuaFunction;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Prototype;
-
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * ****************************************************************************
  * Copyright (c) 2010 Luaj.org. All rights reserved.
@@ -30,9 +21,25 @@ import java.util.Map;
  * THE SOFTWARE.
  * ****************************************************************************
  */
+package org.squiddev.luaj.luajc;
+
+import org.luaj.vm2.LuaFunction;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Prototype;
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class JavaLoader extends ClassLoader {
+	/**
+	 * Validate the sources on load
+	 * This helps debug but will slow down compilation massively
+	 */
 	public boolean verifySources = false;
 
+	/**
+	 * The environment to load files from
+	 */
 	private final LuaValue env;
 
 	private Map<String, byte[]> unloaded = new HashMap<>();

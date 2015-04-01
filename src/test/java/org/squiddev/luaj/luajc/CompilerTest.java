@@ -12,7 +12,6 @@ import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JseBaseLib;
 import org.luaj.vm2.lib.jse.JsePlatform;
-import org.squiddev.luaj.luajc.luaj.luajc.LuaJC;
 
 import java.io.IOException;
 import java.io.OutputStream;

@@ -1,26 +1,57 @@
-package org.squiddev.luaj.luajc.luaj.luajc;
+package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.Lua;
 
 public class UpvalueInfo {
-	ProtoInfo pi;    // where defined
-	int slot;       // where defined
-	int nvars;        // number of vars involved
-	VarInfo var[];    // list of vars
-	boolean rw;     // read-write
+	/**
+	 * The prototype the upvalue is defined in
+	 */
+	private final ProtoInfo pi;
 
+	/**
+	 * The slot the upvalue is assigned to
+	 */
+	private final int slot;
+
+	/**
+	 * Number of vars involved
+	 */
+	private int nvars;
+
+	/**
+	 * List of variables involved
+	 */
+	private VarInfo var[];
+
+	/**
+	 * Is this upvalue read-write
+	 */
+	public boolean readWrite;
+
+	/**
+	 * Create a new upvalue info
+	 *
+	 * @param pi   The prototype to use
+	 * @param pc   The current program counter
+	 * @param slot The slot of the upvalue
+	 */
 	public UpvalueInfo(ProtoInfo pi, int pc, int slot) {
 		this.pi = pi;
 		this.slot = slot;
-		this.nvars = 0;
-		this.var = null;
+		nvars = 0;
+		var = null;
 		includeVarAndPosteriorVars(pi.vars[slot][pc]);
 		for (int i = 0; i < nvars; i++) {
-			var[i].allocupvalue = testIsAllocUpvalue(var[i]);
+			var[i].allocUpvalue = testIsAllocUpvalue(var[i]);
 		}
-		this.rw = nvars > 1;
+		readWrite = nvars > 1;
 	}
 
+	/**
+	 * Find variables that this upvalue links to
+	 *
+	 * @param var The variable to use
+	 */
 	private boolean includeVarAndPosteriorVars(VarInfo var) {
 		if (var == null || var == VarInfo.INVALID) {
 			return false;
@@ -40,6 +71,12 @@ public class UpvalueInfo {
 		return loopDetected;
 	}
 
+	/**
+	 * Checks if this {@link VarInfo} is a loop variable
+	 *
+	 * @param var The variable to check
+	 * @return If this variable is one used in a loop
+	 */
 	private boolean isLoopVariable(VarInfo var) {
 		if (var.pc >= 0) {
 			switch (Lua.GET_OPCODE(pi.prototype.code[var.pc])) {
@@ -53,10 +90,9 @@ public class UpvalueInfo {
 
 	private boolean includePosteriorVarsCheckLoops(VarInfo prior) {
 		boolean loopDetected = false;
-		for (int i = 0, n = pi.blocklist.length; i < n; i++) {
-			BasicBlock b = pi.blocklist[i];
-			VarInfo v = pi.vars[slot][b.pc1];
-			if (v == prior) {
+		for (BasicBlock b : pi.blockList) {
+			VarInfo var = pi.vars[slot][b.pc1];
+			if (var == prior) {
 				for (int j = 0, m = b.next != null ? b.next.length : 0; j < m; j++) {
 					BasicBlock b1 = b.next[j];
 					VarInfo v1 = pi.vars[slot][b1.pc0];
@@ -80,10 +116,9 @@ public class UpvalueInfo {
 	}
 
 	private void includePriorVarsIgnoreLoops(VarInfo poster) {
-		for (int i = 0, n = pi.blocklist.length; i < n; i++) {
-			BasicBlock b = pi.blocklist[i];
-			VarInfo v = pi.vars[slot][b.pc0];
-			if (v == poster) {
+		for (BasicBlock b : pi.blockList) {
+			VarInfo var = pi.vars[slot][b.pc0];
+			if (var == poster) {
 				for (int j = 0, m = b.prev != null ? b.prev.length : 0; j < m; j++) {
 					BasicBlock b0 = b.prev[j];
 					VarInfo v0 = pi.vars[slot][b0.pc1];
@@ -102,6 +137,11 @@ public class UpvalueInfo {
 		}
 	}
 
+	/**
+	 * Add a variable to the list
+	 *
+	 * @param v The variable to add
+	 */
 	private void appendVar(VarInfo v) {
 		if (nvars == 0) {
 			var = new VarInfo[1];
@@ -120,29 +160,35 @@ public class UpvalueInfo {
 			sb.append(i > 0 ? "," : " ");
 			sb.append(String.valueOf(var[i]));
 		}
-		if (rw) {
+		if (readWrite) {
 			sb.append("(rw)");
 		}
 		return sb.toString();
 	}
 
-	private boolean testIsAllocUpvalue(VarInfo v) {
-		if (v.pc < 0) {
+	/**
+	 * Test if this is an upvalue allocation
+	 *
+	 * @param var The variable to test against
+	 * @return If an upvalue is allocated for this variable
+	 */
+	private boolean testIsAllocUpvalue(VarInfo var) {
+		if (var.pc < 0) {
 			return true;
 		}
-		BasicBlock b = pi.blocks[v.pc];
-		if (v.pc > b.pc0) {
-			return pi.vars[slot][v.pc - 1].upvalue != this;
+		BasicBlock block = pi.blocks[var.pc];
+		if (var.pc > block.pc0) {
+			return pi.vars[slot][var.pc - 1].upvalue != this;
 		}
-		if (b.prev == null) {
-			v = pi.params[slot];
-			if (v != null && v.upvalue != this) {
+		if (block.prev == null) {
+			var = pi.params[slot];
+			if (var != null && var.upvalue != this) {
 				return true;
 			}
 		} else {
-			for (int i = 0, n = b.prev.length; i < n; i++) {
-				v = pi.vars[slot][b.prev[i].pc1];
-				if (v != null && v.upvalue != this) {
+			for (int i = 0, n = block.prev.length; i < n; i++) {
+				var = pi.vars[slot][block.prev[i].pc1];
+				if (var != null && var.upvalue != this) {
 					return true;
 				}
 			}

@@ -25,7 +25,7 @@ package org.luaj.vm2.lib;
 
 import org.luaj.vm2.*;
 import org.luaj.vm2.compiler.DumpState;
-import org.squiddev.luaj.luajc.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetSource;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,7 +33,6 @@ import java.io.IOException;
 /**
  * Subclass of {@link LibFunction} which implements the lua standard {@code string}
  * library.
- * <p/>
  * <p/>
  * Typically, this library is included as part of a call to
  * {@link org.luaj.vm2.lib.jse.JsePlatform#standardGlobals()}

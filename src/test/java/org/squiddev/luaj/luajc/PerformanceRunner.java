@@ -7,7 +7,6 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.ZeroArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
-import org.squiddev.luaj.luajc.luaj.luajc.LuaJC;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -103,9 +102,7 @@ public class PerformanceRunner {
 	}
 
 	protected static LuaTable getGlobals() {
-		LuaTable globals = JsePlatform.debugGlobals();
-
-		return globals;
+		return JsePlatform.debugGlobals();
 	}
 
 	protected static void execute(LuaTable globals) {

@@ -21,8 +21,7 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-
-package org.squiddev.luaj.luajc.luaj.luajc;
+package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.LoadState;
 import org.luaj.vm2.LuaFunction;

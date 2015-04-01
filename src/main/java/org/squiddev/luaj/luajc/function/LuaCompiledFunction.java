@@ -21,14 +21,14 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc.luaj.luajc.function;
+package org.squiddev.luaj.luajc.function;
 
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.luaj.luajc.IGetSource;
-import org.squiddev.luaj.luajc.luaj.luajc.JavaBuilder;
+import org.squiddev.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.JavaBuilder;
 
 /**
  * Subclass of {@link LuaFunction} common to LuaJC compiled functions.

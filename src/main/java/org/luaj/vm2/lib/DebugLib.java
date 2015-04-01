@@ -24,7 +24,7 @@
 package org.luaj.vm2.lib;
 
 import org.luaj.vm2.*;
-import org.squiddev.luaj.luajc.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetSource;
 
 /**
  * Subclass of {@link LibFunction} which implements the lua standard {@code debug}

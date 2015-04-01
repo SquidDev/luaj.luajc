@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc.luaj.luajc;
+package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Print;
@@ -13,18 +13,54 @@ import java.util.Set;
  * Prototype information for static single-assignment analysis
  */
 public class ProtoInfo {
-
+	/**
+	 * The name of the prototype
+	 */
 	public final String name;
-	public final Prototype prototype;     // the prototype that this info is about
-	public final ProtoInfo[] subprotos;   // one per enclosed prototype, or null
-	public final BasicBlock[] blocks;     // basic block analysis of code branching
-	public final BasicBlock[] blocklist;  // blocks in breadth-first order
-	public final VarInfo[] params;        // Parameters and initial values of stack variables
-	public final VarInfo[][] vars;        // Each variable
-	public final UpvalueInfo[] upvals;      // from outer scope
-	public final UpvalueInfo[][] openups;   // per slot, upvalues allocated by this prototype
 
-	public final Set<VarInfo> phis = new HashSet<>();
+	/**
+	 * The prototype that this info is about
+	 */
+	public final Prototype prototype;
+	/**
+	 * List of child prototypes or null
+	 */
+	public final ProtoInfo[] subprotos;
+
+	/**
+	 * List of blocks for analysis of code branching
+	 */
+	public final BasicBlock[] blocks;
+
+	/**
+	 * Blocks in breadth-first order
+	 */
+	public final BasicBlock[] blockList;
+
+	/**
+	 * Parameters and initial values of stack variables
+	 */
+	public final VarInfo[] params;
+
+	/**
+	 * Variables in the form vars[pc][slot].
+	 */
+	public final VarInfo[][] vars;
+
+	/**
+	 * List of upvalues from outer scope
+	 */
+	public final UpvalueInfo[] upvalues;
+
+	/**
+	 * Upvalues allocated by this prototype
+	 */
+	public final UpvalueInfo[][] openUpvalues;
+
+	/**
+	 * Storage for all phi variables in the prototype
+	 */
+	private final Set<VarInfo> phis = new HashSet<>();
 
 	public ProtoInfo(Prototype p, String name) {
 		this(p, name, null);
@@ -32,27 +68,27 @@ public class ProtoInfo {
 
 	private ProtoInfo(Prototype p, String name, UpvalueInfo[] u) {
 		this.name = name;
-		this.prototype = p;
-		this.upvals = u;
-		this.subprotos = p.p != null && p.p.length > 0 ? new ProtoInfo[p.p.length] : null;
+		prototype = p;
+		upvalues = u;
+		subprotos = p.p != null && p.p.length > 0 ? new ProtoInfo[p.p.length] : null;
 
 		// find basic blocks
-		this.blocks = BasicBlock.findBasicBlocks(p);
-		this.blocklist = BasicBlock.findLiveBlocks(blocks);
+		blocks = BasicBlock.findBasicBlocks(p);
+		blockList = BasicBlock.findLiveBlocks(blocks);
 
 		// params are inputs to first block
-		this.params = new VarInfo[p.maxstacksize];
+		params = new VarInfo[p.maxstacksize];
 		for (int slot = 0; slot < p.maxstacksize; slot++) {
 			VarInfo v = VarInfo.PARAM(slot);
 			params[slot] = v;
 		}
 
 		// find variables
-		this.vars = findVariables();
+		vars = findVariables();
 		replaceTrivialPhiVariables();
 
 		// find upvalues, create sub-prototypes
-		this.openups = new UpvalueInfo[p.maxstacksize][];
+		openUpvalues = new UpvalueInfo[p.maxstacksize][];
 		findUpvalues();
 	}
 
@@ -63,14 +99,14 @@ public class ProtoInfo {
 		sb.append("proto '").append(name).append("'\n");
 
 		// upvalues from outer scopes
-		for (int i = 0, n = (upvals != null ? upvals.length : 0); i < n; i++) {
-			sb.append(" up[").append(i).append("]: ").append(upvals[i]).append("\n");
+		for (int i = 0, n = (upvalues != null ? upvalues.length : 0); i < n; i++) {
+			sb.append("\tup[").append(i).append("]: ").append(upvalues[i]).append("\n");
 		}
 
 		// basic blocks
-		for (BasicBlock b : blocklist) {
+		for (BasicBlock b : blockList) {
 			int pc0 = b.pc0;
-			sb.append("  block ").append(b.toString());
+			sb.append("\tblock ").append(b.toString());
 			appendOpenUps(sb, -1);
 
 			// instructions
@@ -80,10 +116,10 @@ public class ProtoInfo {
 				appendOpenUps(sb, pc);
 
 				// opcode
-				sb.append("     ");
+				sb.append("\t\t");
 				for (int j = 0; j < prototype.maxstacksize; j++) {
 					VarInfo v = vars[j][pc];
-					String u = (v == null ? "" : v.upvalue != null ? !v.upvalue.rw ? "[C] " : (v.allocupvalue && v.pc == pc ? "[*] " : "[]  ") : "    ");
+					String u = (v == null ? "" : v.upvalue != null ? !v.upvalue.readWrite ? "[C] " : (v.allocUpvalue && v.pc == pc ? "[*] " : "[]  ") : "    ");
 					String s = v == null ? "null   " : String.valueOf(v);
 					sb.append(s).append(u);
 				}
@@ -113,15 +149,24 @@ public class ProtoInfo {
 	private void appendOpenUps(StringBuffer sb, int pc) {
 		for (int j = 0; j < prototype.maxstacksize; j++) {
 			VarInfo v = (pc < 0 ? params[j] : vars[j][pc]);
-			if (v != null && v.pc == pc && v.allocupvalue) {
-				sb.append("    open: ").append(v.upvalue).append("\n");
+			if (v != null && v.pc == pc && v.allocUpvalue) {
+				sb.append("\t\topen: ").append(v.upvalue).append("\n");
 			}
 		}
 	}
 
+	/**
+	 * Find variables and resolve Phi variables
+	 *
+	 * @return The variable list
+	 */
 	private VarInfo[][] findVariables() {
+		/**
+		 * List of phi variables used
+		 */
+		Set<VarInfo> phis = this.phis;
 
-		// create storage for variables.
+		// Create storage for variables
 		int n = prototype.code.length;
 		int m = prototype.maxstacksize;
 		VarInfo[][] v = new VarInfo[m][];
@@ -129,18 +174,18 @@ public class ProtoInfo {
 			v[i] = new VarInfo[n];
 		}
 
-		// process instructions
-		for (BasicBlock b0 : blocklist) {
+		// Process instructions
+		for (BasicBlock b0 : blockList) {
 			// input from previous blocks
-			int nprev = b0.prev != null ? b0.prev.length : 0;
+			int nPrevious = b0.prev != null ? b0.prev.length : 0;
 			for (int slot = 0; slot < m; slot++) {
 				VarInfo var = null;
-				if (nprev == 0) {
+				if (nPrevious == 0) {
 					var = params[slot];
-				} else if (nprev == 1) {
+				} else if (nPrevious == 1) {
 					var = v[slot][b0.prev[0].pc1];
 				} else {
-					for (int i = 0; i < nprev; i++) {
+					for (int i = 0; i < nPrevious; i++) {
 						if (v[slot][b0.prev[i].pc1] == VarInfo.INVALID) {
 							var = VarInfo.INVALID;
 							break;
@@ -154,19 +199,19 @@ public class ProtoInfo {
 				v[slot][b0.pc0] = var;
 			}
 
-			// process instructions for this basic block
+			// Process instructions for this basic block
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
 
-				// propogate previous values except at block boundaries
+				// Propagate previous values except at block boundaries
 				if (pc > b0.pc0) {
-					propogateVars(v, pc - 1, pc);
+					propagateVars(v, pc - 1, pc);
 				}
 
 				int a, b, c, nups;
 				int ins = prototype.code[pc];
 				int op = Lua.GET_OPCODE(ins);
 
-				// account for assignments, references and invalidations
+				// Account for assignments, references and invalidation
 				switch (op) {
 					case Lua.OP_LOADK:/*	A Bx	R(A) := Kst(Bx)					*/
 					case Lua.OP_LOADBOOL:/*	A B C	R(A) := (Bool)B; if (C) pc++			*/
@@ -184,7 +229,7 @@ public class ProtoInfo {
 					case Lua.OP_TESTSET: /*	A B C	if (R(B) <=> C) then R(A) := R(B) else pc++	*/
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
-						v[b][pc].isreferenced = true;
+						v[b][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
@@ -197,8 +242,8 @@ public class ProtoInfo {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) v[b][pc].isreferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isreferenced = true;
+						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
+						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
@@ -206,9 +251,9 @@ public class ProtoInfo {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[a][pc].isreferenced = true;
-						if (!Lua.ISK(b)) v[b][pc].isreferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
+						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
+						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						break;
 
 					case Lua.OP_CONCAT: /*	A B C	R(A) := R(B).. ... ..R(C)			*/
@@ -216,14 +261,14 @@ public class ProtoInfo {
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
 						for (; b <= c; b++) {
-							v[b][pc].isreferenced = true;
+							v[b][pc].isReferenced = true;
 						}
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_FORPREP: /*	A sBx	R(A)-=R(A+2); pc+=sBx				*/
 						a = Lua.GETARG_A(ins);
-						v[a + 2][pc].isreferenced = true;
+						v[a + 2][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
@@ -231,8 +276,8 @@ public class ProtoInfo {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[b][pc].isreferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isreferenced = true;
+						v[b][pc].isReferenced = true;
+						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
@@ -240,8 +285,8 @@ public class ProtoInfo {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[b][pc].isreferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isreferenced = true;
+						v[b][pc].isReferenced = true;
+						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						v[a + 1][pc] = new VarInfo(a + 1, pc);
 						break;
@@ -249,11 +294,11 @@ public class ProtoInfo {
 					case Lua.OP_FORLOOP: /*	A sBx	R(A)+=R(A+2);
 					if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/
 						a = Lua.GETARG_A(ins);
-						v[a][pc].isreferenced = true;
-						v[a + 2][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
+						v[a + 2][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
-						v[a][pc].isreferenced = true;
-						v[a + 1][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
+						v[a + 1][pc].isReferenced = true;
 						v[a + 3][pc] = new VarInfo(a + 3, pc);
 						break;
 
@@ -282,10 +327,10 @@ public class ProtoInfo {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[a][pc].isreferenced = true;
-						v[a][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
+						v[a][pc].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
-							v[a + i][pc].isreferenced = true;
+							v[a + i][pc].isReferenced = true;
 						}
 						for (int j = 0; j <= c - 2; j++, a++) {
 							v[a][pc] = new VarInfo(a, pc);
@@ -298,9 +343,9 @@ public class ProtoInfo {
 					case Lua.OP_TAILCALL: /*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
-						v[a][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
-							v[a + i][pc].isreferenced = true;
+							v[a + i][pc].isReferenced = true;
 						}
 						break;
 
@@ -308,7 +353,7 @@ public class ProtoInfo {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (int i = 0; i <= b - 2; i++) {
-							v[a + i][pc].isreferenced = true;
+							v[a + i][pc].isReferenced = true;
 						}
 						break;
 
@@ -316,9 +361,9 @@ public class ProtoInfo {
 					                    if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++	*/
 						a = Lua.GETARG_A(ins);
 						c = Lua.GETARG_C(ins);
-						v[a++][pc].isreferenced = true;
-						v[a++][pc].isreferenced = true;
-						v[a++][pc].isreferenced = true;
+						v[a++][pc].isReferenced = true;
+						v[a++][pc].isReferenced = true;
+						v[a++][pc].isReferenced = true;
 						for (int j = 0; j < c; j++, a++) {
 							v[a][pc] = new VarInfo(a, pc);
 						}
@@ -335,12 +380,12 @@ public class ProtoInfo {
 							int i = prototype.code[pc + k];
 							if ((i & 4) == 0) {
 								b = Lua.GETARG_B(i);
-								v[b][pc].isreferenced = true;
+								v[b][pc].isReferenced = true;
 							}
 						}
 						v[a][pc] = new VarInfo(a, pc);
 						for (int k = 1; k <= nups; k++) {
-							propogateVars(v, pc, pc + k);
+							propagateVars(v, pc, pc + k);
 						}
 						pc += nups;
 						break;
@@ -354,9 +399,9 @@ public class ProtoInfo {
 					case Lua.OP_SETLIST: /*	A B C	R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B	*/
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
-						v[a][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
 						for (int i = 1; i <= b; i++) {
-							v[a + i][pc].isreferenced = true;
+							v[a + i][pc].isReferenced = true;
 						}
 						break;
 
@@ -364,7 +409,7 @@ public class ProtoInfo {
 					case Lua.OP_SETUPVAL: /*	A B	UpValue[B]:= R(A)				*/
 					case Lua.OP_TEST: /*	A C	if not (R(A) <=> C) then pc++			*/
 						a = Lua.GETARG_A(ins);
-						v[a][pc].isreferenced = true;
+						v[a][pc].isReferenced = true;
 						break;
 
 					case Lua.OP_EQ: /*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/
@@ -372,8 +417,8 @@ public class ProtoInfo {
 					case Lua.OP_LE: /*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++  		*/
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) v[b][pc].isreferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isreferenced = true;
+						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
+						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						break;
 
 					case Lua.OP_JMP: /*	sBx	pc+=sBx					*/
@@ -384,26 +429,26 @@ public class ProtoInfo {
 				}
 			}
 		}
+
+
 		return v;
 	}
 
-	private static void propogateVars(VarInfo[][] v, int pcfrom, int pcto) {
-		for (int j = 0, m = v.length; j < m; j++) {
-			v[j][pcto] = v[j][pcfrom];
-		}
-	}
-
+	/**
+	 * Replace phi variables that reference the same thing
+	 */
 	private void replaceTrivialPhiVariables() {
 		Set<VarInfo> phis = this.phis;
-		for (BasicBlock b0 : blocklist) {
+		// Replace trivial Phi variables
+		for (BasicBlock b0 : blockList) {
 			for (int slot = 0; slot < prototype.maxstacksize; slot++) {
-				VarInfo vold = vars[slot][b0.pc0];
-				VarInfo vnew = vold.resolvePhiVariableValues();
-				if (vnew != null) {
-					substituteVariable(slot, vold, vnew);
+				VarInfo oldVar = vars[slot][b0.pc0];
+				VarInfo newVar = oldVar.resolvePhiVariableValues();
+				if (newVar != null) {
+					substituteVariable(slot, oldVar, newVar);
 				}
 
-				phis.remove(vold);
+				phis.remove(oldVar);
 			}
 		}
 
@@ -414,89 +459,142 @@ public class ProtoInfo {
 		}
 	}
 
-	private void substituteVariable(int slot, VarInfo vold, VarInfo vnew) {
-		for (int instruction : prototype.code) {
-			replaceAll(vars[slot], vars[slot].length, vold, vnew);
-		}
-	}
-
-	private void replaceAll(VarInfo[] v, int n, VarInfo vold, VarInfo vnew) {
-		for (int i = 0; i < n; i++) {
-			if (v[i] == vold) {
-				v[i] = vnew;
+	/**
+	 * Replace a variable in a specific slot
+	 *
+	 * @param slot   The slot to replace at
+	 * @param oldVar The old variable
+	 * @param newVar The new variable
+	 */
+	private void substituteVariable(int slot, VarInfo oldVar, VarInfo newVar) {
+		VarInfo[] vars = this.vars[slot];
+		int length = vars.length;
+		for (int i = 0; i < length; i++) {
+			if (vars[i] == oldVar) {
+				vars[i] = newVar;
 			}
 		}
 	}
 
+
+	/**
+	 * Find upvalues and create child prototypes
+	 */
 	private void findUpvalues() {
 		int[] code = prototype.code;
 		int n = code.length;
 
-		// propogate to inner prototypes
+		// Propagate to inner prototypes
 		for (int pc = 0; pc < n; pc++) {
 			if (Lua.GET_OPCODE(code[pc]) == Lua.OP_CLOSURE) {
 				int bx = Lua.GETARG_Bx(code[pc]);
-				Prototype newp = prototype.p[bx];
-				UpvalueInfo[] newu = newp.nups > 0 ? new UpvalueInfo[newp.nups] : null;
-				String newname = name + "$" + bx;
-				for (int j = 0; j < newp.nups; ++j) {
+				Prototype childPrototype = prototype.p[bx];
+				String childName = name + "$" + bx;
+
+				UpvalueInfo[] childUpvalues = childPrototype.nups > 0 ? new UpvalueInfo[childPrototype.nups] : null;
+
+				for (int j = 0; j < childPrototype.nups; ++j) {
 					int i = code[++pc];
 					int b = Lua.GETARG_B(i);
-					newu[j] = (i & 4) != 0 ? upvals[b] : findOpenUp(pc, b);
+					childUpvalues[j] = (i & 4) != 0 ? upvalues[b] : findOpenUp(pc, b);
 				}
-				subprotos[bx] = new ProtoInfo(newp, newname, newu);
+
+				subprotos[bx] = new ProtoInfo(childPrototype, childName, childUpvalues);
 			}
 		}
 
-		// mark all upvalues that are written locally as read/write
+		// Mark all upvalues that are written locally as read/write
 		for (int instruction : code) {
 			if (Lua.GET_OPCODE(instruction) == Lua.OP_SETUPVAL) {
-				upvals[Lua.GETARG_B(instruction)].rw = true;
+				upvalues[Lua.GETARG_B(instruction)].readWrite = true;
 			}
 		}
 	}
 
 	private UpvalueInfo findOpenUp(int pc, int slot) {
-		if (openups[slot] == null) {
-			openups[slot] = new UpvalueInfo[prototype.code.length];
+		if (openUpvalues[slot] == null) {
+			openUpvalues[slot] = new UpvalueInfo[prototype.code.length];
 		}
-		if (openups[slot][pc] != null) {
-			return openups[slot][pc];
+		if (openUpvalues[slot][pc] != null) {
+			return openUpvalues[slot][pc];
 		}
 		UpvalueInfo u = new UpvalueInfo(this, pc, slot);
 		for (int i = 0, n = prototype.code.length; i < n; ++i) {
 			if (vars[slot][i] != null && vars[slot][i].upvalue == u) {
-				openups[slot][i] = u;
+				openUpvalues[slot][i] = u;
 			}
 		}
 		return u;
 	}
 
+	/**
+	 * Check if this is an assignment to an upvalue
+	 * @param pc   The current PC
+	 * @param slot The slot the upvalue is stored in
+	 * @return If an upvalue is assigned to at this point
+	 */
 	public boolean isUpvalueAssign(int pc, int slot) {
 		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
-		return v != null && v.upvalue != null && v.upvalue.rw;
+		return v != null && v.upvalue != null && v.upvalue.readWrite;
 	}
 
+	/**
+	 * Check if this is the creation of an upvalue
+	 * @param pc   The current PC
+	 * @param slot The slot the upvalue is stored in
+	 * @return If this is where the upvalue is created
+	 */
 	public boolean isUpvalueCreate(int pc, int slot) {
 		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
-		return v != null && v.upvalue != null && v.upvalue.rw && v.allocupvalue && pc == v.pc;
+		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
 	}
 
+	/**
+	 * Check if this variable is a reference to a read/write upvalue
+	 *
+	 * @param pc   The current PC
+	 * @param slot The slot the upvalue is stored in
+	 * @return If this is a reference to a read/write upvalue
+	 */
 	public boolean isUpvalueRefer(int pc, int slot) {
 		// special case when both refer and assign in same instruction
 		if (pc > 0 && vars[slot][pc] != null && vars[slot][pc].pc == pc && vars[slot][pc - 1] != null) {
 			pc -= 1;
 		}
 		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
-		return v != null && v.upvalue != null && v.upvalue.rw;
+		return v != null && v.upvalue != null && v.upvalue.readWrite;
 	}
 
+	/**
+	 * Check if the original value of a slot is used
+	 *
+	 * @param slot The slot to check
+	 * @return If the original variable is referenced
+	 */
 	public boolean isInitialValueUsed(int slot) {
-		VarInfo v = params[slot];
-		return v.isreferenced;
+		return params[slot].isReferenced;
 	}
 
+	/**
+	 * Check if an upvalue is read/write
+	 *
+	 * @param u The upvalue to check
+	 * @return True if an upvalue is read/write
+	 */
 	public boolean isReadWriteUpvalue(UpvalueInfo u) {
-		return u.rw;
+		return u.readWrite;
+	}
+
+	/**
+	 * Copy variables from one PC to another
+	 *
+	 * @param vars   The variables
+	 * @param pcFrom The old PC to copy from
+	 * @param pcTo   The new PC to copy to
+	 */
+	private static void propagateVars(VarInfo[][] vars, int pcFrom, int pcTo) {
+		for (int j = 0, m = vars.length; j < m; j++) {
+			vars[j][pcTo] = vars[j][pcFrom];
+		}
 	}
 }

@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc.luaj;
+package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.*;
 
@@ -133,7 +133,7 @@ public class DumpInstructions {
 			int line = chunk.lineinfo[pc];
 			if (line != previousLine) {
 				if (pc != 0) write();
-				write("; Line: " + line);
+				write("; Line: " + line + ", PC: " + pc);
 				previousLine = line;
 			}
 

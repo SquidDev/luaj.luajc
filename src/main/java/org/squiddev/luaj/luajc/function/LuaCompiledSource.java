@@ -1,9 +1,9 @@
-package org.squiddev.luaj.luajc.luaj.luajc.function;
+package org.squiddev.luaj.luajc.function;
 
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetSource;
 
 /**
  * A wrapper for functions to handle call stacks
