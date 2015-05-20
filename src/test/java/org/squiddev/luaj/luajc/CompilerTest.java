@@ -43,6 +43,7 @@ public class CompilerTest {
 			{"TailCall"},
 			{"StringDump"},
 			{"EdgeCases"},
+			{"LoadBytecode"},
 
 			{"fragment/ForLoopParamUpvalues"},
 			{"fragment/VarVarargsUseArg"},

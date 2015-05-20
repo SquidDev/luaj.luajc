@@ -922,9 +922,9 @@ public class JavaBuilder {
 
 		main.visitLabel(currentLabel);
 
-		int currentLine = p.lineinfo[pc];
-
-		if (currentLine != previousLine) {
+		int[] lineInfo = p.lineinfo;
+		int currentLine;
+		if (lineInfo != null && lineInfo.length > pc && (currentLine = lineInfo[pc]) != previousLine) {
 			main.visitLineNumber(currentLine, currentLabel);
 			main.visitVarInsn(ALOAD, sourceSlot);
 			constantOpcode(main, currentLine);
