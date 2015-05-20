@@ -135,6 +135,7 @@ public class DebugLib extends VarArgFunction {
 		return t;
 	}
 
+	@Override
 	public Varargs invoke(Varargs args) {
 		switch (opcode) {
 			case INIT:
@@ -879,8 +880,7 @@ public class DebugLib extends VarArgFunction {
 			case Lua.OP_TAILCALL:
 			case Lua.OP_RETURN:
 			case Lua.OP_SETLIST: {
-				if (!(Lua.GETARG_B(i) == 0)) return false;
-				return true;
+				return Lua.GETARG_B(i) == 0;
 			}
 			default:
 				return false; /* invalid instruction after an open call */
