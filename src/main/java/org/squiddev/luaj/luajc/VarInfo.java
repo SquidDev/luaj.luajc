@@ -25,20 +25,6 @@ public class VarInfo {
 	}
 
 	/**
-	 * Create a {@link VarInfo} for a nil value
-	 *
-	 * @param slot The slot nil is stored in.
-	 * @return The resulting nil variable. The PC is set to -1
-	 */
-	public static VarInfo NIL(final int slot) {
-		return new VarInfo(slot, -1) {
-			public String toString() {
-				return "nil";
-			}
-		};
-	}
-
-	/**
 	 * Create a new {@link VarInfo.PhiVarInfo}
 	 *
 	 * @param pi   The prototype this variable is part of
@@ -57,7 +43,7 @@ public class VarInfo {
 
 	/**
 	 * The PC this variable is written at
-	 * -1 for a block inpts
+	 * -1 for a block inputs
 	 */
 	public final int pc; // where assigned, or -1 if for block inputs
 

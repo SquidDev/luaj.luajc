@@ -16,3 +16,9 @@ dependencies {
 
 	testCompile group: 'junit', name: 'junit', version: '4.+'
 }
+
+test {
+	testLogging {
+		events "passed", "skipped", "failed", "standardOut", "standardError"
+	}
+}
