@@ -42,8 +42,8 @@ public class JavaLoader extends ClassLoader {
 	 */
 	private final LuaValue env;
 
-	private Map<String, byte[]> unloaded = new HashMap<>();
-	private Map<String, Prototype> prototypes = new HashMap<>();
+	private final Map<String, byte[]> unloaded = new HashMap<String, byte[]>();
+	private final Map<String, Prototype> prototypes = new HashMap<String, Prototype>();
 
 	public JavaLoader(LuaValue env) {
 		super(JavaLoader.class.getClassLoader());
@@ -84,6 +84,7 @@ public class JavaLoader extends ClassLoader {
 		}
 	}
 
+	@Override
 	public Class findClass(String className) throws ClassNotFoundException {
 		byte[] bytes = unloaded.get(className);
 		if (bytes != null) {

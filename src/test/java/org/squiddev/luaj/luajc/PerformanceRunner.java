@@ -27,7 +27,7 @@ public class PerformanceRunner {
 
 		// Ugly parse arguments
 		if (args.length > 0) {
-			Queue<String> arg = new ArrayDeque<>(Arrays.asList(args));
+			Queue<String> arg = new ArrayDeque<String>(Arrays.asList(args));
 			String next;
 			while ((next = arg.poll()) != null) {
 				if (next.startsWith("--")) {
@@ -35,44 +35,31 @@ public class PerformanceRunner {
 				} else if (next.startsWith("-")) {
 					next = next.substring(1);
 				}
-				switch (next) {
-					case "t":
-					case "times":
-						String number = arg.poll();
-						if (number == null) throw new IllegalArgumentException();
-						times = Integer.parseInt(number);
-						break;
-					case "j":
-					case "luajc":
-						luaJC = false;
-						break;
-					case "l":
-					case "luac":
-						luaC = false;
-						break;
-					case "v":
-					case "verbose":
-						QUIET = false;
-						break;
-					case "q":
-					case "quiet":
-						QUIET = true;
-						break;
-					case "p":
-					case "prompt":
-						System.in.read();
-						break;
-					default:
-						System.out.print(
-							"Args\n" +
-								"  -t|--times <number> Run this n times\n" +
-								"  -j|--luajc          Don't run LuaJC\n" +
-								"  -l|--luac           Don't run LuaC\n" +
-								"  -v|--verbose        Verbose output\n" +
-								"  -q|--quiet          Quiet output\n" +
-								"  -p|--prompt         Prompt to begin\n"
-						);
-						return;
+				if (next.equals("t") || next.equals("times")) {
+					String number = arg.poll();
+					if (number == null) throw new IllegalArgumentException();
+					times = Integer.parseInt(number);
+				} else if (next.equals("j") || next.equals("luajc")) {
+					luaJC = false;
+				} else if (next.equals("l") || next.equals("luac")) {
+					luaC = false;
+				} else if (next.equals("v") || next.equals("verbose")) {
+					QUIET = false;
+				} else if (next.equals("q") || next.equals("quiet")) {
+					QUIET = true;
+				} else if (next.equals("p") || next.equals("prompt")) {
+					System.in.read();
+				} else {
+					System.out.print(
+						"Args\n" +
+							"  -t|--times <number> Run this n times\n" +
+							"  -j|--luajc          Don't run LuaJC\n" +
+							"  -l|--luac           Don't run LuaC\n" +
+							"  -v|--verbose        Verbose output\n" +
+							"  -q|--quiet          Quiet output\n" +
+							"  -p|--prompt         Prompt to begin\n"
+					);
+					return;
 				}
 			}
 		}

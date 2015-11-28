@@ -133,6 +133,7 @@ public class VarInfo {
 			this.pi = pi;
 		}
 
+		@Override
 		public boolean isPhiVar() {
 			return true;
 		}
@@ -161,8 +162,8 @@ public class VarInfo {
 		 */
 		@Override
 		public VarInfo resolvePhiVariableValues() {
-			Set<BasicBlock> visitedBlocks = new HashSet<>();
-			Set<VarInfo> vars = new HashSet<>();
+			Set<BasicBlock> visitedBlocks = new HashSet<BasicBlock>();
+			Set<VarInfo> vars = new HashSet<VarInfo>();
 			collectUniqueValues(visitedBlocks, vars);
 
 			if (vars.contains(INVALID)) return INVALID;

@@ -74,11 +74,13 @@ public class BasicBlock {
 
 		// Mark beginning and end of blocks
 		BranchVisitor bv = new BranchVisitor(isBeginning) {
+			@Override
 			public void visitBranch(int pc0, int pc1) {
 				isEnd[pc0] = true;
 				isBeginning[pc1] = true;
 			}
 
+			@Override
 			public void visitReturn(int pc) {
 				isEnd[pc] = true;
 			}
@@ -102,6 +104,7 @@ public class BasicBlock {
 		final int[] nNext = new int[n];
 		final int[] nPrevious = new int[n];
 		visitBranches(p, new BranchVisitor(isBeginning) {
+			@Override
 			public void visitBranch(int pc0, int pc1) {
 				nNext[pc0]++;
 				nPrevious[pc1]++;
@@ -110,6 +113,7 @@ public class BasicBlock {
 
 		// Create the blocks and reference previous and next blocks
 		visitBranches(p, new BranchVisitor(isBeginning) {
+			@Override
 			public void visitBranch(int pc0, int pc1) {
 				if (blocks[pc0].next == null) blocks[pc0].next = new BasicBlock[nNext[pc0]];
 				if (blocks[pc1].prev == null) blocks[pc1].prev = new BasicBlock[nPrevious[pc1]];
@@ -128,7 +132,7 @@ public class BasicBlock {
 	 */
 	public static BasicBlock[] findLiveBlocks(BasicBlock[] blocks) {
 		// Add all reachable blocks
-		Queue<BasicBlock> next = new LinkedList<>();
+		Queue<BasicBlock> next = new LinkedList<BasicBlock>();
 		next.add(blocks[0]);
 
 		// For each item find the next blocks and add them to the queue
@@ -145,7 +149,7 @@ public class BasicBlock {
 		}
 
 		// Create list in natural order
-		List<BasicBlock> list = new ArrayList<>();
+		List<BasicBlock> list = new ArrayList<BasicBlock>();
 		for (int i = 0; i < blocks.length; i = blocks[i].pc1 + 1) {
 			if (blocks[i].isLive) {
 				list.add(blocks[i]);

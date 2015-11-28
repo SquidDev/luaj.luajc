@@ -60,7 +60,7 @@ public class ProtoInfo {
 	/**
 	 * Storage for all phi variables in the prototype
 	 */
-	private final Set<VarInfo> phis = new HashSet<>();
+	private final Set<VarInfo> phis = new HashSet<VarInfo>();
 
 	public ProtoInfo(Prototype p, String name) {
 		this(p, name, null);

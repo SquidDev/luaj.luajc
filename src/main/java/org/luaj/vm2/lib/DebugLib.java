@@ -135,6 +135,7 @@ public class DebugLib extends VarArgFunction {
 		return t;
 	}
 
+	@Override
 	public Varargs invoke(Varargs args) {
 		switch (opcode) {
 			case INIT:
@@ -272,7 +273,7 @@ public class DebugLib extends VarArgFunction {
 	static class DebugState {
 		private final LuaThread thread;
 		private int debugCalls = 0;
-		private DebugInfo[] debugInfo = new DebugInfo[LuaThread.MAX_CALLSTACK + 1];
+		private final DebugInfo[] debugInfo = new DebugInfo[LuaThread.MAX_CALLSTACK + 1];
 		private LuaValue hookfunc;
 		private boolean hookcall, hookline, hookrtrn, inhook;
 		private int hookcount, hookcodes;

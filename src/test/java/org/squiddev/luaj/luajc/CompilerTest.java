@@ -92,7 +92,7 @@ public class CompilerTest {
 		});
 	}
 
-	protected String name;
+	protected final String name;
 	protected LuaValue globals;
 
 	public CompilerTest(String name) {

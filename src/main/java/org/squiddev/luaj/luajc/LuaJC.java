@@ -53,6 +53,7 @@ public class LuaJC implements LoadState.LuaCompiler {
 		LoadState.compiler = getInstance();
 	}
 
+	@Override
 	public LuaFunction load(InputStream stream, String name, LuaValue env) throws IOException {
 		Prototype p = LuaC.compile(stream, name);
 		String className = toStandardJavaClassName(name);

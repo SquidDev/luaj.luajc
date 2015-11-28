@@ -82,7 +82,7 @@ public class JavaBuilder {
 	}
 
 	// Manage super classes
-	protected static FunctionType[] SUPER_TYPES = {
+	protected static final FunctionType[] SUPER_TYPES = {
 		new FunctionType(ZeroArgFunction.class, "call"),
 		new FunctionType(OneArgFunction.class, "call", LuaValue.class),
 		new FunctionType(TwoArgFunction.class, "call", LuaValue.class, LuaValue.class),
@@ -195,13 +195,13 @@ public class JavaBuilder {
 	 */
 	protected int varargsLocal = -1;
 
-	Label start;
-	Label end;
+	final Label start;
+	final Label end;
 
 	// the superclass arg count, 0-3 args, 4=varargs
-	protected FunctionType superclass;
-	protected static int SUPERTYPE_VARARGS_ID = 4;
-	protected static FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
+	protected final FunctionType superclass;
+	protected static final int SUPERTYPE_VARARGS_ID = 4;
+	protected static final FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
 
 	/**
 	 * Go to destinations
@@ -438,8 +438,8 @@ public class JavaBuilder {
 		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", field, "Lorg/luaj/vm2/LuaBoolean;");
 	}
 
-	protected Map<Integer, Integer> plainSlotVars = new HashMap<>();
-	protected Map<Integer, Integer> upvalueSlotVars = new HashMap<>();
+	protected final Map<Integer, Integer> plainSlotVars = new HashMap<Integer, Integer>();
+	protected final Map<Integer, Integer> upvalueSlotVars = new HashMap<Integer, Integer>();
 
 	protected int findSlot(int luaSlot, Map<Integer, Integer> map) {
 		if (map.containsKey(luaSlot)) return map.get(luaSlot);
@@ -819,7 +819,7 @@ public class JavaBuilder {
 		main.visitFieldInsn(PUTFIELD, protoName, destName, type);
 	}
 
-	protected Map<LuaValue, String> constants = new HashMap<>();
+	protected final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
 	public void loadConstant(LuaValue value) {
 		switch (value.type()) {
