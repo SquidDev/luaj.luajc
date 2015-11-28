@@ -54,27 +54,6 @@ public abstract class LuaCompiledFunction extends LuaFunction implements IGetSou
 	protected String source;
 	protected int startLine;
 
-	/**
-	 * Java code generation utility to allocate storage for upvalue, leave it empty
-	 */
-	public static LuaValue[] newupe() {
-		return new LuaValue[1];
-	}
-
-	/**
-	 * Java code generation utility to allocate storage for upvalue, initialize with nil
-	 */
-	public static LuaValue[] newupn() {
-		return new LuaValue[]{NIL};
-	}
-
-	/**
-	 * Java code generation utility to allocate storage for upvalue, initialize with value
-	 */
-	public static LuaValue[] newupl(LuaValue v) {
-		return new LuaValue[]{v};
-	}
-
 	@Override
 	public String getSource() {
 		return source;
