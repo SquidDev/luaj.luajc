@@ -331,10 +331,6 @@ public class JavaBuilder {
 			construct.visitMethodInsn(INVOKESPECIAL, superclass.className, "<init>", "()V", false);
 
 			construct.visitVarInsn(ALOAD, 0);
-			construct.visitLdcInsn(filename);
-			construct.visitFieldInsn(PUTFIELD, CLASS_COMPILED, "source", "Ljava/lang/String;");
-
-			construct.visitVarInsn(ALOAD, 0);
 			constantOpcode(construct, p.linedefined);
 			construct.visitFieldInsn(PUTFIELD, CLASS_COMPILED, "startLine", "I");
 

@@ -181,7 +181,7 @@ public class DebugLib extends VarArgFunction {
 	// Each thread will get a DebugState attached to it by the debug library
 	// which will track function calls, hook functions, etc.
 	//
-	static class DebugInfo {
+	final static class DebugInfo {
 		LuaValue func;
 		LuaClosure closure;
 		IGetSource getSource;
@@ -224,7 +224,7 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		public int currentline() {
-			if (closure == null) return -1;
+			if (closure == null) return pc >= 0 && getSource != null ? getSource.getCurrentLine() : -1;
 			int[] li = closure.p.lineinfo;
 			return li == null || pc < 0 || pc >= li.length ? -1 : li[pc];
 		}
@@ -236,20 +236,14 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		public String sourceline() {
-			if (closure == null) {
-				if (getSource != null) {
-					return getSource.getSource() + ":" + getSource.getLine();
-				}
-				return func.tojstring();
-			}
-			String s = closure.p.source.tojstring();
+			Prototype proto = getPrototype();
+			if (proto == null) return func.tojstring();
+			String s = proto.source.tojstring();
 			int line = currentline();
 			return (s.startsWith("@") || s.startsWith("=") ? s.substring(1) : s) + ":" + line;
 		}
 
 		public String tracename() {
-			// if ( func != null )
-			// 	return func.tojstring();
 			LuaString[] kind = getfunckind();
 			if (kind == null) {
 				return "function ?";
@@ -258,8 +252,15 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		public LuaString getlocalname(int index) {
-			if (closure == null) return null;
-			return closure.p.getlocalname(index, pc);
+			Prototype p = getPrototype();
+			if (p == null) return null;
+			return p.getlocalname(index, pc);
+		}
+
+		public Prototype getPrototype() {
+			if (closure != null) return closure.p;
+			if (getSource != null) return getSource.getPrototype();
+			return null;
 		}
 
 		public String tojstring() {
@@ -531,14 +532,23 @@ public class DebugLib extends VarArgFunction {
 			return NIL;
 		}
 
+		// Grap the prototype
+		Prototype p = null;
+		LuaClosure c = di.closure;
+		IGetSource s = di.getSource;
+		if (c != null) {
+			p = c.p;
+		} else if (s != null) {
+			p = s.getPrototype();
+		}
+
 		// start a table
 		LuaTable info = new LuaTable();
-		LuaClosure c = di.closure;
 		for (int i = 0, j = what.length(); i < j; i++) {
 			switch (what.charAt(i)) {
 				case 'S': {
-					if (c != null) {
-						Prototype p = c.p;
+
+					if (p != null) {
 						info.set(WHAT, LUA);
 						info.set(SOURCE, p.source);
 						info.set(SHORT_SRC, valueOf(sourceshort(p)));
@@ -561,7 +571,7 @@ public class DebugLib extends VarArgFunction {
 					break;
 				}
 				case 'u': {
-					info.set(NUPS, valueOf(c != null ? c.p.nups : 0));
+					info.set(NUPS, valueOf(p != null ? p.nups : 0));
 					break;
 				}
 				case 'n': {

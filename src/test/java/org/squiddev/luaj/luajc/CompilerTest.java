@@ -45,6 +45,7 @@ public class CompilerTest {
 			{"StringDump"},
 			{"EdgeCases"},
 			{"LoadBytecode"},
+			{"DebugInfo"},
 
 			{"fragment/ForLoopParamUpvalues"},
 			{"fragment/VarVarargsUseArg"},

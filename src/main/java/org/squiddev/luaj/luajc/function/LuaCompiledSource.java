@@ -13,17 +13,12 @@ public class LuaCompiledSource extends LuaFunction implements IGetSource {
 	protected final LuaCompiledFunction parent;
 
 	public LuaCompiledSource(LuaCompiledFunction parent) {
-		line = parent.getLine();
+		line = parent.getCurrentLine();
 		this.parent = parent;
 	}
 
 	@Override
-	public String getSource() {
-		return parent.getSource();
-	}
-
-	@Override
-	public int getLine() {
+	public int getCurrentLine() {
 		return line;
 	}
 

@@ -51,17 +51,11 @@ import org.squiddev.luaj.luajc.JavaBuilder;
  * </ul>
  */
 public abstract class LuaCompiledFunction extends LuaFunction implements IGetSource {
-	protected String source;
 	protected int startLine;
 
 	@Override
-	public String getSource() {
-		return source;
-	}
-
-	@Override
-	public int getLine() {
-		return -startLine;
+	public int getCurrentLine() {
+		return startLine;
 	}
 
 	@Override
