@@ -25,20 +25,6 @@ public class VarInfo {
 	}
 
 	/**
-	 * Create a {@link VarInfo} for a nil value
-	 *
-	 * @param slot The slot nil is stored in.
-	 * @return The resulting nil variable. The PC is set to -1
-	 */
-	public static VarInfo NIL(final int slot) {
-		return new VarInfo(slot, -1) {
-			public String toString() {
-				return "nil";
-			}
-		};
-	}
-
-	/**
 	 * Create a new {@link VarInfo.PhiVarInfo}
 	 *
 	 * @param pi   The prototype this variable is part of
@@ -57,7 +43,7 @@ public class VarInfo {
 
 	/**
 	 * The PC this variable is written at
-	 * -1 for a block inpts
+	 * -1 for a block inputs
 	 */
 	public final int pc; // where assigned, or -1 if for block inputs
 
@@ -133,6 +119,7 @@ public class VarInfo {
 			this.pi = pi;
 		}
 
+		@Override
 		public boolean isPhiVar() {
 			return true;
 		}
@@ -162,8 +149,8 @@ public class VarInfo {
 		 */
 		@Override
 		public VarInfo resolvePhiVariableValues() {
-			Set<BasicBlock> visitedBlocks = new HashSet<>();
-			Set<VarInfo> vars = new HashSet<>();
+			Set<BasicBlock> visitedBlocks = new HashSet<BasicBlock>();
+			Set<VarInfo> vars = new HashSet<VarInfo>();
 			collectUniqueValues(visitedBlocks, vars);
 
 			if (vars.contains(INVALID)) return INVALID;

@@ -39,6 +39,7 @@ public class CompilerTest {
 			{"Recursive"},
 			{"Error"},
 			{"BranchUpvalue"},
+			// {"BranchUpvalue2"}, For the time being
 			{"RecursiveTrace"},
 			{"TailCall"},
 			{"StringDump"},
@@ -92,7 +93,7 @@ public class CompilerTest {
 		});
 	}
 
-	protected String name;
+	protected final String name;
 	protected LuaValue globals;
 
 	public CompilerTest(String name) {

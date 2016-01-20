@@ -60,7 +60,7 @@ public class ProtoInfo {
 	/**
 	 * Storage for all phi variables in the prototype
 	 */
-	private final Set<VarInfo> phis = new HashSet<>();
+	private final Set<VarInfo> phis = new HashSet<VarInfo>();
 
 	public ProtoInfo(Prototype p, String name) {
 		this(p, name, null);
@@ -93,9 +93,9 @@ public class ProtoInfo {
 	}
 
 	public String toString() {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 
-		// prototpye name
+		// prototype name
 		sb.append("proto '").append(name).append("'\n");
 
 		// upvalues from outer scopes
@@ -146,7 +146,7 @@ public class ProtoInfo {
 		return sb.toString();
 	}
 
-	private void appendOpenUps(StringBuffer sb, int pc) {
+	private void appendOpenUps(StringBuilder sb, int pc) {
 		for (int j = 0; j < prototype.maxstacksize; j++) {
 			VarInfo v = (pc < 0 ? params[j] : vars[j][pc]);
 			if (v != null && v.pc == pc && v.allocUpvalue) {
@@ -201,7 +201,6 @@ public class ProtoInfo {
 
 			// Process instructions for this basic block
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
-
 				// Propagate previous values except at block boundaries
 				if (pc > b0.pc0) {
 					propagateVars(v, pc - 1, pc);
@@ -213,32 +212,32 @@ public class ProtoInfo {
 
 				// Account for assignments, references and invalidation
 				switch (op) {
-					case Lua.OP_LOADK:/*	A Bx	R(A) := Kst(Bx)					*/
-					case Lua.OP_LOADBOOL:/*	A B C	R(A) := (Bool)B; if (C) pc++			*/
-					case Lua.OP_GETUPVAL: /*	A B	R(A) := UpValue[B]				*/
-					case Lua.OP_GETGLOBAL: /*	A Bx	R(A) := Gbl[Kst(Bx)]				*/
-					case Lua.OP_NEWTABLE: /*	A B C	R(A) := {} (size = B,C)				*/
+					case Lua.OP_LOADK:     // A Bx    R(A) := Kst(Bx)
+					case Lua.OP_LOADBOOL:  // A B  C  R(A) := (Bool)B; if (C) pc++
+					case Lua.OP_GETUPVAL:  // A B     R(A) := UpValue[B]
+					case Lua.OP_GETGLOBAL: // A Bx    R(A) := Gbl[Kst(Bx)]
+					case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
 						a = Lua.GETARG_A(ins);
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
-					case Lua.OP_MOVE:/*	A B	R(A) := R(B)					*/
-					case Lua.OP_UNM: /*	A B	R(A) := -R(B)					*/
-					case Lua.OP_NOT: /*	A B	R(A) := not R(B)				*/
-					case Lua.OP_LEN: /*	A B	R(A) := length of R(B)				*/
-					case Lua.OP_TESTSET: /*	A B C	if (R(B) <=> C) then R(A) := R(B) else pc++	*/
+					case Lua.OP_MOVE:    // A B R(A) := R(B)
+					case Lua.OP_UNM:     // A B R(A) := -R(B)
+					case Lua.OP_NOT:     // A B R(A) := not R(B)
+					case Lua.OP_LEN:     // A B R(A) := length of R(B)
+					case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A) := R(B) else pc++
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						v[b][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
-					case Lua.OP_ADD: /*	A B C	R(A) := RK(B) + RK(C)				*/
-					case Lua.OP_SUB: /*	A B C	R(A) := RK(B) - RK(C)				*/
-					case Lua.OP_MUL: /*	A B C	R(A) := RK(B) * RK(C)				*/
-					case Lua.OP_DIV: /*	A B C	R(A) := RK(B) / RK(C)				*/
-					case Lua.OP_MOD: /*	A B C	R(A) := RK(B) % RK(C)				*/
-					case Lua.OP_POW: /*	A B C	R(A) := RK(B) ^ RK(C)				*/
+					case Lua.OP_ADD: // A B C R(A) := RK(B) + RK(C)
+					case Lua.OP_SUB: // A B C R(A) := RK(B) - RK(C)
+					case Lua.OP_MUL: // A B C R(A) := RK(B) * RK(C)
+					case Lua.OP_DIV: // A B C R(A) := RK(B) / RK(C)
+					case Lua.OP_MOD: // A B C R(A) := RK(B) % RK(C)
+					case Lua.OP_POW: // A B C R(A) := RK(B) ^ RK(C)
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
@@ -247,7 +246,7 @@ public class ProtoInfo {
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
-					case Lua.OP_SETTABLE: /*	A B C	R(A)[RK(B)]:= RK(C)				*/
+					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
@@ -256,7 +255,7 @@ public class ProtoInfo {
 						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						break;
 
-					case Lua.OP_CONCAT: /*	A B C	R(A) := R(B).. ... ..R(C)			*/
+					case Lua.OP_CONCAT: // A B C R(A) := R(B) .. ... .. R(C)
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
@@ -266,13 +265,13 @@ public class ProtoInfo {
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
-					case Lua.OP_FORPREP: /*	A sBx	R(A)-=R(A+2); pc+=sBx				*/
+					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
 						a = Lua.GETARG_A(ins);
 						v[a + 2][pc].isReferenced = true;
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
-					case Lua.OP_GETTABLE: /*	A B C	R(A) := R(B)[RK(C)]				*/
+					case Lua.OP_GETTABLE: // A B C R(A) := R(B)[RK(C)]
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
@@ -281,7 +280,7 @@ public class ProtoInfo {
 						v[a][pc] = new VarInfo(a, pc);
 						break;
 
-					case Lua.OP_SELF: /*	A B C	R(A+1) := R(B); R(A) := R(B)[RK(C)]		*/
+					case Lua.OP_SELF: // A B C R(A+1) := R(B); R(A) := R(B)[RK(C)]
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
@@ -291,8 +290,7 @@ public class ProtoInfo {
 						v[a + 1][pc] = new VarInfo(a + 1, pc);
 						break;
 
-					case Lua.OP_FORLOOP: /*	A sBx	R(A)+=R(A+2);
-					if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/
+					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
 						a = Lua.GETARG_A(ins);
 						v[a][pc].isReferenced = true;
 						v[a + 2][pc].isReferenced = true;
@@ -302,7 +300,7 @@ public class ProtoInfo {
 						v[a + 3][pc] = new VarInfo(a + 3, pc);
 						break;
 
-					case Lua.OP_LOADNIL: /*	A B	R(A) := ... := R(B) := nil			*/
+					case Lua.OP_LOADNIL: // A B R(A) ... R(B) := nil
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (; a <= b; a++) {
@@ -310,7 +308,7 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_VARARG: /*	A B	R(A), R(A+1), ..., R(A+B-1) = vararg		*/
+					case Lua.OP_VARARG: // A B R(A), R(A+1), ..., R(A+B-1) = vararg
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (int j = 1; j < b; j++, a++) {
@@ -323,7 +321,7 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_CALL: /*	A B C	R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
+					case Lua.OP_CALL: // A B C R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1))
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
@@ -340,7 +338,7 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_TAILCALL: /*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/
+					case Lua.OP_TAILCALL: // A B C return R(A)(R(A+1), ... ,R(A+B-1))
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						v[a][pc].isReferenced = true;
@@ -349,7 +347,7 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_RETURN: /*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/
+					case Lua.OP_RETURN: // A B return R(A), ... ,R(A+B-2)
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (int i = 0; i <= b - 2; i++) {
@@ -357,8 +355,7 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_TFORLOOP: /*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
-					                    if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++	*/
+					case Lua.OP_TFORLOOP: // A C R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2)); if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++
 						a = Lua.GETARG_A(ins);
 						c = Lua.GETARG_C(ins);
 						v[a++][pc].isReferenced = true;
@@ -372,7 +369,7 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_CLOSURE: /*	A Bx	R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/
+					case Lua.OP_CLOSURE: // A Bx R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_Bx(ins);
 						nups = prototype.p[b].nups;
@@ -389,14 +386,14 @@ public class ProtoInfo {
 						}
 						pc += nups;
 						break;
-					case Lua.OP_CLOSE: /*	A 	close all variables in the stack up to (>=) R(A)*/
+					case Lua.OP_CLOSE: // A close all variables in the stack up to (>=) R(A)
 						a = Lua.GETARG_A(ins);
 						for (; a < m; a++) {
 							v[a][pc] = VarInfo.INVALID;
 						}
 						break;
 
-					case Lua.OP_SETLIST: /*	A B C	R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B	*/
+					case Lua.OP_SETLIST: // A B C R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						v[a][pc].isReferenced = true;
@@ -405,23 +402,23 @@ public class ProtoInfo {
 						}
 						break;
 
-					case Lua.OP_SETGLOBAL: /*	A Bx	Gbl[Kst(Bx)]:= R(A)				*/
-					case Lua.OP_SETUPVAL: /*	A B	UpValue[B]:= R(A)				*/
-					case Lua.OP_TEST: /*	A C	if not (R(A) <=> C) then pc++			*/
+					case Lua.OP_SETGLOBAL: // A Bx Gbl[Kst(Bx)]:= R(A)
+					case Lua.OP_SETUPVAL:  // A B  UpValue[B]:= R(A)
+					case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
 						a = Lua.GETARG_A(ins);
 						v[a][pc].isReferenced = true;
 						break;
 
-					case Lua.OP_EQ: /*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/
-					case Lua.OP_LT: /*	A B C	if ((RK(B) <  RK(C)) ~= A) then pc++  		*/
-					case Lua.OP_LE: /*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++  		*/
+					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
+					case Lua.OP_LT: // A B C if ((RK(B) <  RK(C)) ~= A) then pc++
+					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
 						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
 						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
 						break;
 
-					case Lua.OP_JMP: /*	sBx	pc+=sBx					*/
+					case Lua.OP_JMP: // sBx pc+=sBx
 						break;
 
 					default:
@@ -491,12 +488,15 @@ public class ProtoInfo {
 				Prototype childPrototype = prototype.p[bx];
 				String childName = name + "$" + bx;
 
-				UpvalueInfo[] childUpvalues = childPrototype.nups > 0 ? new UpvalueInfo[childPrototype.nups] : null;
+				UpvalueInfo[] childUpvalues = null;
 
-				for (int j = 0; j < childPrototype.nups; ++j) {
-					int i = code[++pc];
-					int b = Lua.GETARG_B(i);
-					childUpvalues[j] = (i & 4) != 0 ? upvalues[b] : findOpenUp(pc, b);
+				if (childPrototype.nups > 0) {
+					childUpvalues = new UpvalueInfo[childPrototype.nups];
+					for (int j = 0; j < childPrototype.nups; ++j) {
+						int i = code[++pc];
+						int b = Lua.GETARG_B(i);
+						childUpvalues[j] = (i & 4) != 0 ? upvalues[b] : findOpenUp(pc, b);
+					}
 				}
 
 				subprotos[bx] = new ProtoInfo(childPrototype, childName, childUpvalues);

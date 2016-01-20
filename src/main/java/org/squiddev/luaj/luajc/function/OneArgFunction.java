@@ -51,21 +51,25 @@ import org.luaj.vm2.Varargs;
  * @see VarArgFunction
  */
 abstract public class OneArgFunction extends LuaCompiledFunction {
-
+	@Override
 	abstract public LuaValue call(LuaValue arg);
 
+	@Override
 	public final LuaValue call() {
 		return call(NIL);
 	}
 
+	@Override
 	public final LuaValue call(LuaValue arg1, LuaValue arg2) {
 		return call(arg1);
 	}
 
+	@Override
 	public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 		return call(arg1);
 	}
 
+	@Override
 	public Varargs invoke(Varargs varargs) {
 		return call(varargs.arg1());
 	}

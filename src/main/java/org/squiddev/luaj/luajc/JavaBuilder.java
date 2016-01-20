@@ -40,7 +40,7 @@ import static org.squiddev.luaj.luajc.utils.AsmUtils.constantOpcode;
 public class JavaBuilder {
 	public static final String PROTOTYPE_NAME = "PROTOTYPE";
 
-	protected static final String TYPE_LOCALUPVALUE = Type.getDescriptor(LuaValue[].class);
+	protected static final String TYPE_LOCALUPVALUE = Type.getDescriptor(Reference.class);
 	protected static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	protected static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
 
@@ -50,6 +50,7 @@ public class JavaBuilder {
 	protected static final String TYPE_COMPILED = Type.getDescriptor(LuaCompiledFunction.class);
 	protected static final String CLASS_SOURCE = Type.getInternalName(LuaCompiledSource.class);
 	protected static final String CLASS_COMPILED = Type.getInternalName(LuaCompiledFunction.class);
+	protected static final String CLASS_UPVALUE = Type.getInternalName(Reference.class);
 
 	protected static class FunctionType {
 		public final String signature;
@@ -82,7 +83,7 @@ public class JavaBuilder {
 	}
 
 	// Manage super classes
-	protected static FunctionType[] SUPER_TYPES = {
+	protected static final FunctionType[] SUPER_TYPES = {
 		new FunctionType(ZeroArgFunction.class, "call"),
 		new FunctionType(OneArgFunction.class, "call", LuaValue.class),
 		new FunctionType(TwoArgFunction.class, "call", LuaValue.class, LuaValue.class),
@@ -151,9 +152,9 @@ public class JavaBuilder {
 	protected static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);
 
 	// Upvalue creation
-	protected static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(LuaCompiledFunction.class, "newupe");
-	protected static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(LuaCompiledFunction.class, "newupn");
-	protected static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(LuaCompiledFunction.class, "newupl", LuaValue.class);
+	protected static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(Reference.class, "newupe");
+	protected static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(Reference.class, "newupn");
+	protected static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(Reference.class, "newupl", LuaValue.class);
 
 	// Stack tracing
 	protected static final TinyMethod METHOD_ONCALL = new TinyMethod(LuaThread.class, "onCall", LuaFunction.class);
@@ -195,13 +196,13 @@ public class JavaBuilder {
 	 */
 	protected int varargsLocal = -1;
 
-	Label start;
-	Label end;
+	final Label start;
+	final Label end;
 
 	// the superclass arg count, 0-3 args, 4=varargs
-	protected FunctionType superclass;
-	protected static int SUPERTYPE_VARARGS_ID = 4;
-	protected static FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
+	protected final FunctionType superclass;
+	protected static final int SUPERTYPE_VARARGS_ID = 4;
+	protected static final FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
 
 	/**
 	 * Go to destinations
@@ -438,8 +439,8 @@ public class JavaBuilder {
 		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", field, "Lorg/luaj/vm2/LuaBoolean;");
 	}
 
-	protected Map<Integer, Integer> plainSlotVars = new HashMap<>();
-	protected Map<Integer, Integer> upvalueSlotVars = new HashMap<>();
+	protected final Map<Integer, Integer> plainSlotVars = new HashMap<Integer, Integer>();
+	protected final Map<Integer, Integer> upvalueSlotVars = new HashMap<Integer, Integer>();
 
 	protected int findSlot(int luaSlot, Map<Integer, Integer> map) {
 		if (map.containsKey(luaSlot)) return map.get(luaSlot);
@@ -462,8 +463,7 @@ public class JavaBuilder {
 
 		main.visitVarInsn(ALOAD, index);
 		if (isUpvalue) {
-			main.visitInsn(ICONST_0);
-			main.visitInsn(AALOAD);
+			main.visitFieldInsn(GETFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
 		}
 	}
 
@@ -483,13 +483,10 @@ public class JavaBuilder {
 				main.visitVarInsn(ALOAD, index);
 			}
 
-			// We swap the values which is the value and the array
-			// Then we get item 0 of the array
-			// And store to it
+			// We swap the values which is the value and the reference
+			// And store to the reference
 			main.visitInsn(SWAP);
-			main.visitIntInsn(ICONST_0, 0);
-			main.visitInsn(SWAP);
-			main.visitInsn(AASTORE);
+			main.visitFieldInsn(PUTFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
 		} else {
 			main.visitVarInsn(ASTORE, index);
 		}
@@ -531,8 +528,7 @@ public class JavaBuilder {
 		if (isReadWrite) {
 			// We get the first value of the array in <classname>.<upvalueName>
 			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LOCALUPVALUE);
-			main.visitInsn(ICONST_0);
-			main.visitInsn(AALOAD);
+			main.visitFieldInsn(GETFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
 		} else {
 			// Not a 'proper' upvalue, so we just need to get the value itself
 			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LUAVALUE);
@@ -545,9 +541,8 @@ public class JavaBuilder {
 		if (isReadWrite) {
 			// We set the first value of the array in <classname>.<upvalueName>
 			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LOCALUPVALUE);
-			main.visitInsn(ICONST_0);
 			loadLocal(pc, slot);
-			main.visitInsn(AASTORE);
+			main.visitFieldInsn(PUTFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
 		} else {
 			loadLocal(pc, slot);
 			main.visitFieldInsn(PUTFIELD, className, upvalueName(upvalueIndex), TYPE_LUAVALUE);
@@ -624,7 +619,6 @@ public class JavaBuilder {
 				break;
 		}
 
-		// TODO: More constants, less magic variables
 		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "()" + TYPE_LUAVALUE, false);
 	}
 
@@ -819,7 +813,7 @@ public class JavaBuilder {
 		main.visitFieldInsn(PUTFIELD, protoName, destName, type);
 	}
 
-	protected Map<LuaValue, String> constants = new HashMap<>();
+	protected final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
 	public void loadConstant(LuaValue value) {
 		switch (value.type()) {

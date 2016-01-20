@@ -7,7 +7,7 @@ apply plugin: 'maven-publish'
 group = 'org.squiddev'
 version = '1.0.1'
 
-sourceCompatibility = 1.7
+sourceCompatibility = 1.6
 
 repositories {
 	mavenCentral()
@@ -55,5 +55,11 @@ publishing {
 			artifact sourcesJar { classifier "sources" }
 			artifact javadocJar { classifier "javadoc" }
 		}
+	}
+}
+
+test {
+	testLogging {
+		events "passed", "skipped", "failed", "standardOut", "standardError"
 	}
 }

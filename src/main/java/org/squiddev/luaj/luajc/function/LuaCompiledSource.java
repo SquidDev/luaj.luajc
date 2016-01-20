@@ -32,10 +32,12 @@ public class LuaCompiledSource extends LuaFunction implements IGetSource {
 		return parent.getPrototype();
 	}
 
+	@Override
 	public LuaValue getfenv() {
 		return parent.getfenv();
 	}
 
+	@Override
 	public void setfenv(LuaValue env) {
 		parent.setfenv(env);
 	}
