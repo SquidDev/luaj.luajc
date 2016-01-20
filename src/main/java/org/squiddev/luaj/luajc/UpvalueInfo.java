@@ -2,7 +2,7 @@ package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.Lua;
 
-public class UpvalueInfo {
+public final class UpvalueInfo {
 	/**
 	 * The prototype the upvalue is defined in
 	 */

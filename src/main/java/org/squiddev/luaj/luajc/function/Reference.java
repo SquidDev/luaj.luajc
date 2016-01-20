@@ -5,7 +5,7 @@ import org.luaj.vm2.LuaValue;
 /**
  * Reference to a LuaValue
  */
-public class Reference {
+public final class Reference {
 	public LuaValue value;
 
 	public Reference() {

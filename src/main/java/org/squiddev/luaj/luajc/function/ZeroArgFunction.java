@@ -48,9 +48,9 @@ import org.luaj.vm2.Varargs;
  * @see ThreeArgFunction
  * @see VarArgFunction
  */
-abstract public class ZeroArgFunction extends LuaCompiledFunction {
+public abstract class ZeroArgFunction extends LuaCompiledFunction {
 	@Override
-	abstract public LuaValue call();
+	public abstract LuaValue call();
 
 	@Override
 	public LuaValue call(LuaValue arg) {

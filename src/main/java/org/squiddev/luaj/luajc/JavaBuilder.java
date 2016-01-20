@@ -37,7 +37,7 @@ import java.util.Map;
 import static org.objectweb.asm.Opcodes.*;
 import static org.squiddev.luaj.luajc.utils.AsmUtils.constantOpcode;
 
-public class JavaBuilder {
+public final class JavaBuilder {
 	public static final String PROTOTYPE_NAME = "PROTOTYPE";
 
 	protected static final String TYPE_LOCALUPVALUE = Type.getDescriptor(Reference.class);

@@ -12,7 +12,7 @@ import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 /**
  * Stores very basic data about a method so we can inject it
  */
-public class TinyMethod {
+public final class TinyMethod {
 	public final String className;
 	public final String name;
 	public final String signature;

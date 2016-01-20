@@ -13,7 +13,10 @@ import static org.objectweb.asm.Opcodes.*;
 /**
  * Utilities for writing Java bytecode
  */
-public class AsmUtils {
+public final class AsmUtils {
+	private AsmUtils() {
+	}
+
 	/**
 	 * Get the appropriate constant opcode
 	 *

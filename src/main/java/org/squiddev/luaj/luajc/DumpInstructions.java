@@ -7,7 +7,7 @@ import java.io.PrintStream;
 /**
  * Dumps the contents of a Lua prototype to a readable format
  */
-public class DumpInstructions {
+public final class DumpInstructions {
 	protected static final String[] OPCODE_NAMES = {
 		"MOVE", "LOADK", "LOADBOOL", "LOADNIL", "GETUPVAL", "GETGLOBAL",
 		"GETTABLE", "SETGLOBAL", "SETUPVAL", "SETTABLE", "NEWTABLE", "SELF",

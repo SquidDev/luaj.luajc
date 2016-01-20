@@ -27,7 +27,7 @@ import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
-public class JavaGen {
+public final class JavaGen {
 
 	public final String className;
 	public final byte[] bytecode;

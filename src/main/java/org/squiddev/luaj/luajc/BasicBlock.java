@@ -8,7 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-public class BasicBlock {
+public final class BasicBlock {
 	/**
 	 * Start PC of the block
 	 */

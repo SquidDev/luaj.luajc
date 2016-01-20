@@ -49,7 +49,7 @@ import org.luaj.vm2.Varargs;
  * @see TwoArgFunction
  * @see ThreeArgFunction
  */
-abstract public class VarArgFunction extends LuaCompiledFunction {
+public abstract class VarArgFunction extends LuaCompiledFunction {
 	public VarArgFunction() {
 	}
 

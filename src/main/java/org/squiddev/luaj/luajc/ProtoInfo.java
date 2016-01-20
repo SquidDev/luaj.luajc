@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * Prototype information for static single-assignment analysis
  */
-public class ProtoInfo {
+public final class ProtoInfo {
 	/**
 	 * The name of the prototype
 	 */

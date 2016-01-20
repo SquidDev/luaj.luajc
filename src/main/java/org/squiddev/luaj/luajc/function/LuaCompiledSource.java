@@ -8,7 +8,7 @@ import org.squiddev.luaj.luajc.IGetSource;
 /**
  * A wrapper for functions to handle call stacks
  */
-public class LuaCompiledSource extends LuaFunction implements IGetSource {
+public final class LuaCompiledSource extends LuaFunction implements IGetSource {
 	public int line;
 	protected final LuaCompiledFunction parent;
 
