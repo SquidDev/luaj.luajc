@@ -1,17 +1,17 @@
 /**
  * ****************************************************************************
  * Copyright (c) 2009-2011 Luaj.org. All rights reserved.
- * <p/>
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * <p/>
+ * <p>
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * <p/>
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,17 +29,17 @@ import org.squiddev.luaj.luajc.IGetSource;
 /**
  * Subclass of {@link LibFunction} which implements the lua standard {@code debug}
  * library.
- * <p/>
+ * <p>
  * The debug library in luaj tries to emulate the behavior of the corresponding C-based lua library.
  * To do this, it must maintain a separate stack of calls to {@link LuaClosure} and {@link LibFunction}
  * instances.
  * Especially when lua-to-java bytecode compiling is being used
  * via a {@link org.luaj.vm2.LoadState.LuaCompiler} such as {@link org.luaj.vm2.luajc.LuaJC},
  * this cannot be done in all cases.
- * <p/>
+ * <p>
  * Typically, this library is included as part of a call to either
  * {@link org.luaj.vm2.lib.jse.JsePlatform#debugGlobals()} or JmePlatform#debugGlobals()
- * <p/>
+ * <p>
  * To instantiate and use it directly,
  * link it into your globals table via {@link LuaValue#load(LuaValue)} using code such as:
  * <pre> {@code
@@ -48,7 +48,7 @@ import org.squiddev.luaj.luajc.IGetSource;
  * } </pre>
  * Doing so will ensure the library is properly initialized
  * and loaded into the globals table.
- * <p/>
+ * <p>
  *
  * @see LibFunction
  * @see org.luaj.vm2.lib.jse.JsePlatform
@@ -381,6 +381,9 @@ public class DebugLib extends VarArgFunction {
 
 	/**
 	 * Called by Closures to set up stack and arguments to next call
+	 *
+	 * @param args  The arguments for the function called
+	 * @param stack The current LuaFunction stack
 	 */
 	public static void debugSetupCall(Varargs args, LuaValue[] stack) {
 		DebugState ds = getDebugState();
@@ -421,6 +424,10 @@ public class DebugLib extends VarArgFunction {
 
 	/**
 	 * Called by Closures on bytecode execution
+	 *
+	 * @param pc     The current program counter
+	 * @param extras Extra arguments to pass to {@link DebugInfo#bytecode}
+	 * @param top    No clue.
 	 */
 	public static void debugBytecode(int pc, Varargs extras, int top) {
 		DebugState ds = getDebugState();
@@ -721,6 +728,9 @@ public class DebugLib extends VarArgFunction {
 
 	/**
 	 * Get a traceback as a string for the current thread
+	 *
+	 * @param level The level to get the traceback at
+	 * @return The generated traceback
 	 */
 	public static String traceback(int level) {
 		return traceback(LuaThread.getRunning(), level);
@@ -870,8 +880,7 @@ public class DebugLib extends VarArgFunction {
 			case Lua.OP_TAILCALL:
 			case Lua.OP_RETURN:
 			case Lua.OP_SETLIST: {
-				if (!(Lua.GETARG_B(i) == 0)) return false;
-				return true;
+				return Lua.GETARG_B(i) == 0;
 			}
 			default:
 				return false; /* invalid instruction after an open call */

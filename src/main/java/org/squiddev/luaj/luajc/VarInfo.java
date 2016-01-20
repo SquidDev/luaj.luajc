@@ -141,10 +141,11 @@ public class VarInfo {
 		 * Return replacement variable if there is exactly one value possible,
 		 * otherwise compute entire collection of variables and return null.
 		 * Computes the list of all variable values, and saves it for the future.
-		 * <p/>
-		 * This will set all child variables' {@see #isReferenced} if this variable is
+		 * <p>
+		 * This will set all child variables' isReferenced if this variable is
 		 *
 		 * @return new Variable to replace with if there is only one value, or null to leave alone.
+		 * @see #isReferenced
 		 */
 		@Override
 		public VarInfo resolvePhiVariableValues() {

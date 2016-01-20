@@ -1,10 +1,13 @@
+plugins {
+	id "com.jfrog.bintray" version "1.4"
+}
 apply plugin: 'java'
-apply plugin: 'maven'
-
-sourceCompatibility = 1.6
+apply plugin: 'maven-publish'
 
 group = 'org.squiddev'
-version = '1.0'
+version = '1.0.1'
+
+sourceCompatibility = 1.6
 
 repositories {
 	mavenCentral()
@@ -15,6 +18,44 @@ dependencies {
 	compile group: 'org.luaj', name: 'luaj-jse', version: '2.+'
 
 	testCompile group: 'junit', name: 'junit', version: '4.+'
+}
+
+task sourcesJar(type: Jar, dependsOn:classes) {
+	classifier = 'sources'
+	from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn:javadoc) {
+	classifier = 'javadoc'
+	from javadoc.destinationDir
+}
+
+bintray {
+	user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
+	key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
+	publications = ['mavenJava']
+	pkg {
+		repo = 'maven'
+		name = 'luaj.luajc'
+		licenses = ['MIT']
+		vcsUrl = 'https://github.com/SquidDev/luaj.luajc'
+
+		version {
+			name = project.version
+			desc = 'LuaJ\'s LuaJC ported to the ASM framework'
+			released = new Date()
+		}
+	}
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			from components.java
+			artifact sourcesJar { classifier "sources" }
+			artifact javadocJar { classifier "javadoc" }
+		}
+	}
 }
 
 test {
