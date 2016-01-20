@@ -28,7 +28,7 @@ public class CompilerTest {
 	 *
 	 * @return Array of parameters to run. Each array is composed of one element with the name of the test
 	 */
-	@Parameterized.Parameters(name = "{0} ({index})")
+	@Parameterized.Parameters(name = "{0}")
 	public static Collection<Object[]> getLua() {
 		return Arrays.asList(new Object[][]{
 			{"NForLoop"},
@@ -39,13 +39,14 @@ public class CompilerTest {
 			{"Recursive"},
 			{"Error"},
 			{"BranchUpvalue"},
-			// {"BranchUpvalue2"}, For the time being
+			// {"BranchUpvalue2"}, // For the time being
 			{"RecursiveTrace"},
 			{"TailCall"},
 			{"StringDump"},
 			{"EdgeCases"},
 			{"LoadBytecode"},
 			{"DebugInfo"},
+			{"SetFEnv"},
 
 			{"fragment/ForLoopParamUpvalues"},
 			{"fragment/VarVarargsUseArg"},
