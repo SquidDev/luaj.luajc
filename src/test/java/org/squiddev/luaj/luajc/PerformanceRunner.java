@@ -93,7 +93,7 @@ public class PerformanceRunner {
 	}
 
 	protected static void execute(LuaTable globals) {
-		// if (QUIET) installQuite(globals);
+		if (QUIET) installQuite(globals);
 
 		try {
 			InputStream aesStream = PerformanceRunner.class.getResourceAsStream("/org/squiddev/luaj/luajc/aes/AesLua.lua");
