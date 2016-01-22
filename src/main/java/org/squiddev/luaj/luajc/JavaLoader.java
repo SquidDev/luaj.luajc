@@ -92,7 +92,7 @@ public class JavaLoader extends ClassLoader {
 
 			// Attempt to set the prototype object to this class
 			try {
-				generatedClass.getField(JavaBuilder.PROTOTYPE_NAME).set(null, prototypes.get(className));
+				generatedClass.getField(Constants.PROTOTYPE_NAME).set(null, prototypes.get(className));
 			} catch (ReflectiveOperationException e) {
 				e.printStackTrace();
 			}

@@ -15,8 +15,8 @@ local function closure()
 end
 
 while true do
-	if 1 == 2 then
-		upvalue = 1
+	if upvalue == 1 then
+		upvalue = 2
 	else
 		for loop_numA = 1, 2 do
 			for loop_numB = 1, 2 do
@@ -27,3 +27,5 @@ while true do
 		break
 	end
 end
+
+assertEquals(2, closure())

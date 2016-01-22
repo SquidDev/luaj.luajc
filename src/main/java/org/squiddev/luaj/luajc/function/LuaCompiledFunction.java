@@ -28,7 +28,7 @@ import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.IGetSource;
-import org.squiddev.luaj.luajc.JavaBuilder;
+import org.squiddev.luaj.luajc.Constants;
 
 /**
  * Subclass of {@link LuaFunction} common to LuaJC compiled functions.
@@ -61,7 +61,7 @@ public abstract class LuaCompiledFunction extends LuaFunction implements IGetSou
 	@Override
 	public Prototype getPrototype() {
 		try {
-			return (Prototype) getClass().getField(JavaBuilder.PROTOTYPE_NAME).get(null);
+			return (Prototype) getClass().getField(Constants.PROTOTYPE_NAME).get(null);
 		} catch (Exception e) {
 			throw new LuaError(e.getMessage());
 		}
