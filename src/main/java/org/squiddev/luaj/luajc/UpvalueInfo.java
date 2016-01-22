@@ -60,8 +60,11 @@ public final class UpvalueInfo {
 		var.upvalue = this;
 		vars.add(var);
 
-		// If this sets up a loop, then we can ignore this
-		if (isLoopVariable(var)) return false;
+		// If this is a loop, then we can ignore this
+		if (isLoopVariable(var)) {
+			includePriorVarsIgnoreLoops(var);
+			return false;
+		}
 
 		// Scan recursively
 		boolean loopDetected = includePosteriorVarsCheckLoops(var);
@@ -113,8 +116,9 @@ public final class UpvalueInfo {
 					}
 				}
 			} else {
-				// Otherwise it changed within this block. Scan in reverse to find the correct instruction.
+				// Otherwise it may have changed within this block. Scan in reverse to find the correct instruction.
 				for (int pc = b.pc1 - 1; pc >= b.pc0; pc--) {
+					// This is the same, so the next instruction must be a modification
 					if (pi.vars[slot][pc] == prior) {
 						loopDetected |= includeVarAndPosteriorVars(pi.vars[slot][pc + 1]);
 						break;

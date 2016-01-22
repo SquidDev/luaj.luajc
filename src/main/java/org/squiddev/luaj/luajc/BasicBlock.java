@@ -38,11 +38,11 @@ public final class BasicBlock {
 		pc0 = pc1 = pc;
 	}
 
+	@Override
 	public String toString() {
 		return (pc0 + 1) + "-" + (pc1 + 1)
 			+ (prev != null ? "  prv: " + str(prev, 1) : "")
-			+ (next != null ? "  nxt: " + str(next, 0) : "")
-			+ "\n";
+			+ (next != null ? "  nxt: " + str(next, 0) : "");
 	}
 
 	private String str(BasicBlock[] b, int p) {

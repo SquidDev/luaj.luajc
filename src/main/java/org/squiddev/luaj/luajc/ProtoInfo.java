@@ -106,7 +106,7 @@ public final class ProtoInfo {
 		// basic blocks
 		for (BasicBlock b : blockList) {
 			int pc0 = b.pc0;
-			sb.append("\tblock ").append(b.toString());
+			sb.append("\tblock ").append(b.toString()).append('\n');
 			appendOpenUps(sb, -1);
 
 			// instructions

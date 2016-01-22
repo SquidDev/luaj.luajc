@@ -39,7 +39,7 @@ public class CompilerTest {
 			{"Recursive"},
 			{"Error"},
 			{"BranchUpvalue"},
-			// {"BranchUpvalue2"}, // For the time being
+			{"BranchUpvalue2"},
 			{"RecursiveTrace"},
 			{"TailCall"},
 			{"StringDump"},
