@@ -2,6 +2,9 @@ package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.Lua;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class UpvalueInfo {
 	/**
 	 * The prototype the upvalue is defined in
@@ -14,14 +17,9 @@ public final class UpvalueInfo {
 	private final int slot;
 
 	/**
-	 * Number of vars involved
-	 */
-	private int nvars;
-
-	/**
 	 * List of variables involved
 	 */
-	private VarInfo var[];
+	private final List<VarInfo> vars = new ArrayList<VarInfo>();
 
 	/**
 	 * Is this upvalue read-write
@@ -38,36 +36,37 @@ public final class UpvalueInfo {
 	public UpvalueInfo(ProtoInfo pi, int pc, int slot) {
 		this.pi = pi;
 		this.slot = slot;
-		nvars = 0;
-		var = null;
+
 		includeVarAndPosteriorVars(pi.vars[slot][pc]);
-		for (int i = 0; i < nvars; i++) {
-			var[i].allocUpvalue = testIsAllocUpvalue(var[i]);
+		for (VarInfo var : vars) {
+			var.allocUpvalue = testIsAllocUpvalue(var);
 		}
-		readWrite = nvars > 1;
+		readWrite = vars.size() > 1;
 	}
 
 	/**
 	 * Find variables that this upvalue links to
 	 *
 	 * @param var The variable to use
+	 * @return If we have visited this before, hence a loop has been found
 	 */
 	private boolean includeVarAndPosteriorVars(VarInfo var) {
-		if (var == null || var == VarInfo.INVALID) {
-			return false;
-		}
-		if (var.upvalue == this) {
-			return true;
-		}
+		// We can't do anything with this
+		if (var == null || var == VarInfo.INVALID) return false;
+
+		// We've already set this, so we must be in a loop
+		if (var.upvalue == this) return true;
+
 		var.upvalue = this;
-		appendVar(var);
-		if (isLoopVariable(var)) {
-			return false;
-		}
+		vars.add(var);
+
+		// If this sets up a loop, then we can ignore this
+		if (isLoopVariable(var)) return false;
+
+		// Scan recursively
 		boolean loopDetected = includePosteriorVarsCheckLoops(var);
-		if (loopDetected) {
-			includePriorVarsIgnoreLoops(var);
-		}
+		if (loopDetected) includePriorVarsIgnoreLoops(var);
+
 		return loopDetected;
 	}
 
@@ -88,22 +87,33 @@ public final class UpvalueInfo {
 		return false;
 	}
 
+	/**
+	 * Include all changes
+	 *
+	 * @param prior The instruction to check
+	 * @return If a loop was detected.
+	 */
 	private boolean includePosteriorVarsCheckLoops(VarInfo prior) {
 		boolean loopDetected = false;
 		for (BasicBlock b : pi.blockList) {
+			// Get the variable definition at the last instruction in this block
 			VarInfo var = pi.vars[slot][b.pc1];
+
 			if (var == prior) {
-				for (int j = 0, m = b.next != null ? b.next.length : 0; j < m; j++) {
-					BasicBlock b1 = b.next[j];
-					VarInfo v1 = pi.vars[slot][b1.pc0];
-					if (v1 != prior) {
-						loopDetected |= includeVarAndPosteriorVars(v1);
-						if (v1.isPhiVar()) {
-							includePriorVarsIgnoreLoops(v1);
+				// If it hasn't changed then scan next instructions
+				if (b.next != null) {
+					for (BasicBlock b1 : b.next) {
+						VarInfo v1 = pi.vars[slot][b1.pc0];
+						if (v1 != prior) {
+							loopDetected |= includeVarAndPosteriorVars(v1);
+							if (v1.isPhiVar()) {
+								includePriorVarsIgnoreLoops(v1);
+							}
 						}
 					}
 				}
 			} else {
+				// Otherwise it changed within this block. Scan in reverse to find the correct instruction.
 				for (int pc = b.pc1 - 1; pc >= b.pc0; pc--) {
 					if (pi.vars[slot][pc] == prior) {
 						loopDetected |= includeVarAndPosteriorVars(pi.vars[slot][pc + 1]);
@@ -117,13 +127,17 @@ public final class UpvalueInfo {
 
 	private void includePriorVarsIgnoreLoops(VarInfo poster) {
 		for (BasicBlock b : pi.blockList) {
+			// Get the variable definition at the first instruction in this block
 			VarInfo var = pi.vars[slot][b.pc0];
+
+			// If it hasn't changed
 			if (var == poster) {
-				for (int j = 0, m = b.prev != null ? b.prev.length : 0; j < m; j++) {
-					BasicBlock b0 = b.prev[j];
-					VarInfo v0 = pi.vars[slot][b0.pc1];
-					if (v0 != poster) {
-						includeVarAndPosteriorVars(v0);
+				if (b.prev != null) {
+					for (BasicBlock b0 : b.prev) {
+						VarInfo v0 = pi.vars[slot][b0.pc1];
+						if (v0 != poster) {
+							includeVarAndPosteriorVars(v0);
+						}
 					}
 				}
 			} else {
@@ -137,28 +151,12 @@ public final class UpvalueInfo {
 		}
 	}
 
-	/**
-	 * Add a variable to the list
-	 *
-	 * @param v The variable to add
-	 */
-	private void appendVar(VarInfo v) {
-		if (nvars == 0) {
-			var = new VarInfo[1];
-		} else if (nvars + 1 >= var.length) {
-			VarInfo[] s = var;
-			var = new VarInfo[nvars * 2 + 1];
-			System.arraycopy(s, 0, var, 0, nvars);
-		}
-		var[nvars++] = v;
-	}
-
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		sb.append(pi.name);
-		for (int i = 0; i < nvars; i++) {
+		for (int i = 0; i < vars.size(); i++) {
 			sb.append(i > 0 ? "," : " ");
-			sb.append(String.valueOf(var[i]));
+			sb.append(vars.get(i));
 		}
 		if (readWrite) {
 			sb.append("(rw)");
