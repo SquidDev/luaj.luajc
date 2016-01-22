@@ -376,6 +376,7 @@ public class BaseLib extends OneArgFunction implements ResourceFinder {
 	/**
 	 * Load from a named file, returning the chunk or nil,error of can't load
 	 *
+	 * @param filename The name of the file to load
 	 * @return Varargs containing chunk, or NIL,error-text on error
 	 */
 	public static Varargs loadFile(String filename) {

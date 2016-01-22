@@ -17,6 +17,7 @@ public final class Reference {
 
 	/**
 	 * Java code generation utility to allocate storage for upvalue, leave it empty
+	 * @return Empty upvalue
 	 */
 	public static Reference newupe() {
 		return new Reference();
@@ -24,6 +25,7 @@ public final class Reference {
 
 	/**
 	 * Java code generation utility to allocate storage for upvalue, initialize with nil
+	 * @return Upvalue with value set to NIL
 	 */
 	public static Reference newupn() {
 		return new Reference(LuaValue.NIL);
@@ -31,6 +33,8 @@ public final class Reference {
 
 	/**
 	 * Java code generation utility to allocate storage for upvalue, initialize with value
+	 * @param v The value to set it to
+	 * @return Upvalue with value set to {@code v}
 	 */
 	public static Reference newupl(LuaValue v) {
 		return new Reference(v);
