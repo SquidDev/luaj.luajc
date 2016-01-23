@@ -3,6 +3,8 @@ package org.squiddev.luaj.luajc;
 import org.luaj.vm2.*;
 import org.objectweb.asm.Type;
 import org.squiddev.luaj.luajc.function.*;
+import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
+import org.squiddev.luaj.luajc.upvalue.ReferenceUpvalue;
 import org.squiddev.luaj.luajc.utils.TinyMethod;
 
 /**
@@ -14,7 +16,7 @@ public final class Constants {
 
 	public static final String PROTOTYPE_NAME = "PROTOTYPE";
 
-	public static final String TYPE_LOCALUPVALUE = Type.getDescriptor(Reference.class);
+	public static final String TYPE_LOCALUPVALUE = Type.getDescriptor(AbstractUpvalue.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
 
@@ -22,7 +24,7 @@ public final class Constants {
 	public static final String TYPE_COMPILED = Type.getDescriptor(LuaCompiledFunction.class);
 	public static final String CLASS_SOURCE = Type.getInternalName(LuaCompiledSource.class);
 	public static final String CLASS_COMPILED = Type.getInternalName(LuaCompiledFunction.class);
-	public static final String CLASS_UPVALUE = Type.getInternalName(Reference.class);
+	public static final String CLASS_UPVALUE = Type.getInternalName(AbstractUpvalue.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -124,9 +126,13 @@ public final class Constants {
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);
 
 	// Upvalue creation
-	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(Reference.class, "newupe");
-	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(Reference.class, "newupn");
-	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(Reference.class, "newupl", LuaValue.class);
+	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(ReferenceUpvalue.class, "newupe");
+	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(ReferenceUpvalue.class, "newupn");
+	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(ReferenceUpvalue.class, "newupl", LuaValue.class);
+
+	// Upvalue modification
+	public static final TinyMethod METHOD_SET_UPVALUE = new TinyMethod(AbstractUpvalue.class, "setUpvalue", LuaValue.class);
+	public static final TinyMethod METHOD_GET_UPVALUE = new TinyMethod(AbstractUpvalue.class, "getUpvalue");
 
 	// Stack tracing
 	public static final TinyMethod METHOD_ONCALL = new TinyMethod(LuaThread.class, "onCall", LuaFunction.class);

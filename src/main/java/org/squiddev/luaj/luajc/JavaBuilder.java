@@ -133,7 +133,7 @@ public final class JavaBuilder {
 		writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 
 		// Check the name of the class. We have no interfaces and no generics
-		writer.visit(V1_6, ACC_PUBLIC + ACC_SUPER, className, null, superType.className, null);
+		writer.visit(V1_6, ACC_PUBLIC | ACC_SUPER | ACC_FINAL, className, null, superType.className, null);
 
 		// Write the filename
 		writer.visitSource(filename, null);
@@ -330,7 +330,7 @@ public final class JavaBuilder {
 
 		main.visitVarInsn(ALOAD, index);
 		if (isUpvalue) {
-			main.visitFieldInsn(GETFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
+			Constants.METHOD_GET_UPVALUE.inject(main);
 		}
 	}
 
@@ -353,7 +353,7 @@ public final class JavaBuilder {
 			// We swap the values which is the value and the reference
 			// And store to the reference
 			main.visitInsn(SWAP);
-			main.visitFieldInsn(PUTFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
+			Constants.METHOD_SET_UPVALUE.inject(main);
 		} else {
 			main.visitVarInsn(ASTORE, index);
 		}
@@ -395,7 +395,8 @@ public final class JavaBuilder {
 		if (isReadWrite) {
 			// We get the first value of the array in <classname>.<upvalueName>
 			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LOCALUPVALUE);
-			main.visitFieldInsn(GETFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
+			Constants.METHOD_GET_UPVALUE.inject(main);
+
 		} else {
 			// Not a 'proper' upvalue, so we just need to get the value itself
 			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LUAVALUE);
@@ -409,7 +410,7 @@ public final class JavaBuilder {
 			// We set the first value of the array in <classname>.<upvalueName>
 			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LOCALUPVALUE);
 			loadLocal(pc, slot);
-			main.visitFieldInsn(PUTFIELD, CLASS_UPVALUE, "value", TYPE_LUAVALUE);
+			Constants.METHOD_SET_UPVALUE.inject(main);
 		} else {
 			loadLocal(pc, slot);
 			main.visitFieldInsn(PUTFIELD, className, upvalueName(upvalueIndex), TYPE_LUAVALUE);
