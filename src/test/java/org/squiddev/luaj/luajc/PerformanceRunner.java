@@ -24,6 +24,7 @@ public class PerformanceRunner {
 		int times = 5;
 		boolean luaC = true;
 		boolean luaJC = true;
+		boolean compileOnly = false;
 
 		// Ugly parse arguments
 		if (args.length > 0) {
@@ -54,6 +55,8 @@ public class PerformanceRunner {
 						if (key == -1) throw new IOException("Hit EOF");
 						if (key == '\n') break;
 					}
+				} else if (next.equals("c") || next.equals("compile-only")) {
+					compileOnly = true;
 				} else {
 					System.out.print(
 						"Args\n" +
@@ -62,7 +65,8 @@ public class PerformanceRunner {
 							"  -l|--luac           Don't run LuaC\n" +
 							"  -v|--verbose        Verbose output\n" +
 							"  -q|--quiet          Quiet output\n" +
-							"  -p|--prompt         Prompt to begin\n"
+							"  -p|--prompt         Prompt to begin\n" +
+							"  -c|--compile-only   Only test compilation\n"
 					);
 					return;
 				}
@@ -72,32 +76,29 @@ public class PerformanceRunner {
 		for (int i = 0; i < times; i++) {
 			System.out.println("Iteration " + (i + 1) + "/" + times);
 
-			if (luaC) testLuaC();
-			if (luaJC) testLuaJC();
+			if (luaC) {
+				LuaTable globals = getGlobals();
+				LuaC.install();
+				testRun("LuaC", globals, compileOnly);
+			}
+			if (luaJC) {
+				LuaTable globals = getGlobals();
+				LuaJC.install();
+				testRun("LuaJC", globals, compileOnly);
+			}
 		}
 	}
 
-	public static void testLuaC() {
-		LuaTable globals = getGlobals();
-		LuaC.install();
-
-		System.out.print("LuaC" + (QUIET ? "\t" : "\n"));
-		execute(globals);
-	}
-
-	public static void testLuaJC() {
-		LuaTable globals = getGlobals();
-		LuaJC.install();
-
-		System.out.print("LuaJC" + (QUIET ? "\t" : "\n"));
-		execute(globals);
+	public static void testRun(String name, LuaTable globals, boolean compileOnly) {
+		System.out.print(name + (QUIET ? "\t" : "\n"));
+		execute(globals, compileOnly);
 	}
 
 	protected static LuaTable getGlobals() {
 		return JsePlatform.debugGlobals();
 	}
 
-	protected static void execute(LuaTable globals) {
+	protected static void execute(LuaTable globals, boolean compileOnly) {
 		if (QUIET) installQuite(globals);
 
 		try {
@@ -110,9 +111,11 @@ public class PerformanceRunner {
 
 			long compiled = System.nanoTime();
 
-			aes.invoke();
-			for (int i = 0; i < 10; i++) {
-				speed.invoke();
+			if (!compileOnly) {
+				aes.invoke();
+				for (int i = 0; i < 10; i++) {
+					speed.invoke();
+				}
 			}
 
 			long finished = System.nanoTime();
