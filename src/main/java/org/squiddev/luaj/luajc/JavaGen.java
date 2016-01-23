@@ -442,7 +442,9 @@ public final class JavaGen {
 						int nup = newp.nups;
 						builder.closureCreate(protoname);
 						if (nup > 0) builder.dup();
+						builder.closureProxy();
 						builder.storeLocal(pc, a);
+
 						if (nup > 0) {
 							for (int up = 0; up < nup; ++up) {
 								if (up + 1 < nup) builder.dup();

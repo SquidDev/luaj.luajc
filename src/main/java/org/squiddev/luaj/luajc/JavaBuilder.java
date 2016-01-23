@@ -344,6 +344,7 @@ public final class JavaBuilder {
 				// <className>.newupe but I need to check that). The we duplicate the object, so it remains on the stack
 				// and store it
 				METHOD_NEW_UPVALUE_EMPTY.inject(main);
+				METHOD_UPVALUE_PROXY.inject(main);
 				main.visitInsn(DUP);
 				main.visitVarInsn(ASTORE, index);
 			} else {
@@ -366,6 +367,7 @@ public final class JavaBuilder {
 			if (isupcreate) {
 				int index = findSlotIndex(slot, true);
 				METHOD_NEW_UPVALUE_NIL.inject(main);
+				METHOD_UPVALUE_PROXY.inject(main);
 				main.visitVarInsn(ASTORE, index);
 			}
 		}
@@ -379,6 +381,7 @@ public final class JavaBuilder {
 			// Load it from the slot, convert to an array and store it to the upvalue slot
 			main.visitVarInsn(ALOAD, index);
 			METHOD_NEW_UPVALUE_VALUE.inject(main);
+			METHOD_UPVALUE_PROXY.inject(main);
 			int upvalueIndex = findSlotIndex(slot, true);
 			main.visitVarInsn(ASTORE, upvalueIndex);
 		}
@@ -656,6 +659,10 @@ public final class JavaBuilder {
 		main.visitInsn(DUP);
 		loadEnv();
 		METHOD_SETENV.inject(main);
+	}
+
+	public void closureProxy() {
+		METHOD_CLOSURE_PROXY.inject(main);
 	}
 
 	public void closureInitUpvalueFromUpvalue(String protoName, int newUpvalue, int upvalueIndex) {

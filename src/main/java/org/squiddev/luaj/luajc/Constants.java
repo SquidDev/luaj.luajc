@@ -4,6 +4,7 @@ import org.luaj.vm2.*;
 import org.objectweb.asm.Type;
 import org.squiddev.luaj.luajc.function.*;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
+import org.squiddev.luaj.luajc.upvalue.ProxyUpvalue;
 import org.squiddev.luaj.luajc.upvalue.ReferenceUpvalue;
 import org.squiddev.luaj.luajc.utils.TinyMethod;
 
@@ -24,7 +25,6 @@ public final class Constants {
 	public static final String TYPE_COMPILED = Type.getDescriptor(LuaCompiledFunction.class);
 	public static final String CLASS_SOURCE = Type.getInternalName(LuaCompiledSource.class);
 	public static final String CLASS_COMPILED = Type.getInternalName(LuaCompiledFunction.class);
-	public static final String CLASS_UPVALUE = Type.getInternalName(AbstractUpvalue.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -124,6 +124,10 @@ public final class Constants {
 	public static final TinyMethod METHOD_TO_CHARARRAY = new TinyMethod(String.class, "toCharArray");
 	public static final TinyMethod METHOD_RAWSET = new TinyMethod(LuaValue.class, "rawset", int.class, LuaValue.class);
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);
+
+	// Proxies
+	public static final TinyMethod METHOD_CLOSURE_PROXY = new TinyMethod(ProxyFunction.class, "create", LuaCompiledFunction.class);
+	public static final TinyMethod METHOD_UPVALUE_PROXY = new TinyMethod(ProxyUpvalue.class, "create", AbstractUpvalue.class);
 
 	// Upvalue creation
 	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(ReferenceUpvalue.class, "newupe");

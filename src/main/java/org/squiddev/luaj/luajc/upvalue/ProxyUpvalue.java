@@ -21,4 +21,8 @@ public final class ProxyUpvalue extends AbstractUpvalue {
 	public LuaValue getUpvalue() {
 		return upvalue.getUpvalue();
 	}
+
+	public static ProxyUpvalue create(AbstractUpvalue upvalue) {
+		return new ProxyUpvalue(upvalue);
+	}
 }
