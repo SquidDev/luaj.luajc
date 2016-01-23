@@ -36,4 +36,9 @@ public final class LuaCompiledSource extends LuaFunction implements IGetSource {
 	public void setfenv(LuaValue env) {
 		parent.setfenv(env);
 	}
+
+	@Override
+	public boolean isclosure() {
+		return true;
+	}
 }

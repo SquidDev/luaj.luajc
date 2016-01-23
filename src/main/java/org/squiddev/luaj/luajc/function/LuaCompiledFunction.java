@@ -1,17 +1,17 @@
 /**
  * ****************************************************************************
  * Copyright (c) 2009-2011 Luaj.org. All rights reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,18 +27,18 @@ import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.IGetSource;
 import org.squiddev.luaj.luajc.Constants;
+import org.squiddev.luaj.luajc.IGetSource;
 
 /**
  * Subclass of {@link LuaFunction} common to LuaJC compiled functions.
- * 
+ *
  * Since lua functions can be called with too few or too many arguments,
  * and there are overloaded {@link LuaValue#call()} functions with varying
  * number of arguments, a compiled function exposed needs to handle the
  * argument fixup when a function is called with a number of arguments
  * differs from that expected.
- * 
+ *
  * To simplify the creation of library functions,
  * there are 5 direct subclasses to handle common cases based on number of
  * argument values and number of return return values.
@@ -65,5 +65,10 @@ public abstract class LuaCompiledFunction extends LuaFunction implements IGetSou
 		} catch (Exception e) {
 			throw new LuaError(e.getMessage());
 		}
+	}
+
+	@Override
+	public boolean isclosure() {
+		return true;
 	}
 }
