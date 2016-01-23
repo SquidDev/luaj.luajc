@@ -48,7 +48,12 @@ public class PerformanceRunner {
 				} else if (next.equals("q") || next.equals("quiet")) {
 					QUIET = true;
 				} else if (next.equals("p") || next.equals("prompt")) {
-					System.in.read();
+					System.out.print("Waiting for key...");
+					while (true) {
+						int key = System.in.read();
+						if (key == -1) throw new IOException("Hit EOF");
+						if (key == '\n') break;
+					}
 				} else {
 					System.out.print(
 						"Args\n" +

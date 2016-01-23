@@ -69,3 +69,10 @@ gradle.projectsEvaluated {
 		options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
 	}
 }
+
+task executeProfile(type:JavaExec) {
+	main = "org.squiddev.luaj.luajc.PerformanceRunner"
+	args = ["--prompt", "--luac"]
+	classpath = sourceSets.test.runtimeClasspath
+	standardInput = System.in
+}
