@@ -1,6 +1,7 @@
 package org.squiddev.luaj.luajc;
 
 import org.luaj.vm2.*;
+import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.Type;
 import org.squiddev.luaj.luajc.function.*;
 import org.squiddev.luaj.luajc.utils.TinyMethod;
@@ -17,11 +18,7 @@ public final class Constants {
 	public static final String TYPE_LOCALUPVALUE = Type.getDescriptor(Reference.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
-
 	public static final String TYPE_PROTOTYPE = Type.getDescriptor(Prototype.class);
-	public static final String TYPE_COMPILED = Type.getDescriptor(LuaCompiledFunction.class);
-	public static final String CLASS_SOURCE = Type.getInternalName(LuaCompiledSource.class);
-	public static final String CLASS_COMPILED = Type.getInternalName(LuaCompiledFunction.class);
 	public static final String CLASS_UPVALUE = Type.getInternalName(Reference.class);
 
 	public static final class FunctionType {
@@ -131,6 +128,7 @@ public final class Constants {
 	// Stack tracing
 	public static final TinyMethod METHOD_ONCALL = new TinyMethod(LuaThread.class, "onCall", LuaFunction.class);
 	public static final TinyMethod METHOD_ONRETURN = new TinyMethod(LuaThread.CallStack.class, "onReturn");
+	public static final TinyMethod METHOD_BYTECODE = new TinyMethod(DebugLib.class, "debugBytecode", int.class, Varargs.class, int.class);
 
 	// Variable naming
 	public static final String PREFIX_CONSTANT = "k";

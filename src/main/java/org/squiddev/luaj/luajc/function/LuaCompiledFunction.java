@@ -2,7 +2,7 @@ package org.squiddev.luaj.luajc.function;
 
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
-import org.squiddev.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetPrototype;
 
 /**
  * Subclass of {@link LuaFunction} common to LuaJC compiled functions.
@@ -24,14 +24,7 @@ import org.squiddev.luaj.luajc.IGetSource;
  * <li>{@link VarArgFunction}</li>
  * </ul>
  */
-public abstract class LuaCompiledFunction extends LuaFunction implements IGetSource {
-	protected int startLine;
-
-	@Override
-	public int getCurrentLine() {
-		return startLine;
-	}
-
+public abstract class LuaCompiledFunction extends LuaFunction implements IGetPrototype {
 	@Override
 	public boolean isclosure() {
 		return true;
