@@ -121,3 +121,5 @@ docs/
 /dist/
 /computer/
 *Dump.java
+*.nps
+*.html

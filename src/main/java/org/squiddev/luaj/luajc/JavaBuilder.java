@@ -146,14 +146,14 @@ public final class JavaBuilder {
 		}
 
 		// Stores the prototype object
-		writer.visitField(ACC_PUBLIC + ACC_STATIC, PROTOTYPE_NAME, TYPE_PROTOTYPE, null, null).visitEnd();
+		writer.visitField(ACC_PUBLIC | ACC_STATIC, PROTOTYPE_NAME, TYPE_PROTOTYPE, null, null).visitEnd();
 
 		// Create the class constructor
 		init = writer.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
 		init.visitCode();
 
 		// Create the invoke method
-		main = writer.visitMethod(ACC_PUBLIC + ACC_FINAL, superType.methodName, superType.signature, null, null);
+		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, superType.methodName, superType.signature, null, null);
 		main.visitCode();
 
 		{
@@ -208,6 +208,15 @@ public final class JavaBuilder {
 			construct.visitInsn(RETURN);
 			construct.visitMaxs(2, 1);
 			construct.visitEnd();
+		}
+
+		{
+			// Add get prototype
+			MethodVisitor getProto = writer.visitMethod(ACC_PUBLIC, "getPrototype", "()" + TYPE_PROTOTYPE, null, null);
+			getProto.visitFieldInsn(GETSTATIC, className, PROTOTYPE_NAME, TYPE_PROTOTYPE);
+			getProto.visitInsn(ARETURN);
+			getProto.visitMaxs(1, 1);
+			getProto.visitEnd();
 		}
 	}
 
