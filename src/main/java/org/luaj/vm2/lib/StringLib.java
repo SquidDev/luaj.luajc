@@ -25,7 +25,7 @@ package org.luaj.vm2.lib;
 
 import org.luaj.vm2.*;
 import org.luaj.vm2.compiler.DumpState;
-import org.squiddev.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetPrototype;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -197,8 +197,8 @@ public class StringLib extends OneArgFunction {
 			Prototype closure;
 			if (f instanceof LuaClosure) {
 				closure = ((LuaClosure) f).p;
-			} else if (f instanceof IGetSource) {
-				closure = ((IGetSource) f).getPrototype();
+			} else if (f instanceof IGetPrototype) {
+				closure = ((IGetPrototype) f).getPrototype();
 			} else {
 				throw new LuaError("Cannot cast Java function (" + f.getClass().getName() + ")");
 			}

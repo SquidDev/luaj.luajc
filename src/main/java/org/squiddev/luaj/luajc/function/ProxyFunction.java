@@ -4,12 +4,12 @@ import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.luaj.vm2.Varargs;
-import org.squiddev.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetPrototype;
 
 /**
  * An implementation of a LuaFunction that simply delegates to another function
  */
-public final class ProxyFunction extends LuaFunction implements IGetSource {
+public final class ProxyFunction extends LuaFunction implements IGetPrototype {
 	public LuaCompiledFunction function;
 
 	public ProxyFunction(LuaCompiledFunction function) {
@@ -56,12 +56,12 @@ public final class ProxyFunction extends LuaFunction implements IGetSource {
 	}
 
 	@Override
-	public int getCurrentLine() {
-		return function.getCurrentLine();
+	public Prototype getPrototype() {
+		return function.getPrototype();
 	}
 
 	@Override
-	public Prototype getPrototype() {
-		return function.getPrototype();
+	public boolean isclosure() {
+		return true;
 	}
 }

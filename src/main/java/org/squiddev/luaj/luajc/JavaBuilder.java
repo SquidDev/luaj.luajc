@@ -27,9 +27,11 @@ import org.luaj.vm2.Lua;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
+import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -79,16 +81,6 @@ public final class JavaBuilder {
 	 * Go to destinations
 	 */
 	protected final Label[] branchDestinations;
-
-	/**
-	 * Store the previous line number
-	 */
-	protected int previousLine = -1;
-
-	/**
-	 * The slot for the LuaSource
-	 */
-	protected int sourceSlot = -1;
 
 	/**
 	 * The slot for the LuaThread.CallStack
@@ -146,14 +138,14 @@ public final class JavaBuilder {
 		}
 
 		// Stores the prototype object
-		writer.visitField(ACC_PUBLIC + ACC_STATIC, PROTOTYPE_NAME, TYPE_PROTOTYPE, null, null).visitEnd();
+		writer.visitField(ACC_PUBLIC | ACC_STATIC, PROTOTYPE_NAME, TYPE_PROTOTYPE, null, null).visitEnd();
 
 		// Create the class constructor
 		init = writer.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
 		init.visitCode();
 
 		// Create the invoke method
-		main = writer.visitMethod(ACC_PUBLIC + ACC_FINAL, superType.methodName, superType.signature, null, null);
+		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, superType.methodName, superType.signature, null, null);
 		main.visitCode();
 
 		{
@@ -162,23 +154,11 @@ public final class JavaBuilder {
 			end = new Label();
 			main.visitLabel(start);
 
-			// Create the slots for current line and stack
-			sourceSlot = ++maxLocals;
+			// Create the slots for stack
 			callStackSlot = ++maxLocals;
 
-			// Create source object
-			main.visitTypeInsn(NEW, CLASS_SOURCE);
-			main.visitInsn(DUP);
-
-			// Constructor
-			main.visitVarInsn(ALOAD, 0);
-			main.visitMethodInsn(INVOKESPECIAL, CLASS_SOURCE, "<init>", "(" + TYPE_COMPILED + ")V", false);
-
-			// Store it in sourceSlot
-			main.visitInsn(DUP);
-			main.visitVarInsn(ASTORE, sourceSlot);
-
 			// On method call, store callstack in slot
+			main.visitVarInsn(ALOAD, 0);
 			METHOD_ONCALL.inject(main);
 			main.visitVarInsn(ASTORE, callStackSlot);
 		}
@@ -201,13 +181,18 @@ public final class JavaBuilder {
 			construct.visitVarInsn(ALOAD, 0);
 			construct.visitMethodInsn(INVOKESPECIAL, superclass.className, "<init>", "()V", false);
 
-			construct.visitVarInsn(ALOAD, 0);
-			constantOpcode(construct, p.linedefined);
-			construct.visitFieldInsn(PUTFIELD, CLASS_COMPILED, "startLine", "I");
-
 			construct.visitInsn(RETURN);
 			construct.visitMaxs(2, 1);
 			construct.visitEnd();
+		}
+
+		{
+			// Add get prototype
+			MethodVisitor getProto = writer.visitMethod(ACC_PUBLIC, "getPrototype", "()" + TYPE_PROTOTYPE, null, null);
+			getProto.visitFieldInsn(GETSTATIC, className, PROTOTYPE_NAME, TYPE_PROTOTYPE);
+			getProto.visitInsn(ARETURN);
+			getProto.visitMaxs(1, 1);
+			getProto.visitEnd();
 		}
 	}
 
@@ -791,14 +776,11 @@ public final class JavaBuilder {
 
 		main.visitLabel(currentLabel);
 
-		int[] lineInfo = p.lineinfo;
-		int currentLine;
-		if (lineInfo != null && lineInfo.length > pc && (currentLine = lineInfo[pc]) != previousLine) {
-			main.visitLineNumber(currentLine, currentLabel);
-			main.visitVarInsn(ALOAD, sourceSlot);
-			constantOpcode(main, currentLine);
-			main.visitFieldInsn(PUTFIELD, CLASS_SOURCE, "line", "I");
-			previousLine = currentLine;
+		if (DebugLib.DEBUG_ENABLED) {
+			AsmUtils.constantOpcode(main, pc);
+			main.visitInsn(ACONST_NULL);
+			main.visitInsn(ICONST_M1);
+			METHOD_BYTECODE.inject(main);
 		}
 	}
 

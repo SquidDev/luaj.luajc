@@ -1,34 +1,8 @@
-/**
- * ****************************************************************************
- * Copyright (c) 2009-2011 Luaj.org. All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- * ****************************************************************************
- */
 package org.squiddev.luaj.luajc.function;
 
-import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.Constants;
-import org.squiddev.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetPrototype;
 
 /**
  * Subclass of {@link LuaFunction} common to LuaJC compiled functions.
@@ -50,20 +24,9 @@ import org.squiddev.luaj.luajc.IGetSource;
  * <li>{@link VarArgFunction}</li>
  * </ul>
  */
-public abstract class LuaCompiledFunction extends LuaFunction implements IGetSource {
-	protected int startLine;
-
+public abstract class LuaCompiledFunction extends LuaFunction implements IGetPrototype {
 	@Override
-	public int getCurrentLine() {
-		return startLine;
-	}
-
-	@Override
-	public Prototype getPrototype() {
-		try {
-			return (Prototype) getClass().getField(Constants.PROTOTYPE_NAME).get(null);
-		} catch (Exception e) {
-			throw new LuaError(e.getMessage());
-		}
+	public boolean isclosure() {
+		return true;
 	}
 }

@@ -24,7 +24,7 @@
 package org.luaj.vm2.lib;
 
 import org.luaj.vm2.*;
-import org.squiddev.luaj.luajc.IGetSource;
+import org.squiddev.luaj.luajc.IGetPrototype;
 
 /**
  * Subclass of {@link LibFunction} which implements the lua standard {@code debug}
@@ -184,7 +184,7 @@ public class DebugLib extends VarArgFunction {
 	final static class DebugInfo {
 		LuaValue func;
 		LuaClosure closure;
-		IGetSource getSource;
+		Prototype proto;
 		LuaValue[] stack;
 		Varargs varargs, extras;
 		int pc, top;
@@ -206,7 +206,7 @@ public class DebugLib extends VarArgFunction {
 		void setfunction(LuaValue func) {
 			this.func = func;
 			this.closure = (func instanceof LuaClosure ? (LuaClosure) func : null);
-			this.getSource = (func instanceof IGetSource ? (IGetSource) func : null);
+			this.proto = getPrototype(func);
 		}
 
 		void clear() {
@@ -224,19 +224,21 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		public int currentline() {
-			if (closure == null) return pc >= 0 && getSource != null ? getSource.getCurrentLine() : -1;
-			int[] li = closure.p.lineinfo;
+			Prototype proto = this.proto;
+			if (proto == null) return -1;
+			int[] li = proto.lineinfo;
 			return li == null || pc < 0 || pc >= li.length ? -1 : li[pc];
 		}
 
 		public LuaString[] getfunckind() {
-			if (closure == null || pc < 0) return null;
-			int stackpos = (closure.p.code[pc] >> 6) & 0xff;
+			Prototype proto = this.proto;
+			if (proto == null || pc < 0) return null;
+			int stackpos = (proto.code[pc] >> 6) & 0xff;
 			return getobjname(this, stackpos);
 		}
 
 		public String sourceline() {
-			Prototype proto = getPrototype();
+			Prototype proto = this.proto;
 			if (proto == null) return func.tojstring();
 			String s = proto.source.tojstring();
 			int line = currentline();
@@ -252,14 +254,14 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		public LuaString getlocalname(int index) {
-			Prototype p = getPrototype();
+			Prototype p = proto;
 			if (p == null) return null;
 			return p.getlocalname(index, pc);
 		}
 
-		public Prototype getPrototype() {
-			if (closure != null) return closure.p;
-			if (getSource != null) return getSource.getPrototype();
+		public static Prototype getPrototype(LuaValue function) {
+			if (function instanceof LuaClosure) return ((LuaClosure) function).p;
+			if (function instanceof IGetPrototype) return ((IGetPrototype) function).getPrototype();
 			return null;
 		}
 
@@ -533,14 +535,8 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		// Grap the prototype
-		Prototype p = null;
+		Prototype p = di.proto;
 		LuaClosure c = di.closure;
-		IGetSource s = di.getSource;
-		if (c != null) {
-			p = c.p;
-		} else if (s != null) {
-			p = s.getPrototype();
-		}
 
 		// start a table
 		LuaTable info = new LuaTable();
@@ -815,7 +811,7 @@ public class DebugLib extends VarArgFunction {
 	static LuaString[] getobjname(DebugInfo di, int stackpos) {
 		LuaString name;
 		if (di.closure != null) { /* a Lua function? */
-			Prototype p = di.closure.p;
+			Prototype p = di.proto;
 			int pc = di.pc; // currentpc(L, ci);
 			int i;// Instruction i;
 			name = p.getlocalname(stackpos + 1, pc);
