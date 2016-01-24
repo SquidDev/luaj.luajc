@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.compilation;
 
 import java.util.HashSet;
 import java.util.Iterator;

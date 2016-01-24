@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
@@ -67,7 +67,7 @@ public final class JavaGen {
 		validated = true;
 
 		// Validate at the end so other classes are generated
-		AsmUtils.validateClass(this.bytecode, loader);
+		AsmUtils.validateClass(bytecode, loader);
 	}
 
 	private String closureName(String className, int subprotoindex) {

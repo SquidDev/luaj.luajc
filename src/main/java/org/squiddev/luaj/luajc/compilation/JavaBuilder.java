@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.LuaString;
@@ -31,6 +31,7 @@ import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;

@@ -21,11 +21,12 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.Constants;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -77,9 +78,7 @@ public class JavaLoader extends ClassLoader {
 			include(jg.inners[i]);
 		}
 
-		if (verifySources) {
-			jg.validate(this);
-		}
+		if (verifySources) jg.validate(this);
 	}
 
 	@Override

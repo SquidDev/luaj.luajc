@@ -28,6 +28,7 @@ import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.luaj.vm2.compiler.LuaC;
+import org.squiddev.luaj.luajc.compilation.JavaLoader;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,7 +64,7 @@ public class LuaJC implements LoadState.LuaCompiler {
 	}
 
 	private static String toStandardJavaClassName(String chunkName) {
-		String stub = chunkName.endsWith(".lua") ? chunkName.substring(0, chunkName.length() - 4) : chunkName;
+		String stub = Constants.PREFIX + (chunkName.endsWith(".lua") ? chunkName.substring(0, chunkName.length() - 4) : chunkName);
 		String className = stub.replace('/', '.').replaceAll(NON_IDENTIFIER, "_");
 
 		int c = className.charAt(0);

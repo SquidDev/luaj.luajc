@@ -16,12 +16,17 @@ public final class Constants {
 	private Constants() {
 	}
 
+	public static final String PREFIX = "org/squiddev/luaj/luajc/generated/";
+	public static final String DOT_PREFIX = PREFIX.replace('/', '.');
+
 	public static final String PROTOTYPE_NAME = "PROTOTYPE";
 
-	public static final String TYPE_LOCALUPVALUE = Type.getDescriptor(AbstractUpvalue.class);
+	public static final String TYPE_UPVALUE = Type.getDescriptor(AbstractUpvalue.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
 	public static final String TYPE_PROTOTYPE = Type.getDescriptor(Prototype.class);
+	public static final String TYPE_CLOSURE = Type.getDescriptor(CompilingClosure.class);
+	public static final String CLASS_CLOSURE = Type.getInternalName(CompilingClosure.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -147,6 +152,6 @@ public final class Constants {
 	public static final String PREFIX_LOCAL_SLOT = "s";
 
 	// Super type class
-	protected static final int SUPERTYPE_VARARGS_ID = 4;
-	protected static final FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
+	public static final int SUPERTYPE_VARARGS_ID = 4;
+	public static final FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
 }
