@@ -58,22 +58,22 @@ public abstract class VarArgFunction extends LuaCompiledFunction {
 	}
 
 	@Override
-	public LuaValue call() {
+	public final LuaValue call() {
 		return invoke(NONE).arg1();
 	}
 
 	@Override
-	public LuaValue call(LuaValue arg) {
+	public final LuaValue call(LuaValue arg) {
 		return invoke(arg).arg1();
 	}
 
 	@Override
-	public LuaValue call(LuaValue arg1, LuaValue arg2) {
+	public final LuaValue call(LuaValue arg1, LuaValue arg2) {
 		return invoke(varargsOf(arg1, arg2)).arg1();
 	}
 
 	@Override
-	public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
+	public final LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 		return invoke(varargsOf(arg1, arg2, arg3)).arg1();
 	}
 

@@ -12,4 +12,8 @@ public abstract class AbstractUpvalue {
 	public abstract void setUpvalue(LuaValue value);
 
 	public abstract LuaValue getUpvalue();
+
+	public void close() {
+
+	}
 }

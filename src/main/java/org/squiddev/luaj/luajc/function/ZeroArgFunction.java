@@ -53,22 +53,22 @@ public abstract class ZeroArgFunction extends LuaCompiledFunction {
 	public abstract LuaValue call();
 
 	@Override
-	public LuaValue call(LuaValue arg) {
+	public final LuaValue call(LuaValue arg) {
 		return call();
 	}
 
 	@Override
-	public LuaValue call(LuaValue arg1, LuaValue arg2) {
+	public final LuaValue call(LuaValue arg1, LuaValue arg2) {
 		return call();
 	}
 
 	@Override
-	public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
+	public final LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 		return call();
 	}
 
 	@Override
-	public Varargs invoke(Varargs varargs) {
+	public final Varargs invoke(Varargs varargs) {
 		return call();
 	}
 }
