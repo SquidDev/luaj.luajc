@@ -49,6 +49,10 @@ import org.luaj.vm2.Varargs;
  * @see VarArgFunction
  */
 public abstract class ZeroArgFunction extends LuaCompiledFunction {
+	public ZeroArgFunction(LuaValue env) {
+		super(env);
+	}
+
 	@Override
 	public abstract LuaValue call();
 

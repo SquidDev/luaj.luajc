@@ -51,6 +51,10 @@ import org.luaj.vm2.Varargs;
  * @see VarArgFunction
  */
 public abstract class OneArgFunction extends LuaCompiledFunction {
+	public OneArgFunction(LuaValue env) {
+		super(env);
+	}
+
 	@Override
 	public abstract LuaValue call(LuaValue arg);
 

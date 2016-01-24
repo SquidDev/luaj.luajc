@@ -35,12 +35,12 @@ public final class CompilingClosure extends LuaFunction implements IGetPrototype
 	private static final AbstractUpvalue[] NOUPVALUES = new AbstractUpvalue[0];
 
 	public final Prototype p;
-	public final AbstractUpvalue[] upValues;
+	public final AbstractUpvalue[] upvalues;
 
 	public CompilingClosure(Prototype p, LuaValue env) {
 		super(env);
 		this.p = p;
-		this.upValues = p.nups > 0 ? new AbstractUpvalue[p.nups] : NOUPVALUES;
+		this.upvalues = p.nups > 0 ? new AbstractUpvalue[p.nups] : NOUPVALUES;
 	}
 
 	@Override
@@ -181,7 +181,7 @@ public final class CompilingClosure extends LuaFunction implements IGetPrototype
 						continue;
 
 					case Lua.OP_GETUPVAL: /*	A B	R(A):= UpValue[B]				*/
-						stack[a] = upValues[i >>> 23].getUpvalue();
+						stack[a] = upvalues[i >>> 23].getUpvalue();
 						continue;
 
 					case Lua.OP_GETGLOBAL: /*	A Bx	R(A):= Gbl[Kst(Bx)]				*/
@@ -197,7 +197,7 @@ public final class CompilingClosure extends LuaFunction implements IGetPrototype
 						continue;
 
 					case Lua.OP_SETUPVAL: /*	A B	UpValue[B]:= R(A)				*/
-						upValues[i >>> 23].setUpvalue(stack[a]);
+						upvalues[i >>> 23].setUpvalue(stack[a]);
 						continue;
 
 					case Lua.OP_SETTABLE: /*	A B C	R(A)[RK(B)]:= RK(C)				*/
@@ -467,8 +467,8 @@ public final class CompilingClosure extends LuaFunction implements IGetPrototype
 							i = code[pc++];
 							//b = B(i);
 							b = i >>> 23;
-							newcl.upValues[j] = (i & 4) != 0 ?
-								upValues[b] :
+							newcl.upvalues[j] = (i & 4) != 0 ?
+								upvalues[b] :
 								openups[b] != null ? openups[b] : (openups[b] = new ProxyUpvalue(new ArrayUpvalue(stack, b)));
 						}
 						stack[a] = newcl;

@@ -62,10 +62,8 @@ public class JavaLoader extends ClassLoader {
 
 	public LuaFunction load(String className) {
 		try {
-			Class c = loadClass(className);
-			LuaFunction v = (LuaFunction) c.newInstance();
-			v.setfenv(env);
-			return v;
+			Class<?> c = loadClass(className);
+			return (LuaFunction) c.getConstructor(LuaValue.class).newInstance(env);
 		} catch (Exception e) {
 			throw new IllegalStateException("bad class gen: " + e.getMessage(), e);
 		}

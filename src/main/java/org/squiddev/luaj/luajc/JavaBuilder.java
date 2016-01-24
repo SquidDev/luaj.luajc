@@ -133,7 +133,7 @@ public final class JavaBuilder {
 		// Create the fields
 		for (int i = 0; i < p.nups; i++) {
 			boolean isReadWrite = pi.isReadWriteUpvalue(pi.upvalues[i]);
-			String type = isReadWrite ? TYPE_LOCALUPVALUE : TYPE_LUAVALUE;
+			String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
 			writer.visitField(0, upvalueName(i), type, null, null);
 		}
 
@@ -177,12 +177,13 @@ public final class JavaBuilder {
 
 		{
 			// Add default constructor
-			MethodVisitor construct = writer.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+			MethodVisitor construct = writer.visitMethod(ACC_PUBLIC, "<init>", "(" + TYPE_LUAVALUE + ")V", null, null);
 			construct.visitVarInsn(ALOAD, 0);
-			construct.visitMethodInsn(INVOKESPECIAL, superclass.className, "<init>", "()V", false);
+			construct.visitVarInsn(ALOAD, 1);
+			construct.visitMethodInsn(INVOKESPECIAL, superclass.className, "<init>", "(" + TYPE_LUAVALUE + ")V", false);
 
 			construct.visitInsn(RETURN);
-			construct.visitMaxs(2, 1);
+			construct.visitMaxs(2, 2);
 			construct.visitEnd();
 		}
 
@@ -260,7 +261,7 @@ public final class JavaBuilder {
 		}
 
 		for (Map.Entry<Integer, Integer> slot : upvalueSlotVars.entrySet()) {
-			main.visitLocalVariable(PREFIX_UPVALUE_SLOT + "_" + slot.getKey(), TYPE_LOCALUPVALUE, null, start, end, slot.getValue());
+			main.visitLocalVariable(PREFIX_UPVALUE_SLOT + "_" + slot.getKey(), TYPE_UPVALUE, null, start, end, slot.getValue());
 		}
 
 		main.visitEnd();
@@ -382,7 +383,7 @@ public final class JavaBuilder {
 
 		if (isReadWrite) {
 			// We get the first value of the array in <classname>.<upvalueName>
-			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LOCALUPVALUE);
+			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_UPVALUE);
 			Constants.METHOD_GET_UPVALUE.inject(main);
 
 		} else {
@@ -396,7 +397,7 @@ public final class JavaBuilder {
 		main.visitVarInsn(ALOAD, 0);
 		if (isReadWrite) {
 			// We set the first value of the array in <classname>.<upvalueName>
-			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LOCALUPVALUE);
+			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_UPVALUE);
 			loadLocal(pc, slot);
 			Constants.METHOD_SET_UPVALUE.inject(main);
 		} else {
@@ -640,10 +641,8 @@ public final class JavaBuilder {
 	public void closureCreate(String protoname) {
 		main.visitTypeInsn(NEW, protoname);
 		main.visitInsn(DUP);
-		main.visitMethodInsn(INVOKESPECIAL, protoname, "<init>", "()V", false);
-		main.visitInsn(DUP);
 		loadEnv();
-		METHOD_SETENV.inject(main);
+		main.visitMethodInsn(INVOKESPECIAL, protoname, "<init>", "(" + TYPE_LUAVALUE + ")V", false);
 	}
 
 	public void closureProxy() {
@@ -653,7 +652,7 @@ public final class JavaBuilder {
 	public void closureInitUpvalueFromUpvalue(String protoName, int newUpvalue, int upvalueIndex) {
 		boolean isReadWrite = pi.isReadWriteUpvalue(pi.upvalues[upvalueIndex]);
 
-		String type = isReadWrite ? TYPE_LOCALUPVALUE : TYPE_LUAVALUE;
+		String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
 		String srcName = upvalueName(upvalueIndex);
 		String destName = upvalueName(newUpvalue);
 
@@ -665,7 +664,7 @@ public final class JavaBuilder {
 
 	public void closureInitUpvalueFromLocal(String protoName, int newUpvalue, int pc, int srcSlot) {
 		boolean isReadWrite = pi.isReadWriteUpvalue(pi.vars[srcSlot][pc].upvalue);
-		String type = isReadWrite ? TYPE_LOCALUPVALUE : TYPE_LUAVALUE;
+		String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
 		String destName = upvalueName(newUpvalue);
 		int index = findSlotIndex(srcSlot, isReadWrite);
 

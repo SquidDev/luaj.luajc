@@ -50,11 +50,8 @@ import org.luaj.vm2.Varargs;
  * @see ThreeArgFunction
  */
 public abstract class VarArgFunction extends LuaCompiledFunction {
-	public VarArgFunction() {
-	}
-
 	public VarArgFunction(LuaValue env) {
-		this.env = env;
+		super(env);
 	}
 
 	@Override

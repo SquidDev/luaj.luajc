@@ -25,6 +25,10 @@ import org.squiddev.luaj.luajc.IGetPrototype;
  * </ul>
  */
 public abstract class LuaCompiledFunction extends LuaFunction implements IGetPrototype {
+	public LuaCompiledFunction(LuaValue env) {
+		super(env);
+	}
+
 	@Override
 	public boolean isclosure() {
 		return true;
