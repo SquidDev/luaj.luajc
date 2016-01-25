@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc.compilation;
+package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
 

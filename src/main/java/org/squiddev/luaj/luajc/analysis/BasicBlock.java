@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc.compilation;
+package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
@@ -12,27 +12,27 @@ public final class BasicBlock {
 	/**
 	 * Start PC of the block
 	 */
-	protected int pc0;
+	public int pc0;
 
 	/**
 	 * End PC of the block
 	 */
-	protected int pc1;
+	public int pc1;
 
 	/**
 	 * Previous blocks (blocks that jump to this one)
 	 */
-	protected BasicBlock[] prev;
+	public BasicBlock[] prev;
 
 	/**
 	 * Following blocks (blocks that are jumped to from this one)
 	 */
-	protected BasicBlock[] next;
+	public BasicBlock[] next;
 
 	/**
 	 * If this block is used
 	 */
-	protected boolean isLive;
+	public boolean isLive;
 
 	public BasicBlock(int pc) {
 		pc0 = pc1 = pc;

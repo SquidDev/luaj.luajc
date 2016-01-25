@@ -1,187 +1,49 @@
-package org.squiddev.luaj.luajc.compilation;
+package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
-import org.luaj.vm2.Print;
 import org.luaj.vm2.Prototype;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Prototype information for static single-assignment analysis
+ * Builds prototype info
  */
-public final class ProtoInfo {
-	/**
-	 * The name of the prototype
-	 */
-	public final String name;
+public final class AnalysisBuilder {
+	private final ProtoInfo info;
+	private final UpvalueInfo[][] openUpvalues;
 
-	/**
-	 * The prototype that this info is about
-	 */
-	public final Prototype prototype;
-	/**
-	 * List of child prototypes or null
-	 */
-	public final ProtoInfo[] subprotos;
-
-	/**
-	 * List of blocks for analysis of code branching
-	 */
-	public final BasicBlock[] blocks;
-
-	/**
-	 * Blocks in breadth-first order
-	 */
-	public final BasicBlock[] blockList;
-
-	/**
-	 * Parameters and initial values of stack variables
-	 */
-	public final VarInfo[] params;
-
-	/**
-	 * Variables in the form vars[pc][slot].
-	 */
-	public final VarInfo[][] vars;
-
-	/**
-	 * List of upvalues from outer scope
-	 */
-	public final UpvalueInfo[] upvalues;
-
-	/**
-	 * Upvalues allocated by this prototype
-	 */
-	public final UpvalueInfo[][] openUpvalues;
-
-	/**
-	 * Storage for all phi variables in the prototype
-	 */
-	private final Set<VarInfo> phis = new HashSet<VarInfo>();
-
-	public ProtoInfo(Prototype p, String name) {
-		this(p, name, null);
-	}
-
-	private ProtoInfo(Prototype p, String name, UpvalueInfo[] u) {
-		this.name = name;
-		prototype = p;
-		upvalues = u;
-		subprotos = p.p != null && p.p.length > 0 ? new ProtoInfo[p.p.length] : null;
-
-		// find basic blocks
-		blocks = BasicBlock.findBasicBlocks(p);
-		blockList = BasicBlock.findLiveBlocks(blocks);
-
-		// params are inputs to first block
-		params = new VarInfo[p.maxstacksize];
-		for (int slot = 0; slot < p.maxstacksize; slot++) {
-			VarInfo v = VarInfo.PARAM(slot);
-			params[slot] = v;
-		}
-
-		// find variables
-		vars = findVariables();
-		replaceTrivialPhiVariables();
-
-		// find upvalues, create sub-prototypes
-		openUpvalues = new UpvalueInfo[p.maxstacksize][];
-		findUpvalues();
-	}
-
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-
-		// prototype name
-		sb.append("proto '").append(name).append("'\n");
-
-		// upvalues from outer scopes
-		for (int i = 0, n = (upvalues != null ? upvalues.length : 0); i < n; i++) {
-			sb.append("\tup[").append(i).append("]: ").append(upvalues[i]).append("\n");
-		}
-
-		// basic blocks
-		for (BasicBlock b : blockList) {
-			int pc0 = b.pc0;
-			sb.append("\tblock ").append(b.toString()).append('\n');
-			appendOpenUps(sb, -1);
-
-			// instructions
-			for (int pc = pc0; pc <= b.pc1; pc++) {
-
-				// open upvalue storage
-				appendOpenUps(sb, pc);
-
-				// opcode
-				sb.append("\t\t");
-				for (int j = 0; j < prototype.maxstacksize; j++) {
-					VarInfo v = vars[j][pc];
-					String u = (v == null ? "" : v.upvalue != null ? !v.upvalue.readWrite ? "[C] " : (v.allocUpvalue && v.pc == pc ? "[*] " : "[]  ") : "    ");
-					String s = v == null ? "null   " : String.valueOf(v);
-					sb.append(s).append(u);
-				}
-				sb.append("  ");
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				PrintStream ops = Print.ps;
-				Print.ps = new PrintStream(baos);
-				try {
-					Print.printOpCode(prototype, pc);
-				} finally {
-					Print.ps.close();
-					Print.ps = ops;
-				}
-				sb.append(baos.toString());
-				sb.append("\n");
-			}
-		}
-
-		// nested functions
-		for (int i = 0, n = subprotos != null ? subprotos.length : 0; i < n; i++) {
-			sb.append(subprotos[i].toString());
-		}
-
-		return sb.toString();
-	}
-
-	private void appendOpenUps(StringBuilder sb, int pc) {
-		for (int j = 0; j < prototype.maxstacksize; j++) {
-			VarInfo v = (pc < 0 ? params[j] : vars[j][pc]);
-			if (v != null && v.pc == pc && v.allocUpvalue) {
-				sb.append("\t\topen: ").append(v.upvalue).append("\n");
-			}
-		}
+	public AnalysisBuilder(ProtoInfo info) {
+		this.info = info;
+		openUpvalues = new UpvalueInfo[info.prototype.maxstacksize][];
 	}
 
 	/**
-	 * Find variables and resolve Phi variables
-	 *
-	 * @return The variable list
+	 * Find all variables, storing if they are referenced and creating phi nodes,
+	 * simplifying them if possible
 	 */
-	private VarInfo[][] findVariables() {
+	public void findVariables() {
 		/**
 		 * List of phi variables used
 		 */
-		Set<VarInfo> phis = this.phis;
+		Set<VarInfo> phis = new HashSet<VarInfo>();
 
 		// Create storage for variables
-		int n = prototype.code.length;
-		int m = prototype.maxstacksize;
-		VarInfo[][] v = new VarInfo[m][];
+		int n = info.prototype.code.length;
+		int m = info.prototype.maxstacksize;
+		VarInfo[][] v = info.vars;
 		for (int i = 0; i < v.length; i++) {
 			v[i] = new VarInfo[n];
 		}
 
 		// Process instructions
-		for (BasicBlock b0 : blockList) {
+		for (BasicBlock b0 : info.blockList) {
 			// input from previous blocks
 			int nPrevious = b0.prev != null ? b0.prev.length : 0;
 			for (int slot = 0; slot < m; slot++) {
 				VarInfo var = null;
 				if (nPrevious == 0) {
-					var = params[slot];
+					var = info.params[slot];
 				} else if (nPrevious == 1) {
 					var = v[slot][b0.prev[0].pc1];
 				} else {
@@ -193,7 +55,7 @@ public final class ProtoInfo {
 					}
 				}
 				if (var == null) {
-					var = VarInfo.PHI(this, slot, b0.pc0);
+					var = VarInfo.phi(info, slot, b0.pc0);
 					phis.add(var);
 				}
 				v[slot][b0.pc0] = var;
@@ -203,11 +65,11 @@ public final class ProtoInfo {
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
 				// Propagate previous values except at block boundaries
 				if (pc > b0.pc0) {
-					propagateVars(v, pc - 1, pc);
+					propagateVars(pc - 1, pc);
 				}
 
 				int a, b, c, nups;
-				int ins = prototype.code[pc];
+				int ins = info.prototype.code[pc];
 				int op = Lua.GET_OPCODE(ins);
 
 				// Account for assignments, references and invalidation
@@ -372,9 +234,9 @@ public final class ProtoInfo {
 					case Lua.OP_CLOSURE: // A Bx R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_Bx(ins);
-						nups = prototype.p[b].nups;
+						nups = info.prototype.p[b].nups;
 						for (int k = 1; k <= nups; ++k) {
-							int i = prototype.code[pc + k];
+							int i = info.prototype.code[pc + k];
 							if ((i & 4) == 0) {
 								b = Lua.GETARG_B(i);
 								v[b][pc].isReferenced = true;
@@ -382,7 +244,7 @@ public final class ProtoInfo {
 						}
 						v[a][pc] = new VarInfo(a, pc);
 						for (int k = 1; k <= nups; k++) {
-							propagateVars(v, pc, pc + k);
+							propagateVars(pc, pc + k);
 						}
 						pc += nups;
 						break;
@@ -427,19 +289,19 @@ public final class ProtoInfo {
 			}
 		}
 
-
-		return v;
+		replaceTrivialPhiVariables(phis);
 	}
 
 	/**
 	 * Replace phi variables that reference the same thing
+	 *
+	 * @param phis List of phi nodes to replace
 	 */
-	private void replaceTrivialPhiVariables() {
-		Set<VarInfo> phis = this.phis;
+	private void replaceTrivialPhiVariables(Set<VarInfo> phis) {
 		// Replace trivial Phi variables
-		for (BasicBlock b0 : blockList) {
-			for (int slot = 0; slot < prototype.maxstacksize; slot++) {
-				VarInfo oldVar = vars[slot][b0.pc0];
+		for (BasicBlock b0 : info.blockList) {
+			for (int slot = 0; slot < info.prototype.maxstacksize; slot++) {
+				VarInfo oldVar = info.vars[slot][b0.pc0];
 				VarInfo newVar = oldVar.resolvePhiVariableValues();
 				if (newVar != null) {
 					substituteVariable(slot, oldVar, newVar);
@@ -464,7 +326,7 @@ public final class ProtoInfo {
 	 * @param newVar The new variable
 	 */
 	private void substituteVariable(int slot, VarInfo oldVar, VarInfo newVar) {
-		VarInfo[] vars = this.vars[slot];
+		VarInfo[] vars = info.vars[slot];
 		int length = vars.length;
 		for (int i = 0; i < length; i++) {
 			if (vars[i] == oldVar) {
@@ -473,20 +335,43 @@ public final class ProtoInfo {
 		}
 	}
 
+	/**
+	 * Copy variables from one PC to another
+	 *
+	 * @param pcFrom The old PC to copy from
+	 * @param pcTo   The new PC to copy to
+	 */
+	private void propagateVars(int pcFrom, int pcTo) {
+		VarInfo[][] vars = info.vars;
+		for (int j = 0, m = vars.length; j < m; j++) {
+			vars[j][pcTo] = vars[j][pcFrom];
+		}
+	}
+
+	/**
+	 * Fill all arguments
+	 */
+	public void fillArguments() {
+		int max = info.prototype.maxstacksize;
+		for (int slot = 0; slot < max; slot++) {
+			VarInfo v = VarInfo.param(slot);
+			info.params[slot] = v;
+		}
+	}
 
 	/**
 	 * Find upvalues and create child prototypes
 	 */
-	private void findUpvalues() {
-		int[] code = prototype.code;
+	public void findUpvalues() {
+		int[] code = info.prototype.code;
 		int n = code.length;
 
 		// Propagate to inner prototypes
 		for (int pc = 0; pc < n; pc++) {
 			if (Lua.GET_OPCODE(code[pc]) == Lua.OP_CLOSURE) {
 				int bx = Lua.GETARG_Bx(code[pc]);
-				Prototype childPrototype = prototype.p[bx];
-				String childName = name + "$" + bx;
+				Prototype childPrototype = info.prototype.p[bx];
+				String childName = info.name + "$" + bx;
 
 				UpvalueInfo[] childUpvalues = null;
 
@@ -495,108 +380,35 @@ public final class ProtoInfo {
 					for (int j = 0; j < childPrototype.nups; ++j) {
 						int i = code[++pc];
 						int b = Lua.GETARG_B(i);
-						childUpvalues[j] = (i & 4) != 0 ? upvalues[b] : findOpenUp(pc, b);
+						childUpvalues[j] = (i & 4) != 0 ? info.upvalues[b] : findOpenUp(pc, b);
 					}
 				}
 
-				subprotos[bx] = new ProtoInfo(childPrototype, childName, childUpvalues);
+				info.subprotos[bx] = new ProtoInfo(childPrototype, childName, childUpvalues);
 			}
 		}
 
 		// Mark all upvalues that are written locally as read/write
 		for (int instruction : code) {
 			if (Lua.GET_OPCODE(instruction) == Lua.OP_SETUPVAL) {
-				upvalues[Lua.GETARG_B(instruction)].readWrite = true;
+				info.upvalues[Lua.GETARG_B(instruction)].readWrite = true;
 			}
 		}
 	}
 
 	private UpvalueInfo findOpenUp(int pc, int slot) {
 		if (openUpvalues[slot] == null) {
-			openUpvalues[slot] = new UpvalueInfo[prototype.code.length];
+			openUpvalues[slot] = new UpvalueInfo[info.prototype.code.length];
 		}
 		if (openUpvalues[slot][pc] != null) {
 			return openUpvalues[slot][pc];
 		}
-		UpvalueInfo u = new UpvalueInfo(this, pc, slot);
-		for (int i = 0, n = prototype.code.length; i < n; ++i) {
-			if (vars[slot][i] != null && vars[slot][i].upvalue == u) {
+		UpvalueInfo u = new UpvalueInfo(info, pc, slot);
+		for (int i = 0, n = info.prototype.code.length; i < n; ++i) {
+			if (info.vars[slot][i] != null && info.vars[slot][i].upvalue == u) {
 				openUpvalues[slot][i] = u;
 			}
 		}
 		return u;
-	}
-
-	/**
-	 * Check if this is an assignment to an upvalue
-	 *
-	 * @param pc   The current PC
-	 * @param slot The slot the upvalue is stored in
-	 * @return If an upvalue is assigned to at this point
-	 */
-	public boolean isUpvalueAssign(int pc, int slot) {
-		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
-		return v != null && v.upvalue != null && v.upvalue.readWrite;
-	}
-
-	/**
-	 * Check if this is the creation of an upvalue
-	 *
-	 * @param pc   The current PC
-	 * @param slot The slot the upvalue is stored in
-	 * @return If this is where the upvalue is created
-	 */
-	public boolean isUpvalueCreate(int pc, int slot) {
-		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
-		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
-	}
-
-	/**
-	 * Check if this variable is a reference to a read/write upvalue
-	 *
-	 * @param pc   The current PC
-	 * @param slot The slot the upvalue is stored in
-	 * @return If this is a reference to a read/write upvalue
-	 */
-	public boolean isUpvalueRefer(int pc, int slot) {
-		// special case when both refer and assign in same instruction
-		if (pc > 0 && vars[slot][pc] != null && vars[slot][pc].pc == pc && vars[slot][pc - 1] != null) {
-			pc -= 1;
-		}
-		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
-		return v != null && v.upvalue != null && v.upvalue.readWrite;
-	}
-
-	/**
-	 * Check if the original value of a slot is used
-	 *
-	 * @param slot The slot to check
-	 * @return If the original variable is referenced
-	 */
-	public boolean isInitialValueUsed(int slot) {
-		return params[slot].isReferenced;
-	}
-
-	/**
-	 * Check if an upvalue is read/write
-	 *
-	 * @param u The upvalue to check
-	 * @return True if an upvalue is read/write
-	 */
-	public boolean isReadWriteUpvalue(UpvalueInfo u) {
-		return u.readWrite;
-	}
-
-	/**
-	 * Copy variables from one PC to another
-	 *
-	 * @param vars   The variables
-	 * @param pcFrom The old PC to copy from
-	 * @param pcTo   The new PC to copy to
-	 */
-	private static void propagateVars(VarInfo[][] vars, int pcFrom, int pcTo) {
-		for (int j = 0, m = vars.length; j < m; j++) {
-			vars[j][pcTo] = vars[j][pcFrom];
-		}
 	}
 }

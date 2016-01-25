@@ -25,6 +25,8 @@ package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.analysis.BasicBlock;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 public final class JavaGen {

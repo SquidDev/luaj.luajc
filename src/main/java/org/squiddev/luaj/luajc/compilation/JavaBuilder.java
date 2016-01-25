@@ -32,6 +32,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.squiddev.luaj.luajc.Constants;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;
@@ -133,7 +134,7 @@ public final class JavaBuilder {
 
 		// Create the fields
 		for (int i = 0; i < p.nups; i++) {
-			boolean isReadWrite = pi.isReadWriteUpvalue(pi.upvalues[i]);
+			boolean isReadWrite = pi.upvalues[i].readWrite;
 			String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
 			writer.visitField(0, upvalueName(i), type, null, null);
 		}
@@ -207,7 +208,7 @@ public final class JavaBuilder {
 
 		if (superclass == SUPERTYPE_VARARGS) {
 			for (slot = 0; slot < p.numparams; slot++) {
-				if (pi.isInitialValueUsed(slot)) {
+				if (pi.params[slot].isReferenced) {
 					main.visitVarInsn(ALOAD, 1);
 					constantOpcode(main, slot + 1);
 					METHOD_VARARGS_ARG.inject(main, INVOKEVIRTUAL);
@@ -239,7 +240,7 @@ public final class JavaBuilder {
 
 		// nil parameters
 		for (; slot < p.maxstacksize; slot++) {
-			if (pi.isInitialValueUsed(slot)) {
+			if (pi.params[slot].isReferenced) {
 				loadNil();
 				storeLocal(-1, slot);
 			}
@@ -379,7 +380,7 @@ public final class JavaBuilder {
 	}
 
 	public void loadUpvalue(int upvalueIndex) {
-		boolean isReadWrite = pi.isReadWriteUpvalue(pi.upvalues[upvalueIndex]);
+		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
 		main.visitVarInsn(ALOAD, 0);
 
 		if (isReadWrite) {
@@ -394,7 +395,7 @@ public final class JavaBuilder {
 	}
 
 	public void storeUpvalue(int pc, int upvalueIndex, int slot) {
-		boolean isReadWrite = pi.isReadWriteUpvalue(pi.upvalues[upvalueIndex]);
+		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
 		main.visitVarInsn(ALOAD, 0);
 		if (isReadWrite) {
 			// We set the first value of the array in <classname>.<upvalueName>
@@ -651,7 +652,7 @@ public final class JavaBuilder {
 	}
 
 	public void closureInitUpvalueFromUpvalue(String protoName, int newUpvalue, int upvalueIndex) {
-		boolean isReadWrite = pi.isReadWriteUpvalue(pi.upvalues[upvalueIndex]);
+		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
 
 		String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
 		String srcName = upvalueName(upvalueIndex);
@@ -664,7 +665,7 @@ public final class JavaBuilder {
 	}
 
 	public void closureInitUpvalueFromLocal(String protoName, int newUpvalue, int pc, int srcSlot) {
-		boolean isReadWrite = pi.isReadWriteUpvalue(pi.vars[srcSlot][pc].upvalue);
+		boolean isReadWrite = pi.vars[srcSlot][pc].upvalue.readWrite;
 		String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
 		String destName = upvalueName(newUpvalue);
 		int index = findSlotIndex(srcSlot, isReadWrite);

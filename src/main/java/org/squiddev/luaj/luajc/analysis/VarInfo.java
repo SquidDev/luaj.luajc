@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc.compilation;
+package org.squiddev.luaj.luajc.analysis;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -16,7 +16,7 @@ public class VarInfo {
 	 * @param slot The slot this parameter is in
 	 * @return The resulting parameter variable. The PC is set to -1
 	 */
-	public static VarInfo PARAM(int slot) {
+	public static VarInfo param(int slot) {
 		return new VarInfo(slot, -1) {
 			public String toString() {
 				return slot + ".p";
@@ -32,7 +32,7 @@ public class VarInfo {
 	 * @param pc   The PC this variable is used at
 	 * @return The resulting variable
 	 */
-	public static VarInfo PHI(final ProtoInfo pi, final int slot, final int pc) {
+	public static VarInfo phi(final ProtoInfo pi, final int slot, final int pc) {
 		return new PhiVarInfo(pi, slot, pc);
 	}
 
