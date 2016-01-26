@@ -1,32 +1,12 @@
-/**
- * ****************************************************************************
- * Copyright (c) 2010 Luaj.org. All rights reserved.
- * <p>
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * <p>
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- * <p>
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- * ****************************************************************************
- */
 package org.squiddev.luaj.luajc.compilation;
 
-import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
+import org.objectweb.asm.ClassWriter;
 import org.squiddev.luaj.luajc.Constants;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.function.FunctionWrapper;
+import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,45 +19,49 @@ public class JavaLoader extends ClassLoader {
 	public boolean verifySources = true;
 
 	/**
-	 * The environment to load files from
+	 * The prefix for all classes
 	 */
-	private final LuaValue env;
+	public final String prefix;
 
+	/**
+	 * The filename to load with
+	 */
+	public final String name;
+
+	/**
+	 * Lookup of classes that haven't been loaded yet
+	 */
 	private final Map<String, byte[]> unloaded = new HashMap<String, byte[]>();
-	private final Map<String, Prototype> prototypes = new HashMap<String, Prototype>();
 
-	public JavaLoader(LuaValue env) {
-		super(JavaLoader.class.getClassLoader());
-		this.env = env;
+	public JavaLoader(String prefix, String name) {
+		this.prefix = prefix;
+		this.name = name;
 	}
 
-	public LuaFunction load(Prototype p, String className, String filename) {
-		JavaGen jg = new JavaGen(p, className, filename);
-		return load(jg);
+	public JavaLoader(ClassLoader parent, String prefix, String name) {
+		super(parent);
+		this.prefix = prefix;
+		this.name = name;
 	}
 
-	public LuaFunction load(JavaGen jg) {
-		include(jg);
-		return load(jg.className);
-	}
+	public FunctionWrapper load(LuaValue env, Prototype prototype) throws Exception {
+		ProtoInfo info = new ProtoInfo(prototype);
 
-	public LuaFunction load(String className) {
-		try {
-			Class<?> c = loadClass(className);
-			return (LuaFunction) c.getConstructor(LuaValue.class).newInstance(env);
-		} catch (Exception e) {
-			throw new IllegalStateException("bad class gen: " + e.getMessage(), e);
-		}
+		// Setup the prototype storage
+		ClassWriter writer = PrototypeStorage.createStorage(prefix, info);
+		writer.visitEnd();
+
+		byte[] contents = writer.toByteArray();
+
+		if (verifySources) AsmUtils.validateClass(contents, this);
+		Class<?> klass = defineClass(prefix.replace('/', '.') + Constants.PROTOTYPE_STORAGE, contents);
+		klass.getDeclaredMethod("setup", ProtoInfo.class).invoke(null, info);
+
+		return new FunctionWrapper(info, env);
 	}
 
 	public void include(JavaGen jg) {
-		unloaded.put(jg.className, jg.bytecode);
-		prototypes.put(jg.className, jg.prototype);
-
-		for (int i = 0, n = jg.inners != null ? jg.inners.length : 0; i < n; i++) {
-			include(jg.inners[i]);
-		}
-
+		unloaded.put(prefix.replace('/', '.') + jg.prototype.name, jg.bytecode);
 		if (verifySources) jg.validate(this);
 	}
 
@@ -85,17 +69,12 @@ public class JavaLoader extends ClassLoader {
 	public Class findClass(String className) throws ClassNotFoundException {
 		byte[] bytes = unloaded.get(className);
 		if (bytes != null) {
-			Class generatedClass = defineClass(className, bytes, 0, bytes.length);
-
-			// Attempt to set the prototype object to this class
-			try {
-				generatedClass.getField(Constants.PROTOTYPE_NAME).set(null, prototypes.get(className));
-			} catch (ReflectiveOperationException e) {
-				e.printStackTrace();
-			}
-
-			return generatedClass;
+			return defineClass(className, bytes);
 		}
 		return super.findClass(className);
+	}
+
+	protected Class<?> defineClass(String className, byte[] bytes) {
+		return defineClass(className, bytes, 0, bytes.length);
 	}
 }

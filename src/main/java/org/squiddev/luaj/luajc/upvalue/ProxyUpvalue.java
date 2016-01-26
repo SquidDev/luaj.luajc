@@ -22,10 +22,6 @@ public final class ProxyUpvalue extends AbstractUpvalue {
 		return upvalue.getUpvalue();
 	}
 
-	public static ProxyUpvalue create(AbstractUpvalue upvalue) {
-		return new ProxyUpvalue(upvalue);
-	}
-
 	@Override
 	public void close() {
 		if (!(upvalue instanceof ReferenceUpvalue)) {

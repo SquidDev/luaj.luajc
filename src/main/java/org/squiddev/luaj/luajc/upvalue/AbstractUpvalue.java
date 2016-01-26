@@ -9,11 +9,25 @@ import org.luaj.vm2.LuaValue;
  * @see ReferenceUpvalue
  */
 public abstract class AbstractUpvalue {
+	/**
+	 * Set the contents of this upvalue
+	 *
+	 * @param value The value to set to
+	 */
 	public abstract void setUpvalue(LuaValue value);
 
+	/**
+	 * Set the contents of this upvalue
+	 *
+	 * @return The upvalue to set
+	 */
 	public abstract LuaValue getUpvalue();
 
+	/**
+	 * Close this upvalue.
+	 * This will rewrite the proxy upvalue to point
+	 * to a reference rather than an array.
+	 */
 	public void close() {
-
 	}
 }

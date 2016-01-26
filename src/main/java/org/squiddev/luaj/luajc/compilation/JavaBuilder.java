@@ -1,26 +1,3 @@
-/**
- * ****************************************************************************
- * Copyright (c) 2010 Luaj.org. All rights reserved.
- * <p>
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * <p>
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- * <p>
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- * ****************************************************************************
- */
 package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
@@ -43,6 +20,10 @@ import static org.squiddev.luaj.luajc.Constants.*;
 import static org.squiddev.luaj.luajc.utils.AsmUtils.constantOpcode;
 
 public final class JavaBuilder {
+	public static final int BRANCH_GOTO = 1;
+	public static final int BRANCH_IFNE = 2;
+	public static final int BRANCH_IFEQ = 3;
+
 	// Basic info
 	protected final ProtoInfo pi;
 	protected final Prototype p;
@@ -89,10 +70,7 @@ public final class JavaBuilder {
 	 */
 	protected int callStackSlot = -1;
 
-	/**
-	 * The current program counter
-	 */
-	protected int pc = 0;
+	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
 	public JavaBuilder(ProtoInfo pi, String className, String filename) {
 		this.pi = pi;
@@ -127,27 +105,20 @@ public final class JavaBuilder {
 		writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 
 		// Check the name of the class. We have no interfaces and no generics
-		writer.visit(V1_6, ACC_PUBLIC | ACC_SUPER | ACC_FINAL, className, null, superType.className, null);
+		writer.visit(V1_6, ACC_PUBLIC | ACC_FINAL, className, null, superType.className, null);
 
 		// Write the filename
 		writer.visitSource(filename, null);
 
-		// Create the fields
-		for (int i = 0; i < p.nups; i++) {
-			boolean isReadWrite = pi.upvalues[i].readWrite;
-			String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
-			writer.visitField(0, upvalueName(i), type, null, null);
-		}
-
 		// Stores the prototype object
 		writer.visitField(ACC_PUBLIC | ACC_STATIC, PROTOTYPE_NAME, TYPE_PROTOTYPE, null, null).visitEnd();
 
-		// Create the class constructor
+		// Create the class constructor (used for constants)
 		init = writer.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
 		init.visitCode();
 
 		// Create the invoke method
-		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, superType.methodName, superType.signature, null, null);
+		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, EXECUTE_NAME, superType.signature, null, null);
 		main.visitCode();
 
 		{
@@ -328,11 +299,11 @@ public final class JavaBuilder {
 		if (isUpvalue) {
 			boolean isUpCreate = pi.isUpvalueCreate(pc, slot);
 			if (isUpCreate) {
-				// If we are creating the upvalue for the first time then we call LibFunction.newupe (but actually call
-				// <className>.newupe but I need to check that). The we duplicate the object, so it remains on the stack
+				// If we are creating the upvalue for the first time then we call LibFunction.emptyUpvalue (but actually call
+				// <className>.emptyUpvalue but I need to check that). The we duplicate the object, so it remains on the stack
 				// and store it
 				METHOD_NEW_UPVALUE_EMPTY.inject(main);
-				METHOD_UPVALUE_PROXY.inject(main);
+				METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitInsn(DUP);
 				main.visitVarInsn(ASTORE, index);
 			} else {
@@ -355,7 +326,7 @@ public final class JavaBuilder {
 			if (isupcreate) {
 				int index = findSlotIndex(slot, true);
 				METHOD_NEW_UPVALUE_NIL.inject(main);
-				METHOD_UPVALUE_PROXY.inject(main);
+				METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitVarInsn(ASTORE, index);
 			}
 		}
@@ -369,7 +340,7 @@ public final class JavaBuilder {
 			// Load it from the slot, convert to an array and store it to the upvalue slot
 			main.visitVarInsn(ALOAD, index);
 			METHOD_NEW_UPVALUE_VALUE.inject(main);
-			METHOD_UPVALUE_PROXY.inject(main);
+			METHOD_NEW_UPVALUE_PROXY.inject(main);
 			int upvalueIndex = findSlotIndex(slot, true);
 			main.visitVarInsn(ASTORE, upvalueIndex);
 		}
@@ -647,10 +618,6 @@ public final class JavaBuilder {
 		main.visitMethodInsn(INVOKESPECIAL, protoname, "<init>", "(" + TYPE_LUAVALUE + ")V", false);
 	}
 
-	public void closureProxy() {
-		METHOD_CLOSURE_PROXY.inject(main);
-	}
-
 	public void closureInitUpvalueFromUpvalue(String protoName, int newUpvalue, int upvalueIndex) {
 		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
 
@@ -674,8 +641,6 @@ public final class JavaBuilder {
 		main.visitFieldInsn(PUTFIELD, protoName, destName, type);
 	}
 
-	protected final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
-
 	public void loadConstant(LuaValue value) {
 		switch (value.type()) {
 			case LuaValue.TNIL:
@@ -688,11 +653,12 @@ public final class JavaBuilder {
 			case LuaValue.TSTRING:
 				String name = constants.get(value);
 				if (name == null) {
-					name = value.type() == LuaValue.TNUMBER ?
-						value.isinttype() ?
-							createLuaIntegerField(value.checkint()) :
-							createLuaDoubleField(value.checkdouble()) :
-						createLuaStringField(value.checkstring());
+					if (value.type() == LuaValue.TNUMBER) {
+						name = value.isinttype() ? createLuaIntegerField(value.checkint()) : createLuaDoubleField(value.checkdouble());
+					} else {
+						name = createLuaStringField(value.checkstring());
+					}
+
 					constants.put(value, name);
 				}
 				main.visitFieldInsn(GETSTATIC, className, name, TYPE_LUAVALUE);
@@ -702,7 +668,7 @@ public final class JavaBuilder {
 		}
 	}
 
-	protected String createLuaIntegerField(int value) {
+	private String createLuaIntegerField(int value) {
 		String name = PREFIX_CONSTANT + constants.size();
 		writer.visitField(ACC_STATIC | ACC_FINAL, name, TYPE_LUAVALUE, null, null);
 
@@ -712,7 +678,7 @@ public final class JavaBuilder {
 		return name;
 	}
 
-	protected String createLuaDoubleField(double value) {
+	private String createLuaDoubleField(double value) {
 		String name = PREFIX_CONSTANT + constants.size();
 		writer.visitField(ACC_STATIC | ACC_FINAL, name, TYPE_LUAVALUE, null, null);
 		constantOpcode(init, value);
@@ -721,7 +687,7 @@ public final class JavaBuilder {
 		return name;
 	}
 
-	protected String createLuaStringField(LuaString value) {
+	private String createLuaStringField(LuaString value) {
 		String name = PREFIX_CONSTANT + constants.size();
 		writer.visitField(ACC_STATIC | ACC_FINAL, name, TYPE_LUAVALUE, null, null);
 
@@ -741,11 +707,6 @@ public final class JavaBuilder {
 		init.visitFieldInsn(PUTSTATIC, className, name, TYPE_LUAVALUE);
 		return name;
 	}
-
-	// --------------------- branching support -------------------------
-	public static final int BRANCH_GOTO = 1;
-	public static final int BRANCH_IFNE = 2;
-	public static final int BRANCH_IFEQ = 3;
 
 	public void addBranch(int branchType, int targetPc) {
 		int type;
@@ -769,10 +730,11 @@ public final class JavaBuilder {
 	 * This is a really ugly way of generating the branch instruction.
 	 * Every Lua instruction is assigned one label, so jumping is possible.
 	 *
+	 * If debugging is enabled, then
+	 *
 	 * @param pc The current Lua program counter
 	 */
 	public void onStartOfLuaInstruction(int pc) {
-		this.pc = pc;
 		Label currentLabel = branchDestinations[pc];
 
 		main.visitLabel(currentLabel);
@@ -785,7 +747,7 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void setlistStack(int pc, int a0, int index0, int nvals) {
+	public void visitSetlistStack(int pc, int a0, int index0, int nvals) {
 		for (int i = 0; i < nvals; i++) {
 			main.visitInsn(DUP);
 			constantOpcode(main, index0 + i);
@@ -794,25 +756,25 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void setlistVarargs(int index) {
+	public void visitSetlistVarargs(int index) {
 		constantOpcode(main, index);
 		loadVarresult();
 		METHOD_RAWSET_LIST.inject(main);
 	}
 
-	public void concatvalue() {
+	public void visitConcatValue() {
 		METHOD_STRING_CONCAT.inject(main);
 	}
 
-	public void concatbuffer() {
+	public void visitConcatBuffer() {
 		METHOD_BUFFER_CONCAT.inject(main);
 	}
 
-	public void tobuffer() {
+	public void visitTobuffer() {
 		METHOD_VALUE_TO_BUFFER.inject(main);
 	}
 
-	public void tovalue() {
+	public void visitTovalue() {
 		METHOD_BUFFER_TO_VALUE.inject(main);
 	}
 }

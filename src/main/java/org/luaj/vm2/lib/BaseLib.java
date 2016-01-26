@@ -40,7 +40,7 @@ import java.io.PrintStream;
  * which is the closest equivalent on JME.
  * The default loader chain in {@link PackageLib} will use these as well.
  * <p>
- * To use basic library functions that include a {@link ResourceFinder} based on
+ * To use basic library functions that load a {@link ResourceFinder} based on
  * directory lookup, use {@link JseBaseLib} instead.
  * <p>
  * Typically, this library is included as part of a call to {@link JsePlatform#standardGlobals()}

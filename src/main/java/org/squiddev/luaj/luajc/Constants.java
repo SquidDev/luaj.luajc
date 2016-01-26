@@ -3,10 +3,11 @@ package org.squiddev.luaj.luajc;
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.Type;
-import org.squiddev.luaj.luajc.function.*;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.function.FunctionWrapper;
+import org.squiddev.luaj.luajc.function.executors.*;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
-import org.squiddev.luaj.luajc.upvalue.ProxyUpvalue;
-import org.squiddev.luaj.luajc.upvalue.ReferenceUpvalue;
+import org.squiddev.luaj.luajc.upvalue.UpvalueFactory;
 import org.squiddev.luaj.luajc.utils.TinyMethod;
 
 /**
@@ -17,34 +18,33 @@ public final class Constants {
 	}
 
 	public static final String PREFIX = "org/squiddev/luaj/luajc/generated/";
-	public static final String DOT_PREFIX = PREFIX.replace('/', '.');
 
-	public static final String PROTOTYPE_NAME = "PROTOTYPE";
+	public static final String PROTOTYPE_NAME = "prototype";
+	public static final String PROTOTYPE_STORAGE = "$Prototypes";
+	public static final String EXECUTE_NAME = "execute";
 
 	public static final String TYPE_UPVALUE = Type.getDescriptor(AbstractUpvalue.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
 	public static final String TYPE_PROTOTYPE = Type.getDescriptor(Prototype.class);
-	public static final String TYPE_CLOSURE = Type.getDescriptor(CompilingClosure.class);
-	public static final String CLASS_CLOSURE = Type.getInternalName(CompilingClosure.class);
+	public static final String TYPE_PROTOINFO = Type.getDescriptor(ProtoInfo.class);
+	public static final String CLASS_PROTOINFO = Type.getInternalName(ProtoInfo.class);
 
 	public static final class FunctionType {
 		public final String signature;
-		public final String methodName;
 		public final String className;
 		public final int argsLength;
 
-		public FunctionType(String name, String invokeName, String invokeSignature, int args) {
+		public FunctionType(String name, String invokeSignature, int args) {
 			className = name;
-			methodName = invokeName;
 			signature = invokeSignature;
 			argsLength = args;
 		}
 
-		public FunctionType(Class<?> classObj, String invokeName, Class<?>... args) {
+		public FunctionType(Class<?> classObj, Class<?>... args) {
 			this(
 				Type.getInternalName(classObj),
-				invokeName, getSignature(classObj, invokeName, args),
+				getSignature(classObj, EXECUTE_NAME, args),
 				args.length
 			);
 		}
@@ -59,12 +59,12 @@ public final class Constants {
 	}
 
 	// Manage super classes
-	public static final FunctionType[] SUPER_TYPES = {
-		new FunctionType(ZeroArgFunction.class, "call"),
-		new FunctionType(OneArgFunction.class, "call", LuaValue.class),
-		new FunctionType(TwoArgFunction.class, "call", LuaValue.class, LuaValue.class),
-		new FunctionType(ThreeArgFunction.class, "call", LuaValue.class, LuaValue.class, LuaValue.class),
-		new FunctionType(VarArgFunction.class, "invoke", Varargs.class),
+	public static final FunctionType[] SUPER_TYPES = new FunctionType[]{
+		new FunctionType(ArgExecutor0.class),
+		new FunctionType(ArgExecutor1.class, FunctionWrapper.class, LuaValue.class),
+		new FunctionType(ArgExecutor2.class, FunctionWrapper.class, LuaValue.class, LuaValue.class),
+		new FunctionType(ArgExecutor3.class, FunctionWrapper.class, LuaValue.class, LuaValue.class, LuaValue.class),
+		new FunctionType(ArgExecutorMany.class, FunctionWrapper.class, Varargs.class),
 	};
 
 	// Table functions
@@ -127,14 +127,11 @@ public final class Constants {
 	public static final TinyMethod METHOD_RAWSET = new TinyMethod(LuaValue.class, "rawset", int.class, LuaValue.class);
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);
 
-	// Proxies
-	public static final TinyMethod METHOD_CLOSURE_PROXY = new TinyMethod(ProxyFunction.class, "create", LuaCompiledFunction.class);
-	public static final TinyMethod METHOD_UPVALUE_PROXY = new TinyMethod(ProxyUpvalue.class, "create", AbstractUpvalue.class);
-
 	// Upvalue creation
-	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(ReferenceUpvalue.class, "newupe");
-	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(ReferenceUpvalue.class, "newupn");
-	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(ReferenceUpvalue.class, "newupl", LuaValue.class);
+	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(UpvalueFactory.class, "emptyUpvalue");
+	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(UpvalueFactory.class, "nilUpvalue");
+	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(UpvalueFactory.class, "valueUpvalue", LuaValue.class);
+	public static final TinyMethod METHOD_NEW_UPVALUE_PROXY = new TinyMethod(UpvalueFactory.class, "proxy", AbstractUpvalue.class);
 
 	// Upvalue modification
 	public static final TinyMethod METHOD_SET_UPVALUE = new TinyMethod(AbstractUpvalue.class, "setUpvalue", LuaValue.class);
@@ -146,10 +143,10 @@ public final class Constants {
 	public static final TinyMethod METHOD_BYTECODE = new TinyMethod(DebugLib.class, "debugBytecode", int.class, Varargs.class, int.class);
 
 	// Variable naming
-	public static final String PREFIX_CONSTANT = "k";
-	public static final String PREFIX_UPVALUE = "u";
-	public static final String PREFIX_UPVALUE_SLOT = "a";
-	public static final String PREFIX_LOCAL_SLOT = "s";
+	public static final String PREFIX_CONSTANT = "constant";
+	public static final String PREFIX_UPVALUE = "upvalue";
+	public static final String PREFIX_UPVALUE_SLOT = "localUpvalue";
+	public static final String PREFIX_LOCAL_SLOT = "local";
 
 	// Super type class
 	public static final int SUPERTYPE_VARARGS_ID = 4;

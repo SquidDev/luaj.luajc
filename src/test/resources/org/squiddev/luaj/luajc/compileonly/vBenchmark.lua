@@ -207,7 +207,7 @@ Welcome to vBenchmark!
           -visible error reports - launches the benchmark in a temporary handler (/.vBenchmarkSafe) that pauses after crashing => errors visible
           -does not intersect with suicidal mode
       ]]
-	--TODO -include <paths> include list of custom tests loaded from <paths>
+	--TODO -load <paths> load list of custom tests loaded from <paths>
 	term.setBackgroundColor(c and colors.white or colors.black)
 	term.setTextColor(c and colors.black or colors.white)
 	term.clear()

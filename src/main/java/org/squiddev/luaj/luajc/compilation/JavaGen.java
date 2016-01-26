@@ -30,37 +30,19 @@ import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 public final class JavaGen {
-
-	public final String className;
 	public final byte[] bytecode;
-	public final JavaGen[] inners;
-	public final Prototype prototype;
+	public final ProtoInfo prototype;
 
 	protected boolean validated = false;
 
-	public JavaGen(Prototype p, String className, String filename) {
-		this(new ProtoInfo(p, className), className, filename);
-	}
-
-	private JavaGen(ProtoInfo pi, String className, String filename) {
-		this.className = className;
-		prototype = pi.prototype;
+	protected JavaGen(ProtoInfo pi, JavaLoader loader, String filename) {
+		String name = loader.prefix + pi.name;
+		prototype = pi;
 
 		// build this class
-		JavaBuilder builder = new JavaBuilder(pi, className, filename);
-		scanInstructions(pi, className, builder);
+		JavaBuilder builder = new JavaBuilder(pi, name, filename);
+		scanInstructions(pi, loader.prefix, builder);
 		bytecode = builder.completeClass();
-
-		// build sub-prototypes
-		if (pi.subprotos != null) {
-			int n = pi.subprotos.length;
-			inners = new JavaGen[n];
-			for (int i = 0; i < n; i++) {
-				inners[i] = new JavaGen(pi.subprotos[i], closureName(className, i), filename);
-			}
-		} else {
-			inners = null;
-		}
 	}
 
 	public void validate(ClassLoader loader) {
@@ -205,13 +187,13 @@ public final class JavaGen {
 							builder.loadLocal(pc, k);
 						}
 						if (c > b + 1) {
-							builder.tobuffer();
+							builder.visitTobuffer();
 							for (int k = c; --k >= b; ) {
-								builder.concatbuffer();
+								builder.visitConcatBuffer();
 							}
-							builder.tovalue();
+							builder.visitTovalue();
 						} else {
-							builder.concatvalue();
+							builder.visitConcatValue();
 						}
 						builder.storeLocal(pc, a);
 						break;
@@ -425,12 +407,12 @@ public final class JavaGen {
 						if (b == 0) {
 							int nstack = vresultbase - (a + 1);
 							if (nstack > 0) {
-								builder.setlistStack(pc, a + 1, index0, nstack);
+								builder.visitSetlistStack(pc, a + 1, index0, nstack);
 								index0 += nstack;
 							}
-							builder.setlistVarargs(index0);
+							builder.visitSetlistVarargs(index0);
 						} else {
-							builder.setlistStack(pc, a + 1, index0, b);
+							builder.visitSetlistStack(pc, a + 1, index0, b);
 							builder.pop();
 						}
 						break;
@@ -444,7 +426,6 @@ public final class JavaGen {
 						int nup = newp.nups;
 						builder.closureCreate(protoname);
 						if (nup > 0) builder.dup();
-						builder.closureProxy();
 						builder.storeLocal(pc, a);
 
 						if (nup > 0) {

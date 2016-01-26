@@ -2,6 +2,8 @@ package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Print;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.function.FunctionExecutor;
+import org.squiddev.luaj.luajc.function.executors.ClosureExecutor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -10,6 +12,18 @@ import java.io.PrintStream;
  * Prototype information for static single-assignment analysis
  */
 public final class ProtoInfo {
+	// Region execution
+	/**
+	 * The executor to currently use
+	 */
+	public FunctionExecutor executor = ClosureExecutor.INSTANCE;
+
+	/**
+	 * Number of times this method has been called from a closure.
+	 */
+	public int calledClosure = 0;
+	//endregion
+
 	/**
 	 * The name of the prototype
 	 */
@@ -20,6 +34,7 @@ public final class ProtoInfo {
 	 */
 	public final Prototype prototype;
 
+	//region Analysis code
 	/**
 	 * List of child prototypes or null
 	 */
@@ -49,9 +64,10 @@ public final class ProtoInfo {
 	 * List of upvalues from outer scope
 	 */
 	public final UpvalueInfo[] upvalues;
+	//endregion
 
-	public ProtoInfo(Prototype p, String name) {
-		this(p, name, null);
+	public ProtoInfo(Prototype p) {
+		this(p, "", null);
 	}
 
 	protected ProtoInfo(Prototype p, String name, UpvalueInfo[] u) {

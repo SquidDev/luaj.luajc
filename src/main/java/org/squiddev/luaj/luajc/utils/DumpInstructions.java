@@ -137,26 +137,7 @@ public final class DumpInstructions {
 				previousLine = line;
 			}
 
-			int opcode = Lua.GET_OPCODE(instr);
-			StringBuilder builder = new StringBuilder(OPCODE_NAMES[opcode].toLowerCase())
-				.append(" ").append(formatArg(Lua.GETARG_A(instr), ARG_TYPES[opcode][0], chunk)).append(" ");
-			switch (Lua.getOpMode(opcode)) {
-				case Lua.iABC:
-					builder
-						.append(formatArg(Lua.GETARG_B(instr), ARG_TYPES[opcode][1], chunk)).append(" ")
-						.append(formatArg(Lua.GETARG_C(instr), ARG_TYPES[opcode][2], chunk));
-					break;
-				case Lua.iABx:
-					builder
-						.append(formatArg(Lua.GETARG_Bx(instr), ARG_TYPES[opcode][1], chunk));
-					break;
-				case Lua.iAsBx:
-					builder
-						.append(formatArg(Lua.GETARG_sBx(instr), ARG_TYPES[opcode][1], chunk));
-					break;
-			}
-
-			write(builder.toString());
+			write(dumpInstruction(chunk, instr));
 
 			++pc;
 		}
@@ -176,7 +157,30 @@ public final class DumpInstructions {
 		}
 	}
 
-	protected String formatArg(int arg, ArgType type, Prototype proto) {
+	public static String dumpInstruction(Prototype chunk, int instr) {
+		int opcode = Lua.GET_OPCODE(instr);
+		StringBuilder builder = new StringBuilder(OPCODE_NAMES[opcode].toLowerCase())
+			.append(" ").append(formatArg(Lua.GETARG_A(instr), ARG_TYPES[opcode][0], chunk)).append(" ");
+		switch (Lua.getOpMode(opcode)) {
+			case Lua.iABC:
+				builder
+					.append(formatArg(Lua.GETARG_B(instr), ARG_TYPES[opcode][1], chunk)).append(" ")
+					.append(formatArg(Lua.GETARG_C(instr), ARG_TYPES[opcode][2], chunk));
+				break;
+			case Lua.iABx:
+				builder
+					.append(formatArg(Lua.GETARG_Bx(instr), ARG_TYPES[opcode][1], chunk));
+				break;
+			case Lua.iAsBx:
+				builder
+					.append(formatArg(Lua.GETARG_sBx(instr), ARG_TYPES[opcode][1], chunk));
+				break;
+		}
+
+		return builder.toString();
+	}
+
+	protected static String formatArg(int arg, ArgType type, Prototype proto) {
 		if (type == ArgType.Constant) {
 			if (arg >= 256) arg -= 256;
 			return formatConstant(proto.k[arg]);
@@ -193,7 +197,7 @@ public final class DumpInstructions {
 		return Integer.toString(arg);
 	}
 
-	protected String formatConstant(LuaValue k) {
+	protected static String formatConstant(LuaValue k) {
 		if (k instanceof LuaNil || k instanceof LuaBoolean || k instanceof LuaNumber) {
 			return k.toString();
 		} else if (k instanceof LuaString) {
