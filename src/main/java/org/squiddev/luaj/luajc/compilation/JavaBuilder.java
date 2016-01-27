@@ -181,7 +181,7 @@ public final class JavaBuilder {
 		} else {
 			// fixed arg function between 0 and 3 arguments
 			for (slot = 0; slot < p.numparams; slot++) {
-				this.plainSlotVars.put(slot, slot + 1);
+				this.plainSlotVars.put(slot, slot + 2);
 				if (pi.isUpvalueCreate(-1, slot)) {
 					main.visitVarInsn(ALOAD, VARARGS_SLOT);
 					storeLocal(-1, slot);
@@ -693,14 +693,14 @@ public final class JavaBuilder {
 		Label currentLabel = branchDestinations[pc];
 
 		main.visitLabel(currentLabel);
-		if (p.lineinfo != null) {
+		if (p.lineinfo != null && p.lineinfo.length > pc) {
 			int line = p.lineinfo[pc];
 			if (pc == 0 || line != p.lineinfo[pc - 1]) {
 				main.visitLineNumber(line, currentLabel);
 			}
 		}
 
-		if (false && DebugLib.DEBUG_ENABLED) {
+		if (DebugLib.DEBUG_ENABLED) {
 			AsmUtils.constantOpcode(main, pc);
 			main.visitInsn(ACONST_NULL);
 			main.visitInsn(ICONST_M1);
