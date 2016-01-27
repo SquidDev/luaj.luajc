@@ -1,9 +1,6 @@
 package org.squiddev.luaj.luajc.compilation;
 
-import org.luaj.vm2.Lua;
-import org.luaj.vm2.LuaString;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Prototype;
+import org.luaj.vm2.*;
 import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -28,6 +25,7 @@ public final class JavaBuilder {
 	protected final ProtoInfo pi;
 	protected final Prototype p;
 	protected final String className;
+	protected final String prefix;
 
 	/**
 	 * Main class writer
@@ -54,29 +52,36 @@ public final class JavaBuilder {
 	 */
 	protected int varargsLocal = -1;
 
-	protected final Label start;
-	protected final Label end;
+	// Labels for locals
+	private final Label start;
+	private final Label end;
 
 	// the superclass arg count, 0-3 args, 4=varargs
-	protected final FunctionType superclass;
+	private final FunctionType superclass;
 
 	/**
 	 * Go to destinations
 	 */
-	protected final Label[] branchDestinations;
+	private final Label[] branchDestinations;
 
 	/**
 	 * The slot for the LuaThread.CallStack
 	 */
-	protected int callStackSlot = -1;
+	private final int callStackSlot;
+
+	/**
+	 * Slot the upvalues live in
+	 */
+	private final int upvaluesSlot;
 
 	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
-	public JavaBuilder(ProtoInfo pi, String className, String filename) {
+	public JavaBuilder(ProtoInfo pi, String prefix, String filename) {
 		this.pi = pi;
 		this.p = pi.prototype;
+		this.prefix = prefix;
 
-		this.className = className;
+		String className = this.className = prefix + pi.name;
 
 		// what class to inherit from
 		int superclassType = p.numparams;
@@ -98,20 +103,11 @@ public final class JavaBuilder {
 		maxLocals = superType.argsLength;
 
 		// Create class writer
-		/*
-			We don't need to compute frames as slots do not change their type
-			TODO: Auto compute maxes and locals.
-		 */
+		// We don't need to compute frames as slots do not change their types
 		writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-
-		// Check the name of the class. We have no interfaces and no generics
-		writer.visit(V1_6, ACC_PUBLIC | ACC_FINAL, className, null, superType.className, null);
-
-		// Write the filename
+		writer.visit(V1_6, ACC_PUBLIC | ACC_FINAL | ACC_SUPER, className, null, superType.className, null);
 		writer.visitSource(filename, null);
-
-		// Stores the prototype object
-		writer.visitField(ACC_PUBLIC | ACC_STATIC, PROTOTYPE_NAME, TYPE_PROTOTYPE, null, null).visitEnd();
+		AsmUtils.writeDefaultConstructor(writer, superType.className);
 
 		// Create the class constructor (used for constants)
 		init = writer.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
@@ -121,19 +117,24 @@ public final class JavaBuilder {
 		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, EXECUTE_NAME, superType.signature, null, null);
 		main.visitCode();
 
-		{
-			// Create some information
-			start = new Label();
-			end = new Label();
-			main.visitLabel(start);
+		// Beginning and end of methods for visitors
+		start = new Label();
+		end = new Label();
+		main.visitLabel(start);
 
-			// Create the slots for stack
-			callStackSlot = ++maxLocals;
+		// On method call, store callstack in slot
+		callStackSlot = ++maxLocals;
+		main.visitVarInsn(ALOAD, 1);
+		METHOD_ONCALL.inject(main);
+		main.visitVarInsn(ASTORE, callStackSlot);
 
-			// On method call, store callstack in slot
-			main.visitVarInsn(ALOAD, 0);
-			METHOD_ONCALL.inject(main);
-			main.visitVarInsn(ASTORE, callStackSlot);
+		if (p.nups > 0) {
+			upvaluesSlot = ++maxLocals;
+			main.visitVarInsn(ALOAD, 1);
+			upvaluesGet();
+			main.visitVarInsn(ASTORE, upvaluesSlot);
+		} else {
+			upvaluesSlot = -1;
 		}
 
 		// Initialize the values in the slots
@@ -146,27 +147,6 @@ public final class JavaBuilder {
 			for (int pc = 0; pc < nc; pc++) {
 				branchDestinations[pc] = new Label();
 			}
-		}
-
-		{
-			// Add default constructor
-			MethodVisitor construct = writer.visitMethod(ACC_PUBLIC, "<init>", "(" + TYPE_LUAVALUE + ")V", null, null);
-			construct.visitVarInsn(ALOAD, 0);
-			construct.visitVarInsn(ALOAD, 1);
-			construct.visitMethodInsn(INVOKESPECIAL, superclass.className, "<init>", "(" + TYPE_LUAVALUE + ")V", false);
-
-			construct.visitInsn(RETURN);
-			construct.visitMaxs(2, 2);
-			construct.visitEnd();
-		}
-
-		{
-			// Add get prototype
-			MethodVisitor getProto = writer.visitMethod(ACC_PUBLIC, "getPrototype", "()" + TYPE_PROTOTYPE, null, null);
-			getProto.visitFieldInsn(GETSTATIC, className, PROTOTYPE_NAME, TYPE_PROTOTYPE);
-			getProto.visitInsn(ARETURN);
-			getProto.visitMaxs(1, 1);
-			getProto.visitEnd();
 		}
 	}
 
@@ -322,8 +302,7 @@ public final class JavaBuilder {
 	public void createUpvalues(int pc, int firstSlot, int numSlots) {
 		for (int i = 0; i < numSlots; i++) {
 			int slot = firstSlot + i;
-			boolean isupcreate = pi.isUpvalueCreate(pc, slot);
-			if (isupcreate) {
+			if (pi.isUpvalueCreate(pc, slot)) {
 				int index = findSlotIndex(slot, true);
 				METHOD_NEW_UPVALUE_NIL.inject(main);
 				METHOD_NEW_UPVALUE_PROXY.inject(main);
@@ -346,37 +325,20 @@ public final class JavaBuilder {
 		}
 	}
 
-	protected static String upvalueName(int upvalueIndex) {
-		return PREFIX_UPVALUE + upvalueIndex;
-	}
-
 	public void loadUpvalue(int upvalueIndex) {
-		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
-		main.visitVarInsn(ALOAD, 0);
-
-		if (isReadWrite) {
-			// We get the first value of the array in <classname>.<upvalueName>
-			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_UPVALUE);
-			Constants.METHOD_GET_UPVALUE.inject(main);
-
-		} else {
-			// Not a 'proper' upvalue, so we just need to get the value itself
-			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_LUAVALUE);
-		}
+		main.visitVarInsn(ALOAD, upvaluesSlot);
+		constantOpcode(main, upvalueIndex);
+		main.visitInsn(AALOAD);
+		METHOD_GET_UPVALUE.inject(main);
 	}
 
 	public void storeUpvalue(int pc, int upvalueIndex, int slot) {
-		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
-		main.visitVarInsn(ALOAD, 0);
-		if (isReadWrite) {
-			// We set the first value of the array in <classname>.<upvalueName>
-			main.visitFieldInsn(GETFIELD, className, upvalueName(upvalueIndex), TYPE_UPVALUE);
-			loadLocal(pc, slot);
-			Constants.METHOD_SET_UPVALUE.inject(main);
-		} else {
-			loadLocal(pc, slot);
-			main.visitFieldInsn(PUTFIELD, className, upvalueName(upvalueIndex), TYPE_LUAVALUE);
-		}
+		main.visitVarInsn(ALOAD, upvaluesSlot);
+		constantOpcode(main, upvalueIndex);
+		main.visitInsn(AALOAD);
+
+		loadLocal(pc, slot);
+		Constants.METHOD_SET_UPVALUE.inject(main);
 	}
 
 	public void newTable(int b, int c) {
@@ -386,43 +348,43 @@ public final class JavaBuilder {
 	}
 
 	public void loadEnv() {
-		main.visitVarInsn(ALOAD, 0);
-		main.visitFieldInsn(GETFIELD, className, "env", TYPE_LUAVALUE);
+		main.visitVarInsn(ALOAD, 1);
+		METHOD_GETENV.inject(main);
 	}
 
 	public void loadVarargs() {
 		main.visitVarInsn(ALOAD, 1);
 	}
 
-	public void loadVarargs(int argindex) {
+	public void loadVarargs(int index) {
 		loadVarargs();
-		arg(argindex);
+		arg(index);
 	}
 
-	public void arg(int argindex) {
-		if (argindex == 1) {
+	public void arg(int index) {
+		if (index == 1) {
 			METHOD_VARARGS_ARG1.inject(main);
 		} else {
-			constantOpcode(main, argindex);
+			constantOpcode(main, index);
 			METHOD_VARARGS_ARG.inject(main);
 		}
 	}
 
-	protected int getVarresultIndex() {
+	protected int getVarResultIndex() {
 		if (varargsLocal < 0) varargsLocal = ++maxLocals;
 		return varargsLocal;
 	}
 
-	public void loadVarresult() {
-		main.visitVarInsn(ALOAD, getVarresultIndex());
+	public void loadVarResult() {
+		main.visitVarInsn(ALOAD, getVarResultIndex());
 	}
 
-	public void storeVarresult() {
-		main.visitVarInsn(ASTORE, getVarresultIndex());
+	public void storeVarResult() {
+		main.visitVarInsn(ASTORE, getVarResultIndex());
 	}
 
-	public void subargs(int firstarg) {
-		constantOpcode(main, firstarg);
+	public void subArgs(int first) {
+		constantOpcode(main, first);
 		METHOD_VARARGS_SUBARGS.inject(main);
 	}
 
@@ -434,7 +396,7 @@ public final class JavaBuilder {
 		METHOD_TABLE_SET.inject(main);
 	}
 
-	public void unaryop(int o) {
+	public void unaryOp(int o) {
 		String op;
 		switch (o) {
 			default:
@@ -452,7 +414,7 @@ public final class JavaBuilder {
 		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "()" + TYPE_LUAVALUE, false);
 	}
 
-	public void binaryop(int o) {
+	public void binaryOp(int o) {
 		String op;
 		switch (o) {
 			default:
@@ -478,7 +440,7 @@ public final class JavaBuilder {
 		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "(" + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
 	}
 
-	public void compareop(int o) {
+	public void compareOp(int o) {
 		String op;
 		switch (o) {
 			default:
@@ -495,7 +457,7 @@ public final class JavaBuilder {
 		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "(" + TYPE_LUAVALUE + ")Z", false);
 	}
 
-	public void areturn() {
+	public void visitReturn() {
 		// Pop call stack
 		main.visitVarInsn(ALOAD, callStackSlot);
 		METHOD_ONRETURN.inject(main);
@@ -503,15 +465,11 @@ public final class JavaBuilder {
 		main.visitInsn(ARETURN);
 	}
 
-	public void toBoolean() {
+	public void visitToBoolean() {
 		METHOD_VALUE_TO_BOOL.inject(main);
 	}
 
-	public void tostring() {
-		METHOD_BUFFER_TO_STR.inject(main);
-	}
-
-	public void isNil() {
+	public void visitIsNil() {
 		METHOD_IS_NIL.inject(main);
 	}
 
@@ -519,13 +477,13 @@ public final class JavaBuilder {
 		METHOD_TESTFOR_B.inject(main);
 	}
 
-	public void loadArrayArgs(int pc, int firstslot, int nargs) {
+	public void loadArrayArgs(int pc, int firstSlot, int nargs) {
 		constantOpcode(main, nargs);
 		main.visitTypeInsn(ANEWARRAY, CLASS_LUAVALUE);
 		for (int i = 0; i < nargs; i++) {
 			main.visitInsn(DUP);
 			constantOpcode(main, i);
-			loadLocal(pc, firstslot++);
+			loadLocal(pc, firstSlot++);
 			main.visitInsn(AASTORE);
 		}
 	}
@@ -556,9 +514,9 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void newVarargsVarresult(int pc, int firstslot, int nslots) {
-		loadArrayArgs(pc, firstslot, nslots);
-		loadVarresult();
+	public void newVarargsVarResult(int pc, int firstSlots, int slotCount) {
+		loadArrayArgs(pc, firstSlots, slotCount);
+		loadVarResult();
 		METHOD_VARARGS_MANY_VAR.inject(main);
 	}
 
@@ -608,37 +566,34 @@ public final class JavaBuilder {
 		}
 	}
 
-
-	// ------------------------ closures ------------------------
-
-	public void closureCreate(String protoname) {
-		main.visitTypeInsn(NEW, protoname);
+	public void closureCreate(ProtoInfo info) {
+		main.visitTypeInsn(NEW, CLASS_WRAPPER);
 		main.visitInsn(DUP);
+		main.visitFieldInsn(GETSTATIC, prefix + PROTOTYPE_STORAGE, PROTOTYPE_NAME + info.name, TYPE_PROTOINFO);
 		loadEnv();
-		main.visitMethodInsn(INVOKESPECIAL, protoname, "<init>", "(" + TYPE_LUAVALUE + ")V", false);
+		main.visitMethodInsn(INVOKESPECIAL, CLASS_WRAPPER, "<init>", "(" + TYPE_PROTOINFO + TYPE_LUAVALUE + ")V", false);
 	}
 
-	public void closureInitUpvalueFromUpvalue(String protoName, int newUpvalue, int upvalueIndex) {
-		boolean isReadWrite = pi.upvalues[upvalueIndex].readWrite;
-
-		String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
-		String srcName = upvalueName(upvalueIndex);
-		String destName = upvalueName(newUpvalue);
-
-		main.visitVarInsn(ALOAD, 0);
-		// Get from one field and set to the other
-		main.visitFieldInsn(GETFIELD, className, srcName, type);
-		main.visitFieldInsn(PUTFIELD, protoName, destName, type);
+	public void upvaluesGet() {
+		main.visitFieldInsn(GETFIELD, CLASS_WRAPPER, "upvalues", "[" + TYPE_UPVALUE);
 	}
 
-	public void closureInitUpvalueFromLocal(String protoName, int newUpvalue, int pc, int srcSlot) {
+	public void initUpvalueFromUpvalue(int newUpvalue, int upvalueIndex) {
+		AsmUtils.constantOpcode(main, newUpvalue);
+		main.visitVarInsn(ALOAD, upvaluesSlot);
+		AsmUtils.constantOpcode(main, upvalueIndex);
+		main.visitInsn(AALOAD);
+		main.visitInsn(AASTORE);
+	}
+
+	public void initUpvalueFromLocal(int newUpvalue, int pc, int srcSlot) {
 		boolean isReadWrite = pi.vars[srcSlot][pc].upvalue.readWrite;
-		String type = isReadWrite ? TYPE_UPVALUE : TYPE_LUAVALUE;
-		String destName = upvalueName(newUpvalue);
 		int index = findSlotIndex(srcSlot, isReadWrite);
 
+		AsmUtils.constantOpcode(main, newUpvalue);
 		main.visitVarInsn(ALOAD, index);
-		main.visitFieldInsn(PUTFIELD, protoName, destName, type);
+		if (!isReadWrite) METHOD_NEW_UPVALUE_VALUE.inject(main);
+		main.visitInsn(AASTORE);
 	}
 
 	public void loadConstant(LuaValue value) {
@@ -730,7 +685,7 @@ public final class JavaBuilder {
 	 * This is a really ugly way of generating the branch instruction.
 	 * Every Lua instruction is assigned one label, so jumping is possible.
 	 *
-	 * If debugging is enabled, then
+	 * If debugging is enabled, then this will call {@link DebugLib#debugBytecode(int, Varargs, int)}.
 	 *
 	 * @param pc The current Lua program counter
 	 */
@@ -758,7 +713,7 @@ public final class JavaBuilder {
 
 	public void visitSetlistVarargs(int index) {
 		constantOpcode(main, index);
-		loadVarresult();
+		loadVarResult();
 		METHOD_RAWSET_LIST.inject(main);
 	}
 

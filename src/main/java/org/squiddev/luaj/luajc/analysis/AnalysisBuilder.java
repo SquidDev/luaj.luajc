@@ -384,7 +384,7 @@ public final class AnalysisBuilder {
 					}
 				}
 
-				info.subprotos[bx] = new ProtoInfo(childPrototype, childName, childUpvalues);
+				info.subprotos[bx] = new ProtoInfo(childPrototype, info.loader, childName, childUpvalues);
 			}
 		}
 

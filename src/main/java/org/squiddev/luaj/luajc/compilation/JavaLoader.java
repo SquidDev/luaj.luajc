@@ -5,6 +5,7 @@ import org.luaj.vm2.Prototype;
 import org.objectweb.asm.ClassWriter;
 import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
@@ -45,36 +46,38 @@ public class JavaLoader extends ClassLoader {
 	}
 
 	public FunctionWrapper load(LuaValue env, Prototype prototype) throws Exception {
-		ProtoInfo info = new ProtoInfo(prototype);
+		ProtoInfo info = new ProtoInfo(prototype, this);
 
 		// Setup the prototype storage
 		ClassWriter writer = PrototypeStorage.createStorage(prefix, info);
 		writer.visitEnd();
 
-		byte[] contents = writer.toByteArray();
-
-		if (verifySources) AsmUtils.validateClass(contents, this);
-		Class<?> klass = defineClass(prefix.replace('/', '.') + Constants.PROTOTYPE_STORAGE, contents);
+		Class<?> klass = defineClass(prefix.replace('/', '.') + Constants.PROTOTYPE_STORAGE, writer.toByteArray());
 		klass.getDeclaredMethod("setup", ProtoInfo.class).invoke(null, info);
 
 		return new FunctionWrapper(info, env);
 	}
 
-	public void include(JavaGen jg) {
-		unloaded.put(prefix.replace('/', '.') + jg.prototype.name, jg.bytecode);
-		if (verifySources) jg.validate(this);
+	public FunctionExecutor include(JavaGen jg) throws Exception {
+		Class<?> klass = defineClass(prefix.replace('/', '.') + jg.prototype.name, jg.bytecode);
+		return (FunctionExecutor) klass.getConstructor().newInstance();
 	}
 
-	@Override
-	public Class findClass(String className) throws ClassNotFoundException {
-		byte[] bytes = unloaded.get(className);
-		if (bytes != null) {
-			return defineClass(className, bytes);
+	public FunctionExecutor include(ProtoInfo info) {
+		try {
+			return include(new JavaGen(info, this, name));
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
 		}
-		return super.findClass(className);
 	}
 
 	protected Class<?> defineClass(String className, byte[] bytes) {
+		if (verifySources) {
+			AsmUtils.validateClass(bytes, this);
+			AsmUtils.dump(bytes);
+		}
 		return defineClass(className, bytes, 0, bytes.length);
 	}
 }

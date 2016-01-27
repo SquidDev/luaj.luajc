@@ -2,6 +2,7 @@ package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Print;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.compilation.JavaLoader;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.executors.ClosureExecutor;
 
@@ -22,6 +23,8 @@ public final class ProtoInfo {
 	 * Number of times this method has been called from a closure.
 	 */
 	public int calledClosure = 0;
+
+	public final JavaLoader loader;
 	//endregion
 
 	/**
@@ -66,12 +69,13 @@ public final class ProtoInfo {
 	public final UpvalueInfo[] upvalues;
 	//endregion
 
-	public ProtoInfo(Prototype p) {
-		this(p, "", null);
+	public ProtoInfo(Prototype p, JavaLoader loader) {
+		this(p, loader, "", null);
 	}
 
-	protected ProtoInfo(Prototype p, String name, UpvalueInfo[] u) {
+	protected ProtoInfo(Prototype p, JavaLoader loader, String name, UpvalueInfo[] u) {
 		this.name = name;
+		this.loader = loader;
 		prototype = p;
 		upvalues = u;
 		subprotos = p.p != null && p.p.length > 0 ? new ProtoInfo[p.p.length] : null;

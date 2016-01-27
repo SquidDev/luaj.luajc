@@ -27,38 +27,21 @@ import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.analysis.BasicBlock;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
-import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 public final class JavaGen {
 	public final byte[] bytecode;
 	public final ProtoInfo prototype;
 
-	protected boolean validated = false;
-
 	protected JavaGen(ProtoInfo pi, JavaLoader loader, String filename) {
-		String name = loader.prefix + pi.name;
 		prototype = pi;
 
 		// build this class
-		JavaBuilder builder = new JavaBuilder(pi, name, filename);
-		scanInstructions(pi, loader.prefix, builder);
+		JavaBuilder builder = new JavaBuilder(pi, loader.prefix, filename);
+		scanInstructions(pi, builder);
 		bytecode = builder.completeClass();
 	}
 
-	public void validate(ClassLoader loader) {
-		// Validating is slow, validate if we have to
-		if (validated) return;
-		validated = true;
-
-		// Validate at the end so other classes are generated
-		AsmUtils.validateClass(bytecode, loader);
-	}
-
-	private String closureName(String className, int subprotoindex) {
-		return className + "$" + subprotoindex;
-	}
-
-	private void scanInstructions(ProtoInfo pi, String className, JavaBuilder builder) {
+	private void scanInstructions(ProtoInfo pi, JavaBuilder builder) {
 		Prototype p = pi.prototype;
 		int vresultbase = -1;
 
@@ -114,7 +97,7 @@ public final class JavaGen {
 					case Lua.OP_NOT: /*	A B	R(A):= not R(B)				*/
 					case Lua.OP_LEN: /*	A B	R(A):= length of R(B)				*/
 						builder.loadLocal(pc, b);
-						builder.unaryop(o);
+						builder.unaryOp(o);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -169,7 +152,7 @@ public final class JavaGen {
 					case Lua.OP_POW: /*	A B C	R(A):= RK(B) ^ RK(C)				*/
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.binaryop(o);
+						builder.binaryOp(o);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -215,19 +198,19 @@ public final class JavaGen {
 					case Lua.OP_LE: /*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++  		*/
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.compareop(o);
+						builder.compareOp(o);
 						builder.addBranch((a != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						break;
 
 					case Lua.OP_TEST: /*	A C	if not (R(A) <=> C) then pc++			*/
 						builder.loadLocal(pc, a);
-						builder.toBoolean();
+						builder.visitToBoolean();
 						builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						break;
 
 					case Lua.OP_TESTSET: /*	A B C	if (R(B) <=> C) then R(A):= R(B) else pc++	*/
 						builder.loadLocal(pc, b);
-						builder.toBoolean();
+						builder.visitToBoolean();
 						builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						builder.loadLocal(pc, b);
 						builder.storeLocal(pc, a);
@@ -289,7 +272,7 @@ public final class JavaGen {
 								break;
 							case 0: // vararg result
 								vresultbase = a;
-								builder.storeVarresult();
+								builder.storeVarResult();
 								break;
 						}
 						break;
@@ -315,7 +298,7 @@ public final class JavaGen {
 								break;
 						}
 						builder.newTailcallVarargs();
-						builder.areturn();
+						builder.visitReturn();
 						break;
 
 					case Lua.OP_RETURN: /*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/
@@ -337,13 +320,13 @@ public final class JavaGen {
 									break;
 							}
 						}
-						builder.areturn();
+						builder.visitReturn();
 						break;
 
 					case Lua.OP_FORPREP: /*	A sBx	R(A)-=R(A+2): pc+=sBx				*/
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
-						builder.binaryop(Lua.OP_SUB);
+						builder.binaryOp(Lua.OP_SUB);
 						builder.storeLocal(pc, a);
 						builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx);
 						break;
@@ -351,7 +334,7 @@ public final class JavaGen {
 					case Lua.OP_FORLOOP: /*	A sBx	R(A)+=R(A+2): if R(A) <?= R(A+1) then { pc+=sBx: R(A+3)=R(A) }*/
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
-						builder.binaryop(Lua.OP_ADD);
+						builder.binaryOp(Lua.OP_ADD);
 						builder.dup();
 						builder.dup();
 						builder.storeLocal(pc, a);
@@ -375,14 +358,14 @@ public final class JavaGen {
 						builder.loadLocal(pc, a + 2);
 						builder.invoke(2); // varresult on stack
 						builder.dup();
-						builder.storeVarresult();
+						builder.storeVarResult();
 						builder.arg(1);
-						builder.isNil();
+						builder.visitIsNil();
 						builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 2);
 
 						// a[2] = a[3] = v[1], leave varargs on stack
 						builder.createUpvalues(pc, a + 3, c);
-						builder.loadVarresult();
+						builder.loadVarResult();
 						if (c >= 2) {
 							builder.dup();
 						}
@@ -421,22 +404,22 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_CLOSURE: /*	A Bx	R(A):= closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/ {
-						Prototype newp = p.p[bx];
-						String protoname = closureName(className, bx);
-						int nup = newp.nups;
-						builder.closureCreate(protoname);
+						ProtoInfo newp = pi.subprotos[bx];
+						int nup = newp.upvalues == null ? 0 : newp.upvalues.length;
+						builder.closureCreate(newp);
 						if (nup > 0) builder.dup();
 						builder.storeLocal(pc, a);
 
 						if (nup > 0) {
+							builder.upvaluesGet();
 							for (int up = 0; up < nup; ++up) {
 								if (up + 1 < nup) builder.dup();
 								ins = p.code[pc + up + 1];
 								b = Lua.GETARG_B(ins);
 								if ((ins & 4) != 0) {
-									builder.closureInitUpvalueFromUpvalue(protoname, up, b);
+									builder.initUpvalueFromUpvalue(up, b);
 								} else {
-									builder.closureInitUpvalueFromLocal(protoname, up, pc, b);
+									builder.initUpvalueFromLocal(up, pc, b);
 								}
 							}
 							pc += nup;
@@ -446,7 +429,7 @@ public final class JavaGen {
 					case Lua.OP_VARARG: /*	A B	R(A), R(A+1), ..., R(A+B-1) = vararg		*/
 						if (b == 0) {
 							builder.loadVarargs();
-							builder.storeVarresult();
+							builder.storeVarResult();
 							vresultbase = a;
 						} else {
 							for (int i = 1; i < b; ++a, ++i) {
@@ -462,12 +445,12 @@ public final class JavaGen {
 
 	private void loadVarargResults(JavaBuilder builder, int pc, int a, int vresultbase) {
 		if (vresultbase < a) {
-			builder.loadVarresult();
-			builder.subargs(a + 1 - vresultbase);
+			builder.loadVarResult();
+			builder.subArgs(a + 1 - vresultbase);
 		} else if (vresultbase == a) {
-			builder.loadVarresult();
+			builder.loadVarResult();
 		} else {
-			builder.newVarargsVarresult(pc, a, vresultbase - a);
+			builder.newVarargsVarResult(pc, a, vresultbase - a);
 		}
 	}
 

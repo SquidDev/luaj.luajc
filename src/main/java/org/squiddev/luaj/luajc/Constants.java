@@ -26,9 +26,9 @@ public final class Constants {
 	public static final String TYPE_UPVALUE = Type.getDescriptor(AbstractUpvalue.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
-	public static final String TYPE_PROTOTYPE = Type.getDescriptor(Prototype.class);
 	public static final String TYPE_PROTOINFO = Type.getDescriptor(ProtoInfo.class);
 	public static final String CLASS_PROTOINFO = Type.getInternalName(ProtoInfo.class);
+	public static final String CLASS_WRAPPER = Type.getInternalName(FunctionWrapper.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -60,7 +60,7 @@ public final class Constants {
 
 	// Manage super classes
 	public static final FunctionType[] SUPER_TYPES = new FunctionType[]{
-		new FunctionType(ArgExecutor0.class),
+		new FunctionType(ArgExecutor0.class, FunctionWrapper.class),
 		new FunctionType(ArgExecutor1.class, FunctionWrapper.class, LuaValue.class),
 		new FunctionType(ArgExecutor2.class, FunctionWrapper.class, LuaValue.class, LuaValue.class),
 		new FunctionType(ArgExecutor3.class, FunctionWrapper.class, LuaValue.class, LuaValue.class, LuaValue.class),
@@ -90,7 +90,6 @@ public final class Constants {
 
 	// Type conversion
 	public static final TinyMethod METHOD_VALUE_TO_BOOL = new TinyMethod(LuaValue.class, "toboolean");
-	public static final TinyMethod METHOD_BUFFER_TO_STR = new TinyMethod(Buffer.class, "tostring");
 	public static final TinyMethod METHOD_VALUE_TO_BUFFER = new TinyMethod(LuaValue.class, "buffer");
 	public static final TinyMethod METHOD_BUFFER_TO_VALUE = new TinyMethod(Buffer.class, "value");
 
@@ -122,7 +121,7 @@ public final class Constants {
 	public static final TinyMethod METHOD_VALUEOF_CHARARRAY = new TinyMethod(LuaString.class, "valueOf", char[].class);
 
 	// Misc
-	public static final TinyMethod METHOD_SETENV = new TinyMethod(LuaValue.class, "setfenv", LuaValue.class);
+	public static final TinyMethod METHOD_GETENV = new TinyMethod(FunctionWrapper.class, "getfenv");
 	public static final TinyMethod METHOD_TO_CHARARRAY = new TinyMethod(String.class, "toCharArray");
 	public static final TinyMethod METHOD_RAWSET = new TinyMethod(LuaValue.class, "rawset", int.class, LuaValue.class);
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);

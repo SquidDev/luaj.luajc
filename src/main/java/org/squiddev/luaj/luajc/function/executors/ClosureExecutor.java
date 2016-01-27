@@ -3,6 +3,7 @@ package org.squiddev.luaj.luajc.function.executors;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.luaj.vm2.Varargs;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 import org.squiddev.luaj.luajc.function.LuaVM;
@@ -14,10 +15,15 @@ import static org.luaj.vm2.LuaValue.*;
  */
 public final class ClosureExecutor extends FunctionExecutor {
 	public static final ClosureExecutor INSTANCE = new ClosureExecutor();
+	public static final int THRESHOLD = 0;
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function) {
-		function.info.calledClosure++;
+		if (++function.info.calledClosure > THRESHOLD) {
+			ProtoInfo info = function.info;
+			FunctionExecutor executor = info.executor = info.loader.include(info);
+			return executor.execute(function);
+		}
 		int size = function.prototype.maxstacksize;
 
 		LuaValue[] stack = new LuaValue[size];
@@ -28,6 +34,12 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg) {
+		if (++function.info.calledClosure > THRESHOLD) {
+			ProtoInfo info = function.info;
+			FunctionExecutor executor = info.executor = info.loader.include(info);
+			return executor.execute(function);
+		}
+
 		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
@@ -46,6 +58,12 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg1, LuaValue arg2) {
+		if (++function.info.calledClosure > THRESHOLD) {
+			ProtoInfo info = function.info;
+			FunctionExecutor executor = info.executor = info.loader.include(info);
+			return executor.execute(function);
+		}
+
 		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
@@ -68,6 +86,12 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg1, LuaValue arg2, LuaValue arg3) {
+		if (++function.info.calledClosure > THRESHOLD) {
+			ProtoInfo info = function.info;
+			FunctionExecutor executor = info.executor = info.loader.include(info);
+			return executor.execute(function);
+		}
+
 		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
@@ -95,6 +119,12 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final Varargs execute(FunctionWrapper function, Varargs varargs) {
+		if (++function.info.calledClosure > THRESHOLD) {
+			ProtoInfo info = function.info;
+			FunctionExecutor executor = info.executor = info.loader.include(info);
+			return executor.execute(function);
+		}
+
 		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
