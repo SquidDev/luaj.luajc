@@ -160,7 +160,7 @@ public final class JavaBuilder {
 		if (superclass == SUPERTYPE_VARARGS) {
 			for (slot = 0; slot < p.numparams; slot++) {
 				if (pi.params[slot].isReferenced) {
-					main.visitVarInsn(ALOAD, 1);
+					main.visitVarInsn(ALOAD, VARARGS_SLOT);
 					constantOpcode(main, slot + 1);
 					METHOD_VARARGS_ARG.inject(main, INVOKEVIRTUAL);
 					storeLocal(-1, slot);
@@ -168,22 +168,22 @@ public final class JavaBuilder {
 			}
 			boolean needsArg = ((p.is_vararg & Lua.VARARG_NEEDSARG) != 0);
 			if (needsArg) {
-				main.visitVarInsn(ALOAD, 1);
+				main.visitVarInsn(ALOAD, VARARGS_SLOT);
 				constantOpcode(main, p.numparams + 1);
 				METHOD_TABLEOF.inject(main, INVOKESTATIC);
 				storeLocal(-1, slot++);
 			} else if (p.numparams > 0) {
-				main.visitVarInsn(ALOAD, 1);
+				main.visitVarInsn(ALOAD, VARARGS_SLOT);
 				constantOpcode(main, p.numparams + 1);
 				METHOD_VARARGS_SUBARGS.inject(main, INVOKEVIRTUAL);
-				main.visitVarInsn(ASTORE, 1);
+				main.visitVarInsn(ASTORE, VARARGS_SLOT);
 			}
 		} else {
 			// fixed arg function between 0 and 3 arguments
 			for (slot = 0; slot < p.numparams; slot++) {
 				this.plainSlotVars.put(slot, slot + 1);
 				if (pi.isUpvalueCreate(-1, slot)) {
-					main.visitVarInsn(ALOAD, 1);
+					main.visitVarInsn(ALOAD, VARARGS_SLOT);
 					storeLocal(-1, slot);
 				}
 			}
@@ -353,7 +353,7 @@ public final class JavaBuilder {
 	}
 
 	public void loadVarargs() {
-		main.visitVarInsn(ALOAD, 1);
+		main.visitVarInsn(ALOAD, VARARGS_SLOT);
 	}
 
 	public void loadVarargs(int index) {
@@ -693,8 +693,14 @@ public final class JavaBuilder {
 		Label currentLabel = branchDestinations[pc];
 
 		main.visitLabel(currentLabel);
+		if (p.lineinfo != null) {
+			int line = p.lineinfo[pc];
+			if (pc == 0 || line != p.lineinfo[pc - 1]) {
+				main.visitLineNumber(line, currentLabel);
+			}
+		}
 
-		if (DebugLib.DEBUG_ENABLED) {
+		if (false && DebugLib.DEBUG_ENABLED) {
 			AsmUtils.constantOpcode(main, pc);
 			main.visitInsn(ACONST_NULL);
 			main.visitInsn(ICONST_M1);

@@ -11,7 +11,7 @@ import org.squiddev.luaj.luajc.function.FunctionWrapper;
 public abstract class ArgExecutorMany extends FunctionExecutor {
 	@Override
 	public LuaValue execute(FunctionWrapper function) {
-		return execute(function, LuaValue.NONE);
+		return execute(function, (Varargs) LuaValue.NONE).arg1();
 	}
 
 	@Override

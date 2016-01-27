@@ -37,7 +37,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 		if (++function.info.calledClosure > THRESHOLD) {
 			ProtoInfo info = function.info;
 			FunctionExecutor executor = info.executor = info.loader.include(info);
-			return executor.execute(function);
+			return executor.execute(function, arg);
 		}
 
 		function.info.calledClosure++;
@@ -61,7 +61,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 		if (++function.info.calledClosure > THRESHOLD) {
 			ProtoInfo info = function.info;
 			FunctionExecutor executor = info.executor = info.loader.include(info);
-			return executor.execute(function);
+			return executor.execute(function, arg1, arg2);
 		}
 
 		function.info.calledClosure++;
@@ -89,7 +89,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 		if (++function.info.calledClosure > THRESHOLD) {
 			ProtoInfo info = function.info;
 			FunctionExecutor executor = info.executor = info.loader.include(info);
-			return executor.execute(function);
+			return executor.execute(function, arg1, arg2, arg3);
 		}
 
 		function.info.calledClosure++;
@@ -122,7 +122,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 		if (++function.info.calledClosure > THRESHOLD) {
 			ProtoInfo info = function.info;
 			FunctionExecutor executor = info.executor = info.loader.include(info);
-			return executor.execute(function);
+			return executor.execute(function, varargs);
 		}
 
 		function.info.calledClosure++;

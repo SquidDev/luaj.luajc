@@ -150,4 +150,5 @@ public final class Constants {
 	// Super type class
 	public static final int SUPERTYPE_VARARGS_ID = 4;
 	public static final FunctionType SUPERTYPE_VARARGS = SUPER_TYPES[SUPERTYPE_VARARGS_ID];
+	public static final int VARARGS_SLOT = 2;
 }
