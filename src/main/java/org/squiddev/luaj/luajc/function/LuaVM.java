@@ -3,6 +3,7 @@ package org.squiddev.luaj.luajc.function;
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.DebugLib;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
 import org.squiddev.luaj.luajc.upvalue.ArrayUpvalue;
 import org.squiddev.luaj.luajc.upvalue.UpvalueFactory;
@@ -27,6 +28,7 @@ public final class LuaVM {
 		Prototype prototype = function.prototype;
 		int[] code = prototype.code;
 		LuaValue[] constants = prototype.k;
+		VarInfo[][] allVars = info.vars;
 
 		// Upvalues are only possible when closures create closures
 		AbstractUpvalue[] upvalues = function.upvalues;
@@ -50,6 +52,13 @@ public final class LuaVM {
 		// Push the method call
 		LuaThread.CallStack cs = LuaThread.onCall(function);
 
+		{
+			VarInfo[] vars = allVars[0];
+			for (int i = 0; i < prototype.maxstacksize; i++) {
+				vars[i].increment(stack[i]);
+			}
+		}
+
 		try {
 			while (true) {
 				if (DebugLib.DEBUG_ENABLED) {
@@ -57,20 +66,25 @@ public final class LuaVM {
 				}
 
 				// pull out instruction
-				int i = code[pc++];
-				int a = ((i >> 6) & 0xff);
+				VarInfo[] vars = allVars[pc];
+				int i = code[pc];
+				pc++;
+
+
+				int a = Lua.GETARG_A(i);
 
 				// process the op code
 				switch (i & 0x3f) {
 					case Lua.OP_MOVE: // A B R(A):= R(B)
-						stack[a] = stack[i >>> 23];
+						vars[a].increment(stack[a] = stack[i >>> 23]);
 						continue;
 
 					case Lua.OP_LOADK: // A Bx R(A):= Kst(Bx)
-						stack[a] = constants[i >>> 14];
+						vars[a].increment(stack[a] = constants[i >>> 14]);
 						continue;
 
 					case Lua.OP_LOADBOOL:// A B C R(A):= (Bool)B: if (C) pc++
+						vars[a].booleanCount++;
 						stack[a] = (i >>> 23 != 0) ? LuaValue.TRUE : LuaValue.FALSE;
 						if ((i & (0x1ff << 14)) != 0) {
 							pc++; /* skip next instruction (if C) */
@@ -79,22 +93,23 @@ public final class LuaVM {
 
 					case Lua.OP_LOADNIL: // A B R(A):= ...:= R(B):= nil
 						for (int b = i >>> 23; a <= b; ) {
+							vars[a].valueCount++;
 							stack[a++] = LuaValue.NIL;
 						}
 						continue;
 
 					case Lua.OP_GETUPVAL: // A B R(A):= UpValue[B]
-						stack[a] = upvalues[i >>> 23].getUpvalue();
+						vars[a].increment(stack[a] = upvalues[i >>> 23].getUpvalue());
 						continue;
 
 					case Lua.OP_GETGLOBAL: // A Bx R(A):= Gbl[Kst(Bx)]
-						stack[a] = function.getfenv().get(constants[i >>> 14]);
+						vars[a].increment(stack[a] = function.getfenv().get(constants[i >>> 14]));
 						continue;
 
 					case Lua.OP_GETTABLE: // A B C R(A):= R(B)[RK(C)]
 					{
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = stack[i >>> 23].get(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = stack[i >>> 23].get(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
@@ -109,94 +124,96 @@ public final class LuaVM {
 					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						stack[a].set((b > 0xff ? constants[b & 0x0ff] : stack[b]), c > 0xff ? constants[c & 0x0ff] : stack[c]);
 						continue;
 					}
 
 					case Lua.OP_NEWTABLE: // A B C R(A):= {} (size = B,C)
+						vars[a].valueCount++;
 						stack[a] = new LuaTable(i >>> 23, (i >> 14) & 0x1ff);
 						continue;
 
 					case Lua.OP_SELF: // A B C R(A+1):= R(B): R(A):= R(B)[RK(C)]
 					{
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						LuaValue table = stack[a + 1] = stack[i >>> 23];
-						stack[a] = table.get(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						vars[a + 1].increment(table);
+						vars[a].increment(stack[a] = table.get(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
 					case Lua.OP_ADD: // A B C R(A):= RK(B) + RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).add(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).add(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 					case Lua.OP_SUB: // A B C R(A):= RK(B) - RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).sub(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).sub(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
 					case Lua.OP_MUL: // A B C R(A):= RK(B) * RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).mul(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).mul(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
 					case Lua.OP_DIV: // A B C R(A):= RK(B) / RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).div(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).div(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
 					case Lua.OP_MOD: // A B C R(A):= RK(B) % RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).mod(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).mod(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
 					case Lua.OP_POW: // A B C R(A):= RK(B) ^ RK(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
-						stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).pow(c > 0xff ? constants[c & 0x0ff] : stack[c]);
+						int c = Lua.GETARG_C(i);
+						vars[a].increment(stack[a] = (b > 0xff ? constants[b & 0x0ff] : stack[b]).pow(c > 0xff ? constants[c & 0x0ff] : stack[c]));
 						continue;
 					}
 
 					case Lua.OP_UNM: // A B R(A):= -R(B)
-						stack[a] = stack[i >>> 23].neg();
+						vars[a].increment(stack[a] = stack[i >>> 23].neg());
 						continue;
 
 					case Lua.OP_NOT: // A B R(A):= not R(B)
-						stack[a] = stack[i >>> 23].not();
+						vars[a].increment(stack[a] = stack[i >>> 23].not());
 						continue;
 
 					case Lua.OP_LEN: // A B R(A):= length of R(B)
-						stack[a] = stack[i >>> 23].len();
+						vars[a].increment(stack[a] = stack[i >>> 23].len());
 						continue;
 
 					case Lua.OP_CONCAT: // A B C R(A):= R(B).. ... ..R(C)
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						if (c > b + 1) {
 							Buffer sb = stack[c].buffer();
 							while (--c >= b) {
 								sb = stack[c].concat(sb);
 							}
-							stack[a] = sb.value();
+							vars[a].increment(stack[a] = sb.value());
 						} else {
-							stack[a] = stack[c - 1].concat(stack[c]);
+							vars[a].increment(stack[a] = stack[c - 1].concat(stack[c]));
 						}
 					}
 					continue;
@@ -208,7 +225,7 @@ public final class LuaVM {
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						if ((b > 0xff ? constants[b & 0x0ff] : stack[b]).eq_b(c > 0xff ? constants[c & 0x0ff] : stack[c]) != (a != 0)) {
 							++pc;
 						}
@@ -218,7 +235,7 @@ public final class LuaVM {
 					case Lua.OP_LT: // A B C if ((RK(B) <  RK(C)) ~= A) then pc++
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						if ((b > 0xff ? constants[b & 0x0ff] : stack[b]).lt_b(c > 0xff ? constants[c & 0x0ff] : stack[c]) != (a != 0)) {
 							++pc;
 						}
@@ -228,7 +245,7 @@ public final class LuaVM {
 					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
 					{
 						int b = i >>> 23;
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						if ((b > 0xff ? constants[b & 0x0ff] : stack[b]).lteq_b(c > 0xff ? constants[c & 0x0ff] : stack[c]) != (a != 0)) {
 							++pc;
 						}
@@ -249,7 +266,7 @@ public final class LuaVM {
 						if (test.toboolean() != ((i & (0x1ff << 14)) != 0)) {
 							++pc;
 						} else {
-							stack[a] = test; // TODO: should be sBx?
+							vars[a].increment(stack[a] = test);
 						}
 						continue;
 					}
@@ -277,27 +294,28 @@ public final class LuaVM {
 								stack[a].call(stack[a + 1], stack[a + 2], stack[a + 3]);
 								continue;
 							case (1 << Lua.POS_B) | (2 << Lua.POS_C):
-								stack[a] = stack[a].call();
+								vars[a].increment(stack[a] = stack[a].call());
 								continue;
 							case (2 << Lua.POS_B) | (2 << Lua.POS_C):
-								stack[a] = stack[a].call(stack[a + 1]);
+								vars[a].increment(stack[a] = stack[a].call(stack[a + 1]));
 								continue;
 							case (3 << Lua.POS_B) | (2 << Lua.POS_C):
-								stack[a] = stack[a].call(stack[a + 1], stack[a + 2]);
+								vars[a].increment(stack[a] = stack[a].call(stack[a + 1], stack[a + 2]));
 								continue;
 							case (4 << Lua.POS_B) | (2 << Lua.POS_C):
-								stack[a] = stack[a].call(stack[a + 1], stack[a + 2], stack[a + 3]);
+								vars[a].increment(stack[a] = stack[a].call(stack[a + 1], stack[a + 2], stack[a + 3]));
 								continue;
 							default: {
 								int b = i >>> 23;
-								int c = (i >> 14) & 0x1ff;
+								int c = Lua.GETARG_C(i);
 								v = b > 0 ?
 									varargsOf(stack, a + 1, b - 1) : // exact arg count
 									varargsOf(stack, a + 1, top - v.narg() - (a + 1), v); // from prev top
 								v = stack[a].invoke(v);
 								if (c > 0) {
 									while (--c > 0) {
-										stack[a + c - 1] = v.arg(c);
+										int indx = a + c - 1;
+										vars[indx].increment(stack[indx] = v.arg(c));
 									}
 									v = NONE; // TODO: necessary?
 								} else {
@@ -347,8 +365,8 @@ public final class LuaVM {
 						LuaValue step = stack[a + 2];
 						LuaValue idx = step.add(stack[a]);
 						if (step.gt_b(0) ? idx.lteq_b(limit) : idx.gteq_b(limit)) {
-							stack[a] = idx;
-							stack[a + 3] = idx;
+							vars[a].increment(stack[a] = idx);
+							vars[a + 3].increment(stack[a + 3] = idx);
 							pc += (i >>> 14) - 0x1ffff;
 						}
 					}
@@ -359,9 +377,9 @@ public final class LuaVM {
 						LuaValue init = stack[a].checknumber("'for' initial value must be a number");
 						LuaValue limit = stack[a + 1].checknumber("'for' limit must be a number");
 						LuaValue step = stack[a + 2].checknumber("'for' step must be a number");
-						stack[a] = init.sub(step);
-						stack[a + 1] = limit;
-						stack[a + 2] = step;
+						vars[a].increment(stack[a] = init.sub(step));
+						vars[a + 1].increment(stack[a + 1] = limit);
+						vars[a + 2].increment(stack[a + 2] = step);
 						pc += (i >>> 14) - 0x1ffff;
 					}
 					continue;
@@ -379,8 +397,11 @@ public final class LuaVM {
 							++pc;
 						} else {
 							stack[a + 2] = stack[a + 3] = result;
-							for (int c = (i >> 14) & 0x1ff; c > 1; --c) {
-								stack[a + 2 + c] = v.arg(c);
+							vars[a + 2].increment(result);
+							vars[a + 3].increment(result);
+							for (int c = Lua.GETARG_C(i); c > 1; --c) {
+								int idx = a + 2 + c;
+								vars[idx].increment(stack[idx] = v.arg(c));
 							}
 							v = NONE; // todo: necessary?
 						}
@@ -389,7 +410,7 @@ public final class LuaVM {
 
 					case Lua.OP_SETLIST: // A B CR(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B
 					{
-						int c = (i >> 14) & 0x1ff;
+						int c = Lua.GETARG_C(i);
 						if (c == 0) {
 							c = code[pc++];
 						}
@@ -429,9 +450,10 @@ public final class LuaVM {
 						ProtoInfo newp = info.subprotos[i >>> 14];
 						int nups = newp.prototype.nups;
 						FunctionWrapper newcl = new FunctionWrapper(newp, function.getfenv());
+						vars[a].valueCount++;
 						for (int j = 0; j < nups; ++j) {
 							i = code[pc++];
-							//b = B(i);
+
 							int b = i >>> 23;
 							if ((i & 4) != 0) {
 								newcl.upvalues[j] = upvalues[b];
@@ -455,7 +477,8 @@ public final class LuaVM {
 							v = varargs;
 						} else {
 							for (int j = 1; j < b; ++j) {
-								stack[a + j - 1] = varargs.arg(j);
+								int idx = a + j - 1;
+								vars[idx].increment(stack[idx] = varargs.arg(j));
 							}
 						}
 					}
