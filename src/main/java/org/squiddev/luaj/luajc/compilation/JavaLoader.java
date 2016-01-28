@@ -12,12 +12,6 @@ import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 public class JavaLoader extends ClassLoader {
 	/**
-	 * Validate the sources on load
-	 * This helps debug but will slow down compilation massively
-	 */
-	public boolean verifySources = true;
-
-	/**
 	 * Options for compilation
 	 */
 	public final CompileOptions options;
@@ -71,7 +65,7 @@ public class JavaLoader extends ClassLoader {
 	}
 
 	protected Class<?> defineClass(String className, byte[] bytes) {
-		if (verifySources) AsmUtils.validateClass(bytes, this);
+		if (options.verify) AsmUtils.validateClass(bytes, this);
 		return defineClass(className, bytes, 0, bytes.length);
 	}
 }

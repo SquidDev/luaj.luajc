@@ -38,7 +38,7 @@ public class CompileOnlyTest {
 
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(Constants.PREFIX, 0));
+		LuaJC.install(new CompileOptions(Constants.PREFIX, 0, true));
 
 		LoadState.load(getClass().getResourceAsStream("/org/squiddev/luaj/luajc/compileonly/" + name + ".lua"), name + ".lua", globals);
 	}

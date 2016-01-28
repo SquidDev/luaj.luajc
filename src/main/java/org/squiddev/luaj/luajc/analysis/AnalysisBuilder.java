@@ -29,26 +29,25 @@ public final class AnalysisBuilder {
 		Set<VarInfo> phis = new HashSet<VarInfo>();
 
 		// Create storage for variables
-		int n = info.prototype.code.length;
-		int m = info.prototype.maxstacksize;
-		VarInfo[][] v = info.vars;
-		for (int i = 0; i < v.length; i++) {
-			v[i] = new VarInfo[n];
+		int nStack = info.prototype.maxstacksize;
+		VarInfo[][] vars = info.vars;
+		for (int i = 0; i < vars.length; i++) {
+			vars[i] = new VarInfo[nStack];
 		}
 
 		// Process instructions
 		for (BasicBlock b0 : info.blockList) {
 			// input from previous blocks
 			int nPrevious = b0.prev != null ? b0.prev.length : 0;
-			for (int slot = 0; slot < m; slot++) {
+			for (int slot = 0; slot < nStack; slot++) {
 				VarInfo var = null;
 				if (nPrevious == 0) {
 					var = info.params[slot];
 				} else if (nPrevious == 1) {
-					var = v[slot][b0.prev[0].pc1];
+					var = vars[b0.prev[0].pc1][slot];
 				} else {
 					for (int i = 0; i < nPrevious; i++) {
-						if (v[slot][b0.prev[i].pc1] == VarInfo.INVALID) {
+						if (vars[b0.prev[i].pc1][slot] == VarInfo.INVALID) {
 							var = VarInfo.INVALID;
 							break;
 						}
@@ -58,19 +57,19 @@ public final class AnalysisBuilder {
 					var = VarInfo.phi(info, slot, b0.pc0);
 					phis.add(var);
 				}
-				v[slot][b0.pc0] = var;
+				vars[b0.pc0][slot] = var;
 			}
 
 			// Process instructions for this basic block
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
 				// Propagate previous values except at block boundaries
-				if (pc > b0.pc0) {
-					propagateVars(pc - 1, pc);
-				}
+				if (pc > b0.pc0) propagateVars(pc - 1, pc);
 
 				int a, b, c, nups;
 				int ins = info.prototype.code[pc];
 				int op = Lua.GET_OPCODE(ins);
+
+				VarInfo[] pcVar = vars[pc];
 
 				// Account for assignments, references and invalidation
 				switch (op) {
@@ -80,7 +79,7 @@ public final class AnalysisBuilder {
 					case Lua.OP_GETGLOBAL: // A Bx    R(A) := Gbl[Kst(Bx)]
 					case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
 						a = Lua.GETARG_A(ins);
-						v[a][pc] = new VarInfo(a, pc);
+						pcVar[a] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_MOVE:    // A B R(A) := R(B)
@@ -90,8 +89,8 @@ public final class AnalysisBuilder {
 					case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A) := R(B) else pc++
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
-						v[b][pc].isReferenced = true;
-						v[a][pc] = new VarInfo(a, pc);
+						pcVar[b].isReferenced = true;
+						pcVar[a] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_ADD: // A B C R(A) := RK(B) + RK(C)
@@ -103,18 +102,18 @@ public final class AnalysisBuilder {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
-						v[a][pc] = new VarInfo(a, pc);
+						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
+						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[a] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[a][pc].isReferenced = true;
-						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
+						pcVar[a].isReferenced = true;
+						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
+						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						break;
 
 					case Lua.OP_CONCAT: // A B C R(A) := R(B) .. ... .. R(C)
@@ -122,51 +121,51 @@ public final class AnalysisBuilder {
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
 						for (; b <= c; b++) {
-							v[b][pc].isReferenced = true;
+							pcVar[b].isReferenced = true;
 						}
-						v[a][pc] = new VarInfo(a, pc);
+						pcVar[a] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
 						a = Lua.GETARG_A(ins);
-						v[a + 2][pc].isReferenced = true;
-						v[a][pc] = new VarInfo(a, pc);
+						pcVar[a + 2].isReferenced = true;
+						pcVar[a] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_GETTABLE: // A B C R(A) := R(B)[RK(C)]
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[b][pc].isReferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
-						v[a][pc] = new VarInfo(a, pc);
+						pcVar[b].isReferenced = true;
+						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[a] = new VarInfo(a, pc);
 						break;
 
 					case Lua.OP_SELF: // A B C R(A+1) := R(B); R(A) := R(B)[RK(C)]
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[b][pc].isReferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
-						v[a][pc] = new VarInfo(a, pc);
-						v[a + 1][pc] = new VarInfo(a + 1, pc);
+						pcVar[b].isReferenced = true;
+						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[a] = new VarInfo(a, pc);
+						pcVar[a + 1] = new VarInfo(a + 1, pc);
 						break;
 
 					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
 						a = Lua.GETARG_A(ins);
-						v[a][pc].isReferenced = true;
-						v[a + 2][pc].isReferenced = true;
-						v[a][pc] = new VarInfo(a, pc);
-						v[a][pc].isReferenced = true;
-						v[a + 1][pc].isReferenced = true;
-						v[a + 3][pc] = new VarInfo(a + 3, pc);
+						pcVar[a].isReferenced = true;
+						pcVar[a + 2].isReferenced = true;
+						pcVar[a] = new VarInfo(a, pc);
+						pcVar[a].isReferenced = true;
+						pcVar[a + 1].isReferenced = true;
+						pcVar[a + 3] = new VarInfo(a + 3, pc);
 						break;
 
 					case Lua.OP_LOADNIL: // A B R(A) ... R(B) := nil
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (; a <= b; a++) {
-							v[a][pc] = new VarInfo(a, pc);
+							pcVar[a] = new VarInfo(a, pc);
 						}
 						break;
 
@@ -174,11 +173,11 @@ public final class AnalysisBuilder {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (int j = 1; j < b; j++, a++) {
-							v[a][pc] = new VarInfo(a, pc);
+							pcVar[a] = new VarInfo(a, pc);
 						}
 						if (b == 0) {
-							for (; a < m; a++) {
-								v[a][pc] = VarInfo.INVALID;
+							for (; a < nStack; a++) {
+								pcVar[a] = VarInfo.INVALID;
 							}
 						}
 						break;
@@ -187,25 +186,25 @@ public final class AnalysisBuilder {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						v[a][pc].isReferenced = true;
-						v[a][pc].isReferenced = true;
+						pcVar[a].isReferenced = true;
+						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
-							v[a + i][pc].isReferenced = true;
+							pcVar[a + i].isReferenced = true;
 						}
 						for (int j = 0; j <= c - 2; j++, a++) {
-							v[a][pc] = new VarInfo(a, pc);
+							pcVar[a] = new VarInfo(a, pc);
 						}
-						for (; a < m; a++) {
-							v[a][pc] = VarInfo.INVALID;
+						for (; a < nStack; a++) {
+							pcVar[a] = VarInfo.INVALID;
 						}
 						break;
 
 					case Lua.OP_TAILCALL: // A B C return R(A)(R(A+1), ... ,R(A+B-1))
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
-						v[a][pc].isReferenced = true;
+						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
-							v[a + i][pc].isReferenced = true;
+							pcVar[a + i].isReferenced = true;
 						}
 						break;
 
@@ -213,21 +212,21 @@ public final class AnalysisBuilder {
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
 						for (int i = 0; i <= b - 2; i++) {
-							v[a + i][pc].isReferenced = true;
+							pcVar[a + i].isReferenced = true;
 						}
 						break;
 
 					case Lua.OP_TFORLOOP: // A C R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2)); if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++
 						a = Lua.GETARG_A(ins);
 						c = Lua.GETARG_C(ins);
-						v[a++][pc].isReferenced = true;
-						v[a++][pc].isReferenced = true;
-						v[a++][pc].isReferenced = true;
+						pcVar[a++].isReferenced = true;
+						pcVar[a++].isReferenced = true;
+						pcVar[a++].isReferenced = true;
 						for (int j = 0; j < c; j++, a++) {
-							v[a][pc] = new VarInfo(a, pc);
+							pcVar[a] = new VarInfo(a, pc);
 						}
-						for (; a < m; a++) {
-							v[a][pc] = VarInfo.INVALID;
+						for (; a < nStack; a++) {
+							pcVar[a] = VarInfo.INVALID;
 						}
 						break;
 
@@ -239,10 +238,10 @@ public final class AnalysisBuilder {
 							int i = info.prototype.code[pc + k];
 							if ((i & 4) == 0) {
 								b = Lua.GETARG_B(i);
-								v[b][pc].isReferenced = true;
+								pcVar[b].isReferenced = true;
 							}
 						}
-						v[a][pc] = new VarInfo(a, pc);
+						pcVar[a] = new VarInfo(a, pc);
 						for (int k = 1; k <= nups; k++) {
 							propagateVars(pc, pc + k);
 						}
@@ -250,17 +249,17 @@ public final class AnalysisBuilder {
 						break;
 					case Lua.OP_CLOSE: // A close all variables in the stack up to (>=) R(A)
 						a = Lua.GETARG_A(ins);
-						for (; a < m; a++) {
-							v[a][pc] = VarInfo.INVALID;
+						for (; a < nStack; a++) {
+							pcVar[a] = VarInfo.INVALID;
 						}
 						break;
 
 					case Lua.OP_SETLIST: // A B C R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B
 						a = Lua.GETARG_A(ins);
 						b = Lua.GETARG_B(ins);
-						v[a][pc].isReferenced = true;
+						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b; i++) {
-							v[a + i][pc].isReferenced = true;
+							pcVar[a + i].isReferenced = true;
 						}
 						break;
 
@@ -268,7 +267,7 @@ public final class AnalysisBuilder {
 					case Lua.OP_SETUPVAL:  // A B  UpValue[B]:= R(A)
 					case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
 						a = Lua.GETARG_A(ins);
-						v[a][pc].isReferenced = true;
+						pcVar[a].isReferenced = true;
 						break;
 
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
@@ -276,8 +275,8 @@ public final class AnalysisBuilder {
 					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
 						b = Lua.GETARG_B(ins);
 						c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) v[b][pc].isReferenced = true;
-						if (!Lua.ISK(c)) v[c][pc].isReferenced = true;
+						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
+						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						break;
 
 					case Lua.OP_JMP: // sBx pc+=sBx
@@ -300,8 +299,9 @@ public final class AnalysisBuilder {
 	private void replaceTrivialPhiVariables(Set<VarInfo> phis) {
 		// Replace trivial Phi variables
 		for (BasicBlock b0 : info.blockList) {
+			VarInfo[] vars = info.vars[b0.pc0];
 			for (int slot = 0; slot < info.prototype.maxstacksize; slot++) {
-				VarInfo oldVar = info.vars[slot][b0.pc0];
+				VarInfo oldVar = vars[slot];
 				VarInfo newVar = oldVar.resolvePhiVariableValues();
 				if (newVar != null) {
 					substituteVariable(slot, oldVar, newVar);
@@ -326,11 +326,11 @@ public final class AnalysisBuilder {
 	 * @param newVar The new variable
 	 */
 	private void substituteVariable(int slot, VarInfo oldVar, VarInfo newVar) {
-		VarInfo[] vars = info.vars[slot];
-		int length = vars.length;
-		for (int i = 0; i < length; i++) {
-			if (vars[i] == oldVar) {
-				vars[i] = newVar;
+		VarInfo[][] vars = info.vars;
+		int length = info.prototype.code.length;
+		for (int pc = 0; pc < length; pc++) {
+			if (vars[pc][slot] == oldVar) {
+				vars[pc][slot] = newVar;
 			}
 		}
 	}
@@ -343,9 +343,8 @@ public final class AnalysisBuilder {
 	 */
 	private void propagateVars(int pcFrom, int pcTo) {
 		VarInfo[][] vars = info.vars;
-		for (int j = 0, m = vars.length; j < m; j++) {
-			vars[j][pcTo] = vars[j][pcFrom];
-		}
+		VarInfo[] to = vars[pcTo], from = vars[pcFrom];
+		System.arraycopy(from, 0, to, 0, to.length);
 	}
 
 	/**
@@ -405,7 +404,8 @@ public final class AnalysisBuilder {
 		}
 		UpvalueInfo u = new UpvalueInfo(info, pc, slot);
 		for (int i = 0, n = info.prototype.code.length; i < n; ++i) {
-			if (info.vars[slot][i] != null && info.vars[slot][i].upvalue == u) {
+			VarInfo thisInfo = info.vars[i][slot];
+			if (thisInfo != null && thisInfo.upvalue == u) {
 				openUpvalues[slot][i] = u;
 			}
 		}

@@ -13,7 +13,7 @@ import java.io.PrintStream;
  * Prototype information for static single-assignment analysis
  */
 public final class ProtoInfo {
-	// Region execution
+	//region Execution
 	/**
 	 * The executor to currently use
 	 */
@@ -24,8 +24,16 @@ public final class ProtoInfo {
 	 */
 	public int calledClosure = 0;
 
+	/**
+	 * Threshold before compiling.
+	 *
+	 * @see org.squiddev.luaj.luajc.CompileOptions#compileThreshold
+	 */
 	public final int threshold;
 
+	/**
+	 * The loader for this prototype
+	 */
 	public final JavaLoader loader;
 	//endregion
 
@@ -89,7 +97,7 @@ public final class ProtoInfo {
 
 		// params are inputs to first block
 		params = new VarInfo[p.maxstacksize];
-		vars = new VarInfo[prototype.maxstacksize][];
+		vars = new VarInfo[prototype.code.length][];
 
 		AnalysisBuilder builder = new AnalysisBuilder(this);
 		builder.fillArguments();
@@ -126,8 +134,9 @@ public final class ProtoInfo {
 
 				// opcode
 				sb.append("\t\t");
+				VarInfo[] vars = this.vars[pc];
 				for (int j = 0; j < prototype.maxstacksize; j++) {
-					VarInfo v = vars[j][pc];
+					VarInfo v = vars[j];
 					String u = (v == null ? "" : v.upvalue != null ? !v.upvalue.readWrite ? "[C] " : (v.allocUpvalue && v.pc == pc ? "[*] " : "[]  ") : "    ");
 					String s = v == null ? "null   " : String.valueOf(v);
 					sb.append(s).append(u);
@@ -156,8 +165,9 @@ public final class ProtoInfo {
 	}
 
 	private void appendOpenUps(StringBuilder sb, int pc) {
-		for (int j = 0; j < prototype.maxstacksize; j++) {
-			VarInfo v = (pc < 0 ? params[j] : vars[j][pc]);
+		VarInfo[] vars = (pc < 0 ? params : this.vars[pc]);
+		for (int i = 0; i < prototype.maxstacksize; i++) {
+			VarInfo v = vars[i];
 			if (v != null && v.pc == pc && v.allocUpvalue) {
 				sb.append("\t\topen: ").append(v.upvalue).append("\n");
 			}
@@ -172,7 +182,7 @@ public final class ProtoInfo {
 	 * @return If an upvalue is assigned to at this point
 	 */
 	public boolean isUpvalueAssign(int pc, int slot) {
-		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
+		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
 		return v != null && v.upvalue != null && v.upvalue.readWrite;
 	}
 
@@ -184,7 +194,7 @@ public final class ProtoInfo {
 	 * @return If this is where the upvalue is created
 	 */
 	public boolean isUpvalueCreate(int pc, int slot) {
-		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
+		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
 		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
 	}
 
@@ -197,10 +207,10 @@ public final class ProtoInfo {
 	 */
 	public boolean isUpvalueRefer(int pc, int slot) {
 		// special case when both refer and assign in same instruction
-		if (pc > 0 && vars[slot][pc] != null && vars[slot][pc].pc == pc && vars[slot][pc - 1] != null) {
+		if (pc > 0 && vars[pc][slot] != null && vars[pc][slot].pc == pc && vars[pc - 1][slot] != null) {
 			pc -= 1;
 		}
-		VarInfo v = pc < 0 ? params[slot] : vars[slot][pc];
+		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
 		return v != null && v.upvalue != null && v.upvalue.readWrite;
 	}
 }

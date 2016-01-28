@@ -613,7 +613,7 @@ public final class JavaBuilder {
 	}
 
 	public void initUpvalueFromLocal(int newUpvalue, int pc, int srcSlot) {
-		boolean isReadWrite = pi.vars[srcSlot][pc].upvalue.readWrite;
+		boolean isReadWrite = pi.vars[pc][srcSlot].upvalue.readWrite;
 		int index = findSlotIndex(srcSlot, isReadWrite);
 
 		AsmUtils.constantOpcode(main, newUpvalue);

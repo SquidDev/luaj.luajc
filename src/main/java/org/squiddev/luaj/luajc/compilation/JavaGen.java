@@ -58,7 +58,7 @@ public final class JavaGen {
 					for (int slot = 0; slot < p.maxstacksize; slot++) {
 						int up_pc = b0.pc0;
 						boolean c = pi.isUpvalueCreate(up_pc, slot);
-						if (c && pi.vars[slot][up_pc].isPhiVar()) {
+						if (c && pi.vars[up_pc][slot].isPhiVar()) {
 							builder.convertToUpvalue(up_pc, slot);
 						}
 					}

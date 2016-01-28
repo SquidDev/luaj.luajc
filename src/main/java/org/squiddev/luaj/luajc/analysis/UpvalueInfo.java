@@ -37,7 +37,7 @@ public final class UpvalueInfo {
 		this.pi = pi;
 		this.slot = slot;
 
-		includeVarAndPosteriorVars(pi.vars[slot][pc]);
+		includeVarAndPosteriorVars(pi.vars[pc][slot]);
 		for (VarInfo var : vars) {
 			var.allocUpvalue = testIsAllocUpvalue(var);
 		}
@@ -100,13 +100,13 @@ public final class UpvalueInfo {
 		boolean loopDetected = false;
 		for (BasicBlock b : pi.blockList) {
 			// Get the variable definition at the last instruction in this block
-			VarInfo var = pi.vars[slot][b.pc1];
+			VarInfo var = pi.vars[b.pc1][slot];
 
 			if (var == prior) {
 				// If it hasn't changed then scan next instructions
 				if (b.next != null) {
 					for (BasicBlock b1 : b.next) {
-						VarInfo v1 = pi.vars[slot][b1.pc0];
+						VarInfo v1 = pi.vars[b1.pc0][slot];
 						if (v1 != prior) {
 							loopDetected |= includeVarAndPosteriorVars(v1);
 							if (v1.isPhiVar()) {
@@ -119,8 +119,8 @@ public final class UpvalueInfo {
 				// Otherwise it may have changed within this block. Scan in reverse to find the correct instruction.
 				for (int pc = b.pc1 - 1; pc >= b.pc0; pc--) {
 					// This is the same, so the next instruction must be a modification
-					if (pi.vars[slot][pc] == prior) {
-						loopDetected |= includeVarAndPosteriorVars(pi.vars[slot][pc + 1]);
+					if (pi.vars[pc][slot] == prior) {
+						loopDetected |= includeVarAndPosteriorVars(pi.vars[pc + 1][slot]);
 						break;
 					}
 				}
@@ -132,13 +132,13 @@ public final class UpvalueInfo {
 	private void includePriorVarsIgnoreLoops(VarInfo poster) {
 		for (BasicBlock b : pi.blockList) {
 			// Get the variable definition at the first instruction in this block
-			VarInfo var = pi.vars[slot][b.pc0];
+			VarInfo var = pi.vars[b.pc0][slot];
 
 			// If it hasn't changed
 			if (var == poster) {
 				if (b.prev != null) {
 					for (BasicBlock b0 : b.prev) {
-						VarInfo v0 = pi.vars[slot][b0.pc1];
+						VarInfo v0 = pi.vars[b0.pc1][slot];
 						if (v0 != poster) {
 							includeVarAndPosteriorVars(v0);
 						}
@@ -146,8 +146,8 @@ public final class UpvalueInfo {
 				}
 			} else {
 				for (int pc = b.pc0 + 1; pc <= b.pc1; pc++) {
-					if (pi.vars[slot][pc] == poster) {
-						includeVarAndPosteriorVars(pi.vars[slot][pc - 1]);
+					if (pi.vars[pc][slot] == poster) {
+						includeVarAndPosteriorVars(pi.vars[pc - 1][slot]);
 						break;
 					}
 				}
@@ -180,7 +180,7 @@ public final class UpvalueInfo {
 		}
 		BasicBlock block = pi.blocks[var.pc];
 		if (var.pc > block.pc0) {
-			return pi.vars[slot][var.pc - 1].upvalue != this;
+			return pi.vars[var.pc - 1][slot].upvalue != this;
 		}
 		if (block.prev == null) {
 			var = pi.params[slot];
@@ -189,7 +189,7 @@ public final class UpvalueInfo {
 			}
 		} else {
 			for (int i = 0, n = block.prev.length; i < n; i++) {
-				var = pi.vars[slot][block.prev[i].pc1];
+				var = pi.vars[block.prev[i].pc1][slot];
 				if (var != null && var.upvalue != this) {
 					return true;
 				}

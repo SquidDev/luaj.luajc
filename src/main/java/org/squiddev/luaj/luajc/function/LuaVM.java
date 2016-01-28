@@ -436,7 +436,7 @@ public final class LuaVM {
 					{
 						int b = i >>> 23;
 						if (b == 0) {
-							top = a + (b = varargs.narg());
+							top = a + varargs.narg();
 							v = varargs;
 						} else {
 							for (int j = 1; j < b; ++j) {
@@ -461,5 +461,4 @@ public final class LuaVM {
 			}
 		}
 	}
-
 }

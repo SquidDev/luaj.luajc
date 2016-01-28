@@ -185,7 +185,7 @@ public class VarInfo {
 			for (int i = 0, n = b.prev != null ? b.prev.length : 0; i < n; i++) {
 				BasicBlock bp = b.prev[i];
 				if (visitedBlocks.add(bp)) {
-					VarInfo v = pi.vars[slot][bp.pc1];
+					VarInfo v = pi.vars[bp.pc1][slot];
 					if (v != null) {
 						v.collectUniqueValues(visitedBlocks, vars);
 					}
