@@ -181,7 +181,7 @@ public class DebugLib extends VarArgFunction {
 	// Each thread will get a DebugState attached to it by the debug library
 	// which will track function calls, hook functions, etc.
 	//
-	final static class DebugInfo {
+	public final static class DebugInfo {
 		LuaValue func;
 		LuaClosure closure;
 		Prototype proto;
@@ -273,7 +273,7 @@ public class DebugLib extends VarArgFunction {
 	/**
 	 * DebugState is associated with a Thread
 	 */
-	static class DebugState {
+	public static final class DebugState {
 		private final LuaThread thread;
 		private int debugCalls = 0;
 		private final DebugInfo[] debugInfo = new DebugInfo[LuaThread.MAX_CALLSTACK + 1];
@@ -344,7 +344,7 @@ public class DebugLib extends VarArgFunction {
 			this.hookfunc = func;
 		}
 
-		DebugInfo getDebugInfo() {
+		public DebugInfo getDebugInfo() {
 			try {
 				return debugInfo[debugCalls - 1];
 			} catch (Throwable t) {
@@ -373,12 +373,12 @@ public class DebugLib extends VarArgFunction {
 		}
 	}
 
-	static DebugState getDebugState(LuaThread thread) {
+	public static DebugState getDebugState(LuaThread thread) {
 		Object state = thread.debugState;
 		return (DebugState) (state == null ? thread.debugState = new DebugState(thread) : state);
 	}
 
-	static DebugState getDebugState() {
+	public static DebugState getDebugState() {
 		return getDebugState(LuaThread.getRunning());
 	}
 
@@ -434,10 +434,21 @@ public class DebugLib extends VarArgFunction {
 	 */
 	public static void debugBytecode(int pc, Varargs extras, int top) {
 		DebugState ds = getDebugState();
-		if (ds.inhook) {
-			return;
-		}
-		DebugInfo di = ds.getDebugInfo();
+		if (ds.inhook) return;
+
+		debugBytecode(ds, ds.getDebugInfo(), pc, extras, top);
+	}
+
+	/**
+	 * Called by Closures on bytecode execution
+	 *
+	 * @param ds     Debug state
+	 * @param di     Debug info
+	 * @param pc     The current program counter
+	 * @param extras Extra arguments to pass to {@link DebugInfo#bytecode}
+	 * @param top    No clue.
+	 */
+	public static void debugBytecode(DebugState ds, DebugInfo di, int pc, Varargs extras, int top) {
 		if (TRACE) Print.printState(di.closure, pc, di.stack, top, di.varargs);
 		di.bytecode(pc, extras, top);
 		if (ds.hookcount > 0) {

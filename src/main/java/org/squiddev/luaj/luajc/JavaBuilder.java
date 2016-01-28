@@ -23,10 +23,7 @@
  */
 package org.squiddev.luaj.luajc;
 
-import org.luaj.vm2.Lua;
-import org.luaj.vm2.LuaString;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Prototype;
+import org.luaj.vm2.*;
 import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -83,14 +80,25 @@ public final class JavaBuilder {
 	protected final Label[] branchDestinations;
 
 	/**
-	 * The slot for the LuaThread.CallStack
+	 * The slot for the {@link LuaThread.CallStack}
 	 */
 	protected int callStackSlot = -1;
+
+	/**
+	 * Slot for {@link org.luaj.vm2.lib.DebugLib.DebugInfo}
+	 */
+	protected final int debugInfoSlot;
+
+	/**
+	 * Slots for {@link org.luaj.vm2.lib.DebugLib.DebugState}
+	 */
+	protected final int debugStateSlot;
 
 	/**
 	 * The current program counter
 	 */
 	protected int pc = 0;
+	protected int line = 0;
 
 	public JavaBuilder(ProtoInfo pi, String className, String filename) {
 		this.pi = pi;
@@ -161,6 +169,20 @@ public final class JavaBuilder {
 			main.visitVarInsn(ALOAD, 0);
 			METHOD_ONCALL.inject(main);
 			main.visitVarInsn(ASTORE, callStackSlot);
+
+			if (DebugLib.DEBUG_ENABLED) {
+				debugStateSlot = ++maxLocals;
+				debugInfoSlot = ++maxLocals;
+
+				METHOD_GETSTATE.inject(main);
+				main.visitInsn(DUP);
+				main.visitVarInsn(ASTORE, debugStateSlot);
+				METHOD_GETINFO.inject(main);
+				main.visitVarInsn(ASTORE, debugInfoSlot);
+			} else {
+				debugStateSlot = -1;
+				debugInfoSlot = -1;
+			}
 		}
 
 		// Initialize the values in the slots
@@ -763,12 +785,21 @@ public final class JavaBuilder {
 	 * @param pc The current Lua program counter
 	 */
 	public void onStartOfLuaInstruction(int pc) {
-		this.pc = pc;
 		Label currentLabel = branchDestinations[pc];
 
 		main.visitLabel(currentLabel);
 
+		if (p.lineinfo != null && p.lineinfo.length > pc) {
+			int newLine = p.lineinfo[pc];
+			if (newLine != line) {
+				line = newLine;
+				main.visitLineNumber(line, currentLabel);
+			}
+		}
+
 		if (DebugLib.DEBUG_ENABLED) {
+			main.visitVarInsn(ALOAD, debugStateSlot);
+			main.visitVarInsn(ALOAD, debugInfoSlot);
 			AsmUtils.constantOpcode(main, pc);
 			main.visitInsn(ACONST_NULL);
 			main.visitInsn(ICONST_M1);
