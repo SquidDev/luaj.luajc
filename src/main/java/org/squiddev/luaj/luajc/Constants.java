@@ -29,6 +29,8 @@ public final class Constants {
 	public static final String TYPE_PROTOINFO = Type.getDescriptor(ProtoInfo.class);
 	public static final String CLASS_PROTOINFO = Type.getInternalName(ProtoInfo.class);
 	public static final String CLASS_WRAPPER = Type.getInternalName(FunctionWrapper.class);
+	public static final String CLASS_DEBUG_STATE = Type.getInternalName(DebugLib.DebugState.class);
+	public static final String CLASS_DEBUG_INFO = Type.getInternalName(DebugLib.DebugInfo.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -139,7 +141,9 @@ public final class Constants {
 	// Stack tracing
 	public static final TinyMethod METHOD_ONCALL = new TinyMethod(LuaThread.class, "onCall", LuaFunction.class);
 	public static final TinyMethod METHOD_ONRETURN = new TinyMethod(LuaThread.CallStack.class, "onReturn");
-	public static final TinyMethod METHOD_BYTECODE = new TinyMethod(DebugLib.class, "debugBytecode", int.class, Varargs.class, int.class);
+	public static final TinyMethod METHOD_BYTECODE = new TinyMethod(DebugLib.class, "debugBytecode", DebugLib.DebugState.class, DebugLib.DebugInfo.class, int.class, Varargs.class, int.class);
+	public static final TinyMethod METHOD_GETSTATE = new TinyMethod(DebugLib.class, "getDebugState");
+	public static final TinyMethod METHOD_GETINFO = new TinyMethod(DebugLib.DebugState.class, "getDebugInfo");
 
 	// Variable naming
 	public static final String PREFIX_CONSTANT = "constant";

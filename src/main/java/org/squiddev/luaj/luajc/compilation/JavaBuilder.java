@@ -65,14 +65,26 @@ public final class JavaBuilder {
 	private final Label[] branchDestinations;
 
 	/**
-	 * The slot for the LuaThread.CallStack
+	 * The slot for the {@link LuaThread.CallStack}
 	 */
 	private final int callStackSlot;
+
+	/**
+	 * Slot for {@link org.luaj.vm2.lib.DebugLib.DebugInfo}
+	 */
+	private final int debugInfoSlot;
+
+	/**
+	 * Slots for {@link org.luaj.vm2.lib.DebugLib.DebugState}
+	 */
+	private final int debugStateSlot;
 
 	/**
 	 * Slot the upvalues live in
 	 */
 	private final int upvaluesSlot;
+
+	private int line = 0;
 
 	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
@@ -127,6 +139,20 @@ public final class JavaBuilder {
 		main.visitVarInsn(ALOAD, 1);
 		METHOD_ONCALL.inject(main);
 		main.visitVarInsn(ASTORE, callStackSlot);
+
+		if (DebugLib.DEBUG_ENABLED) {
+			debugStateSlot = ++maxLocals;
+			debugInfoSlot = ++maxLocals;
+
+			METHOD_GETSTATE.inject(main);
+			main.visitInsn(DUP);
+			main.visitVarInsn(ASTORE, debugStateSlot);
+			METHOD_GETINFO.inject(main);
+			main.visitVarInsn(ASTORE, debugInfoSlot);
+		} else {
+			debugStateSlot = -1;
+			debugInfoSlot = -1;
+		}
 
 		if (p.nups > 0) {
 			upvaluesSlot = ++maxLocals;
@@ -693,14 +719,18 @@ public final class JavaBuilder {
 		Label currentLabel = branchDestinations[pc];
 
 		main.visitLabel(currentLabel);
+
 		if (p.lineinfo != null && p.lineinfo.length > pc) {
-			int line = p.lineinfo[pc];
-			if (pc == 0 || line != p.lineinfo[pc - 1]) {
+			int newLine = p.lineinfo[pc];
+			if (newLine != line) {
+				line = newLine;
 				main.visitLineNumber(line, currentLabel);
 			}
 		}
 
 		if (DebugLib.DEBUG_ENABLED) {
+			main.visitVarInsn(ALOAD, debugStateSlot);
+			main.visitVarInsn(ALOAD, debugInfoSlot);
 			AsmUtils.constantOpcode(main, pc);
 			main.visitInsn(ACONST_NULL);
 			main.visitInsn(ICONST_M1);

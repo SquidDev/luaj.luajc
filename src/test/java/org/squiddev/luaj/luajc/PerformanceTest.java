@@ -1,6 +1,5 @@
 package org.squiddev.luaj.luajc;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.compiler.LuaC;
@@ -8,7 +7,6 @@ import org.luaj.vm2.compiler.LuaC;
 /**
  * Test the performance between LuaC and LuaJC
  */
-@Ignore
 public class PerformanceTest {
 	@Test
 	public void testLuaC() {
