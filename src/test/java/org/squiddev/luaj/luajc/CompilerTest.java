@@ -47,6 +47,7 @@ public class CompilerTest {
 			{"LoadBytecode"},
 			{"DebugInfo"},
 			{"SetFEnv"},
+			{"TailRecursion"},
 
 			{"fragment/ForLoopParamUpvalues"},
 			{"fragment/VarVarargsUseArg"},

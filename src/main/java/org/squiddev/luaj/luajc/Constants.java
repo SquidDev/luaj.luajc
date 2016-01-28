@@ -20,8 +20,6 @@ public final class Constants {
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
 	public static final String TYPE_PROTOTYPE = Type.getDescriptor(Prototype.class);
 	public static final String CLASS_UPVALUE = Type.getInternalName(Reference.class);
-	public static final String CLASS_DEBUG_STATE = Type.getInternalName(DebugLib.DebugState.class);
-	public static final String CLASS_DEBUG_INFO = Type.getInternalName(DebugLib.DebugInfo.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -59,7 +57,7 @@ public final class Constants {
 		new FunctionType(OneArgFunction.class, "call", LuaValue.class),
 		new FunctionType(TwoArgFunction.class, "call", LuaValue.class, LuaValue.class),
 		new FunctionType(ThreeArgFunction.class, "call", LuaValue.class, LuaValue.class, LuaValue.class),
-		new FunctionType(VarArgFunction.class, "invoke", Varargs.class),
+		new FunctionType(VarArgFunction.class, "onInvoke", Varargs.class),
 	};
 
 	// Table functions
@@ -102,7 +100,6 @@ public final class Constants {
 
 	// Tail call
 	public static final TinyMethod METHOD_TAILCALL = new TinyMethod(LuaValue.class, "tailcallOf", LuaValue.class, Varargs.class);
-	public static final TinyMethod METHOD_TAILCALL_EVAL = new TinyMethod(Varargs.class, "eval");
 
 	// Invoke (because that is different to call?) Well, it is but really silly
 	public static final TinyMethod METHOD_INVOKE_VAR = new TinyMethod(LuaValue.class, "invoke", Varargs.class);

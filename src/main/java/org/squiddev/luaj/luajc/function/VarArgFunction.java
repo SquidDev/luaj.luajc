@@ -78,5 +78,10 @@ public abstract class VarArgFunction extends LuaCompiledFunction {
 	}
 
 	@Override
-	public abstract Varargs invoke(Varargs args);
+	public Varargs invoke(Varargs args) {
+		return onInvoke(args).eval();
+	}
+
+	@Override
+	public abstract Varargs onInvoke(Varargs args);
 }

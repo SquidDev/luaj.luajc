@@ -627,7 +627,6 @@ public final class JavaBuilder {
 
 	public void newTailcallVarargs() {
 		METHOD_TAILCALL.inject(main);
-		METHOD_TAILCALL_EVAL.inject(main);
 	}
 
 	public void invoke(int nargs) {
