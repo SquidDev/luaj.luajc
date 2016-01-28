@@ -5,7 +5,6 @@ import org.luaj.vm2.lib.DebugLib;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
 import org.squiddev.luaj.luajc.upvalue.ArrayUpvalue;
-import org.squiddev.luaj.luajc.upvalue.ProxyUpvalue;
 
 import static org.luaj.vm2.LuaValue.NONE;
 import static org.luaj.vm2.LuaValue.varargsOf;
@@ -424,9 +423,15 @@ public final class LuaVM {
 							i = code[pc++];
 							//b = B(i);
 							int b = i >>> 23;
-							newcl.upvalues[j] = (i & 4) != 0 ?
-								upvalues[b] :
-								openups[b] != null ? openups[b] : (openups[b] = new ProxyUpvalue(new ArrayUpvalue(stack, b)));
+							if ((i & 4) != 0) {
+								newcl.upvalues[j] = upvalues[b];
+							} else {
+								AbstractUpvalue upvalue = openups[b];
+								if (upvalue == null) {
+									upvalue = openups[b] = new ArrayUpvalue(stack, b);
+								}
+								newcl.upvalues[j] = upvalue;
+							}
 						}
 						stack[a] = newcl;
 					}

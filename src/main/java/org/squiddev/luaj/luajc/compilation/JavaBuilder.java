@@ -309,7 +309,10 @@ public final class JavaBuilder {
 				// <className>.emptyUpvalue but I need to check that). The we duplicate the object, so it remains on the stack
 				// and store it
 				METHOD_NEW_UPVALUE_EMPTY.inject(main);
-				METHOD_NEW_UPVALUE_PROXY.inject(main);
+
+				// We should only proxy when we need to switch back into interpreted mode
+				// and this upvalue will be mutated again
+				// METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitInsn(DUP);
 				main.visitVarInsn(ASTORE, index);
 			} else {

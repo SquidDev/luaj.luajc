@@ -65,7 +65,6 @@ public final class AnalysisBuilder {
 				// Propagate previous values except at block boundaries
 				if (pc > b0.pc0) propagateVars(pc - 1, pc);
 
-				int a, b, c, nups;
 				int ins = info.prototype.code[pc];
 				int op = Lua.GET_OPCODE(ins);
 
@@ -78,20 +77,24 @@ public final class AnalysisBuilder {
 					case Lua.OP_GETUPVAL:  // A B     R(A) := UpValue[B]
 					case Lua.OP_GETGLOBAL: // A Bx    R(A) := Gbl[Kst(Bx)]
 					case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
-						a = Lua.GETARG_A(ins);
+					{
+						int a = Lua.GETARG_A(ins);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
+					}
 
 					case Lua.OP_MOVE:    // A B R(A) := R(B)
 					case Lua.OP_UNM:     // A B R(A) := -R(B)
 					case Lua.OP_NOT:     // A B R(A) := not R(B)
 					case Lua.OP_LEN:     // A B R(A) := length of R(B)
 					case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A) := R(B) else pc++
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
 						pcVar[b].isReferenced = true;
 						pcVar[a] = new VarInfo(a, pc);
 						break;
+					}
 
 					case Lua.OP_ADD: // A B C R(A) := RK(B) + RK(C)
 					case Lua.OP_SUB: // A B C R(A) := RK(B) - RK(C)
@@ -99,60 +102,73 @@ public final class AnalysisBuilder {
 					case Lua.OP_DIV: // A B C R(A) := RK(B) / RK(C)
 					case Lua.OP_MOD: // A B C R(A) := RK(B) % RK(C)
 					case Lua.OP_POW: // A B C R(A) := RK(B) ^ RK(C)
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
 						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						pcVar[a] = new VarInfo(a, pc);
 						break;
+					}
 
 					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						pcVar[a].isReferenced = true;
 						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
 						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						break;
+					}
 
 					case Lua.OP_CONCAT: // A B C R(A) := R(B) .. ... .. R(C)
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						for (; b <= c; b++) {
 							pcVar[b].isReferenced = true;
 						}
 						pcVar[a] = new VarInfo(a, pc);
 						break;
+					}
 
 					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
-						a = Lua.GETARG_A(ins);
+					{
+						int a = Lua.GETARG_A(ins);
 						pcVar[a + 2].isReferenced = true;
 						pcVar[a] = new VarInfo(a, pc);
 						break;
+					}
 
 					case Lua.OP_GETTABLE: // A B C R(A) := R(B)[RK(C)]
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						pcVar[b].isReferenced = true;
 						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						pcVar[a] = new VarInfo(a, pc);
 						break;
+					}
 
 					case Lua.OP_SELF: // A B C R(A+1) := R(B); R(A) := R(B)[RK(C)]
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						pcVar[b].isReferenced = true;
 						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						pcVar[a] = new VarInfo(a, pc);
 						pcVar[a + 1] = new VarInfo(a + 1, pc);
 						break;
+					}
 
 					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
-						a = Lua.GETARG_A(ins);
+					{
+						int a = Lua.GETARG_A(ins);
 						pcVar[a].isReferenced = true;
 						pcVar[a + 2].isReferenced = true;
 						pcVar[a] = new VarInfo(a, pc);
@@ -160,18 +176,22 @@ public final class AnalysisBuilder {
 						pcVar[a + 1].isReferenced = true;
 						pcVar[a + 3] = new VarInfo(a + 3, pc);
 						break;
+					}
 
 					case Lua.OP_LOADNIL: // A B R(A) ... R(B) := nil
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
 						for (; a <= b; a++) {
 							pcVar[a] = new VarInfo(a, pc);
 						}
 						break;
+					}
 
 					case Lua.OP_VARARG: // A B R(A), R(A+1), ..., R(A+B-1) = vararg
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
 						for (int j = 1; j < b; j++, a++) {
 							pcVar[a] = new VarInfo(a, pc);
 						}
@@ -181,11 +201,13 @@ public final class AnalysisBuilder {
 							}
 						}
 						break;
+					}
 
 					case Lua.OP_CALL: // A B C R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1))
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						pcVar[a].isReferenced = true;
 						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
@@ -198,27 +220,33 @@ public final class AnalysisBuilder {
 							pcVar[a] = VarInfo.INVALID;
 						}
 						break;
+					}
 
 					case Lua.OP_TAILCALL: // A B C return R(A)(R(A+1), ... ,R(A+B-1))
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
 						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
 							pcVar[a + i].isReferenced = true;
 						}
 						break;
+					}
 
 					case Lua.OP_RETURN: // A B return R(A), ... ,R(A+B-2)
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
 						for (int i = 0; i <= b - 2; i++) {
 							pcVar[a + i].isReferenced = true;
 						}
 						break;
+					}
 
 					case Lua.OP_TFORLOOP: // A C R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2)); if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++
-						a = Lua.GETARG_A(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int c = Lua.GETARG_C(ins);
 						pcVar[a++].isReferenced = true;
 						pcVar[a++].isReferenced = true;
 						pcVar[a++].isReferenced = true;
@@ -229,11 +257,13 @@ public final class AnalysisBuilder {
 							pcVar[a] = VarInfo.INVALID;
 						}
 						break;
+					}
 
 					case Lua.OP_CLOSURE: // A Bx R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_Bx(ins);
-						nups = info.prototype.p[b].nups;
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_Bx(ins);
+						int nups = info.prototype.p[b].nups;
 						for (int k = 1; k <= nups; ++k) {
 							int i = info.prototype.code[pc + k];
 							if ((i & 4) == 0) {
@@ -247,37 +277,45 @@ public final class AnalysisBuilder {
 						}
 						pc += nups;
 						break;
+					}
 					case Lua.OP_CLOSE: // A close all variables in the stack up to (>=) R(A)
-						a = Lua.GETARG_A(ins);
+					{
+						int a = Lua.GETARG_A(ins);
 						for (; a < nStack; a++) {
 							pcVar[a] = VarInfo.INVALID;
 						}
 						break;
+					}
 
 					case Lua.OP_SETLIST: // A B C R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B
-						a = Lua.GETARG_A(ins);
-						b = Lua.GETARG_B(ins);
+					{
+						int a = Lua.GETARG_A(ins);
+						int b = Lua.GETARG_B(ins);
 						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b; i++) {
 							pcVar[a + i].isReferenced = true;
 						}
 						break;
+					}
 
 					case Lua.OP_SETGLOBAL: // A Bx Gbl[Kst(Bx)]:= R(A)
 					case Lua.OP_SETUPVAL:  // A B  UpValue[B]:= R(A)
 					case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
-						a = Lua.GETARG_A(ins);
+					{
+						int a = Lua.GETARG_A(ins);
 						pcVar[a].isReferenced = true;
 						break;
-
+					}
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
 					case Lua.OP_LT: // A B C if ((RK(B) <  RK(C)) ~= A) then pc++
 					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
-						b = Lua.GETARG_B(ins);
-						c = Lua.GETARG_C(ins);
+					{
+						int b = Lua.GETARG_B(ins);
+						int c = Lua.GETARG_C(ins);
 						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
 						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
 						break;
+					}
 
 					case Lua.OP_JMP: // sBx pc+=sBx
 						break;

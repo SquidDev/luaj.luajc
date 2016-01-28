@@ -1,5 +1,7 @@
 package org.squiddev.luaj.luajc.analysis;
 
+import org.luaj.vm2.LuaValue;
+
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -35,6 +37,11 @@ public class VarInfo {
 	public static VarInfo phi(final ProtoInfo pi, final int slot, final int pc) {
 		return new PhiVarInfo(pi, slot, pc);
 	}
+
+	// Counts for value tracking
+	public int booleanCount = 0;
+	public int numberCount = 0;
+	public int valueCount = 0;
 
 	/**
 	 * The slot this variable exists in
@@ -100,6 +107,20 @@ public class VarInfo {
 	 */
 	public boolean isPhiVar() {
 		return false;
+	}
+
+	public final void increment(LuaValue value) {
+		switch (value.type()) {
+			case LuaValue.TBOOLEAN:
+				booleanCount++;
+				break;
+			case LuaValue.TNUMBER:
+				numberCount++;
+				break;
+			default:
+				valueCount++;
+				break;
+		}
 	}
 
 	/**
