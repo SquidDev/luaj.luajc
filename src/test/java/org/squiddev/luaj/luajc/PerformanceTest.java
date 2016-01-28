@@ -12,7 +12,7 @@ public class PerformanceTest {
 	public void testLuaC() {
 		LuaTable globals = PerformanceRunner.getGlobals();
 		LuaC.install();
-		PerformanceRunner.testRun("LuaJC", globals, false);
+		PerformanceRunner.testRun("LuaC", globals, false);
 	}
 
 	@Test

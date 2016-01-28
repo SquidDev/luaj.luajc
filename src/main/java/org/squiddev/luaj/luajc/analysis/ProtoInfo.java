@@ -24,6 +24,8 @@ public final class ProtoInfo {
 	 */
 	public int calledClosure = 0;
 
+	public final int threshold;
+
 	public final JavaLoader loader;
 	//endregion
 
@@ -77,6 +79,7 @@ public final class ProtoInfo {
 		this.name = name;
 		this.loader = loader;
 		prototype = p;
+		threshold = loader.options.compileThreshold;
 		upvalues = u;
 		subprotos = p.p != null && p.p.length > 0 ? new ProtoInfo[p.p.length] : null;
 
@@ -92,6 +95,10 @@ public final class ProtoInfo {
 		builder.fillArguments();
 		builder.findVariables();
 		builder.findUpvalues();
+
+		if (loader.options.compileThreshold <= 0) {
+			executor = loader.include(this);
+		}
 	}
 
 	public String toString() {

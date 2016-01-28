@@ -36,7 +36,7 @@ public final class JavaGen {
 		prototype = pi;
 
 		// build this class
-		JavaBuilder builder = new JavaBuilder(pi, loader.prefix, filename);
+		JavaBuilder builder = new JavaBuilder(pi, loader.options.prefix + loader.name, filename);
 		scanInstructions(pi, builder);
 		bytecode = builder.completeClass();
 	}

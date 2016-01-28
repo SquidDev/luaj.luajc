@@ -123,7 +123,7 @@ public class CompilerTest {
 	 */
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install();
+		LuaJC.install(new CompileOptions(Constants.PREFIX, 1));
 		run();
 	}
 

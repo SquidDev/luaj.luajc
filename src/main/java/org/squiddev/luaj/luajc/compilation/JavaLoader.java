@@ -3,14 +3,12 @@ package org.squiddev.luaj.luajc.compilation;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.objectweb.asm.ClassWriter;
+import org.squiddev.luaj.luajc.CompileOptions;
 import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class JavaLoader extends ClassLoader {
 	/**
@@ -20,28 +18,27 @@ public class JavaLoader extends ClassLoader {
 	public boolean verifySources = true;
 
 	/**
-	 * The prefix for all classes
+	 * Options for compilation
 	 */
-	public final String prefix;
+	public final CompileOptions options;
 
 	/**
 	 * The filename to load with
 	 */
+	public final String filename;
+
 	public final String name;
 
-	/**
-	 * Lookup of classes that haven't been loaded yet
-	 */
-	private final Map<String, byte[]> unloaded = new HashMap<String, byte[]>();
-
-	public JavaLoader(String prefix, String name) {
-		this.prefix = prefix;
+	public JavaLoader(CompileOptions options, String name, String filename) {
+		this.options = options;
+		this.filename = filename;
 		this.name = name;
 	}
 
-	public JavaLoader(ClassLoader parent, String prefix, String name) {
+	public JavaLoader(ClassLoader parent, CompileOptions options, String name, String filename) {
 		super(parent);
-		this.prefix = prefix;
+		this.options = options;
+		this.filename = filename;
 		this.name = name;
 	}
 
@@ -49,23 +46,23 @@ public class JavaLoader extends ClassLoader {
 		ProtoInfo info = new ProtoInfo(prototype, this);
 
 		// Setup the prototype storage
-		ClassWriter writer = PrototypeStorage.createStorage(prefix, info);
+		ClassWriter writer = PrototypeStorage.createStorage(options.prefix + name, info);
 		writer.visitEnd();
 
-		Class<?> klass = defineClass(prefix.replace('/', '.') + Constants.PROTOTYPE_STORAGE, writer.toByteArray());
+		Class<?> klass = defineClass(options.dotPrefix + name.replace('/', '.') + Constants.PROTOTYPE_STORAGE, writer.toByteArray());
 		klass.getDeclaredMethod("setup", ProtoInfo.class).invoke(null, info);
 
 		return new FunctionWrapper(info, env);
 	}
 
 	public FunctionExecutor include(JavaGen jg) throws Exception {
-		Class<?> klass = defineClass(prefix.replace('/', '.') + jg.prototype.name, jg.bytecode);
+		Class<?> klass = defineClass(options.dotPrefix + name.replace('/', '.') + jg.prototype.name, jg.bytecode);
 		return (FunctionExecutor) klass.getConstructor().newInstance();
 	}
 
 	public FunctionExecutor include(ProtoInfo info) {
 		try {
-			return include(new JavaGen(info, this, name));
+			return include(new JavaGen(info, this, filename));
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {

@@ -15,12 +15,11 @@ import static org.luaj.vm2.LuaValue.*;
  */
 public final class ClosureExecutor extends FunctionExecutor {
 	public static final ClosureExecutor INSTANCE = new ClosureExecutor();
-	public static final int THRESHOLD = 0;
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function) {
-		if (++function.info.calledClosure > THRESHOLD) {
-			ProtoInfo info = function.info;
+		ProtoInfo info = function.info;
+		if (++info.calledClosure >= info.threshold) {
 			FunctionExecutor executor = info.executor = info.loader.include(info);
 			return executor.execute(function);
 		}
@@ -34,8 +33,8 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg) {
-		if (++function.info.calledClosure > THRESHOLD) {
-			ProtoInfo info = function.info;
+		ProtoInfo info = function.info;
+		if (++info.calledClosure >= info.threshold) {
 			FunctionExecutor executor = info.executor = info.loader.include(info);
 			return executor.execute(function, arg);
 		}
@@ -58,8 +57,8 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg1, LuaValue arg2) {
-		if (++function.info.calledClosure > THRESHOLD) {
-			ProtoInfo info = function.info;
+		ProtoInfo info = function.info;
+		if (++info.calledClosure >= info.threshold) {
 			FunctionExecutor executor = info.executor = info.loader.include(info);
 			return executor.execute(function, arg1, arg2);
 		}
@@ -86,8 +85,8 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg1, LuaValue arg2, LuaValue arg3) {
-		if (++function.info.calledClosure > THRESHOLD) {
-			ProtoInfo info = function.info;
+		ProtoInfo info = function.info;
+		if (++info.calledClosure >= info.threshold) {
 			FunctionExecutor executor = info.executor = info.loader.include(info);
 			return executor.execute(function, arg1, arg2, arg3);
 		}
@@ -119,8 +118,8 @@ public final class ClosureExecutor extends FunctionExecutor {
 
 	@Override
 	public final Varargs execute(FunctionWrapper function, Varargs varargs) {
-		if (++function.info.calledClosure > THRESHOLD) {
-			ProtoInfo info = function.info;
+		ProtoInfo info = function.info;
+		if (++info.calledClosure >= info.threshold) {
 			FunctionExecutor executor = info.executor = info.loader.include(info);
 			return executor.execute(function, varargs);
 		}
