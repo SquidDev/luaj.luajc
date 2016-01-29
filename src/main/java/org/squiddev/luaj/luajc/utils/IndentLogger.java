@@ -52,7 +52,9 @@ public final class IndentLogger extends PrintWriter {
 		try {
 			if (empty) {
 				empty = false;
-				for (int i = 0; i < indent; i++) out.write('\t');
+				for (int i = 0; i < indent; i++) {
+					out.write('\t');
+				}
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);

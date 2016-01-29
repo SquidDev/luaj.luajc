@@ -86,9 +86,7 @@ public final class LuaVM {
 
 		try {
 			while (true) {
-				if (DebugLib.DEBUG_ENABLED) {
-					DebugLib.debugBytecode(debugState, debugInfo, pc, v, top);
-				}
+				if (DebugLib.DEBUG_ENABLED) DebugLib.debugBytecode(debugState, debugInfo, pc, v, top);
 
 				// pull out instruction
 				VarInfo[] vars = allVars[pc];

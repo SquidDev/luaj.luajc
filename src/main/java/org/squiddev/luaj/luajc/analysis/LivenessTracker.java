@@ -56,7 +56,9 @@ public final class LivenessTracker {
 
 	private void addSuccessors(BasicBlock block, Set<BasicBlock> successors) {
 		if (successors.add(block) && block.next != null) {
-			for (BasicBlock next : block.next) addSuccessors(next, successors);
+			for (BasicBlock next : block.next) {
+				addSuccessors(next, successors);
+			}
 		}
 	}
 

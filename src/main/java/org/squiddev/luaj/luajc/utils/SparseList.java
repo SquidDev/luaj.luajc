@@ -11,7 +11,9 @@ public class SparseList<T> extends ArrayList<T> {
 		int size = size();
 		if (size <= index) {
 			ensureCapacity(index + 1);
-			for (int i = size(); i < index + 1; i++) add(null);
+			for (int i = size(); i < index + 1; i++) {
+				add(null);
+			}
 		}
 
 		return super.set(index, value);
