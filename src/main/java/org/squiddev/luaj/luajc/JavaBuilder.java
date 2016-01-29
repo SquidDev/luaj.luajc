@@ -251,7 +251,7 @@ public final class JavaBuilder {
 			for (slot = 0; slot < p.numparams; slot++) {
 				this.plainSlotVars.put(slot, slot + 1);
 				if (pi.isUpvalueCreate(-1, slot)) {
-					main.visitVarInsn(ALOAD, 1);
+					main.visitVarInsn(ALOAD, slot + 1);
 					storeLocal(-1, slot);
 				}
 			}
