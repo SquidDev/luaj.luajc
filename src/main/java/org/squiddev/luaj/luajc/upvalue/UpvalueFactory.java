@@ -46,4 +46,9 @@ public final class UpvalueFactory {
 	public static ProxyUpvalue proxy(AbstractUpvalue upvalue) {
 		return new ProxyUpvalue(upvalue);
 	}
+
+	public static AbstractUpvalue redirectTo(AbstractUpvalue upvalue, LuaValue[] values, int index) {
+		((ProxyUpvalue) upvalue).upvalue = new ArrayUpvalue(values, index);
+		return upvalue;
+	}
 }

@@ -25,6 +25,7 @@
 package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.LuaValue;
+import org.squiddev.luaj.luajc.utils.IntArray;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -94,6 +95,11 @@ public class VarInfo {
 	 */
 	public boolean isReferenced;
 
+	/**
+	 * List of instructions that reference this
+	 */
+	public final IntArray references = new IntArray();
+
 	public VarInfo(int slot, int pc) {
 		this.slot = slot;
 		this.pc = pc;
@@ -145,6 +151,11 @@ public class VarInfo {
 				valueCount++;
 				break;
 		}
+	}
+
+	public final void reference(int pc) {
+		isReferenced = true;
+		references.add(pc);
 	}
 
 	/**
@@ -205,12 +216,14 @@ public class VarInfo {
 			if (n == 1) {
 				VarInfo v = it.next();
 				v.isReferenced |= isReferenced;
+				v.references.add(references);
 				return v;
 			}
 			values = new VarInfo[n];
 			for (int i = 0; i < n; i++) {
-				values[i] = it.next();
-				values[i].isReferenced |= isReferenced;
+				VarInfo v = values[i] = it.next();
+				v.isReferenced |= isReferenced;
+				v.references.add(references);
 			}
 			return null;
 		}

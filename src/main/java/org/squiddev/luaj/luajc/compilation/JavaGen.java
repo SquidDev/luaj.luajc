@@ -133,15 +133,15 @@ public final class JavaGen {
 
 					case Lua.OP_GETTABLE: // A B C R(A):= R(B)[RK(C)]
 						builder.loadLocal(pc, b);
-						loadLocalOrConstant(p, builder, pc, c);
+						builder.loadLocalOrConstant(pc, c);
 						builder.getTable();
 						builder.storeLocal(pc, a);
 						break;
 
 					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
 						builder.loadLocal(pc, a);
-						loadLocalOrConstant(p, builder, pc, b);
-						loadLocalOrConstant(p, builder, pc, c);
+						builder.loadLocalOrConstant(pc, b);
+						builder.loadLocalOrConstant(pc, c);
 						builder.setTable();
 						break;
 
@@ -151,8 +151,8 @@ public final class JavaGen {
 					case Lua.OP_DIV: // A B C R(A):= RK(B) / RK(C)
 					case Lua.OP_MOD: // A B C R(A):= RK(B) % RK(C)
 					case Lua.OP_POW: // A B C R(A):= RK(B) ^ RK(C)
-						loadLocalOrConstant(p, builder, pc, b);
-						loadLocalOrConstant(p, builder, pc, c);
+						builder.loadLocalOrConstant(pc, b);
+						builder.loadLocalOrConstant(pc, c);
 						builder.binaryOp(o);
 						builder.storeLocal(pc, a);
 						break;
@@ -161,7 +161,7 @@ public final class JavaGen {
 						builder.loadLocal(pc, b);
 						builder.dup();
 						builder.storeLocal(pc, a + 1);
-						loadLocalOrConstant(p, builder, pc, c);
+						builder.loadLocalOrConstant(pc, c);
 						builder.getTable();
 						builder.storeLocal(pc, a);
 						break;
@@ -197,8 +197,8 @@ public final class JavaGen {
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
 					case Lua.OP_LT: // A B C if ((RK(B) <  RK(C)) ~= A) then pc++
 					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
-						loadLocalOrConstant(p, builder, pc, b);
-						loadLocalOrConstant(p, builder, pc, c);
+						builder.loadLocalOrConstant(pc, b);
+						builder.loadLocalOrConstant(pc, c);
 						builder.compareOp(o);
 						builder.addBranch((a != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						break;
@@ -237,7 +237,7 @@ public final class JavaGen {
 								narg = -1;
 								break;
 							case -1: // prev vararg result
-								loadVarargResults(builder, pc, a + 1, vresultbase);
+								builder.loadVarargResults(pc, a + 1, vresultbase);
 								narg = -1;
 								break;
 						}
@@ -293,7 +293,7 @@ public final class JavaGen {
 								builder.newVarargs(pc, a + 1, b - 1);
 								break;
 							case 0: // prev vararg result
-								loadVarargResults(builder, pc, a + 1, vresultbase);
+								builder.loadVarargResults(pc, a + 1, vresultbase);
 								break;
 						}
 						builder.newTailcallVarargs();
@@ -306,7 +306,7 @@ public final class JavaGen {
 						} else {
 							switch (b) {
 								case 0:
-									loadVarargResults(builder, pc, a, vresultbase);
+									builder.loadVarargResults(pc, a, vresultbase);
 									break;
 								case 1:
 									builder.loadNone();
@@ -443,25 +443,6 @@ public final class JavaGen {
 						break;
 				}
 			}
-		}
-	}
-
-	private void loadVarargResults(JavaBuilder builder, int pc, int a, int vresultbase) {
-		if (vresultbase < a) {
-			builder.loadVarResult();
-			builder.subArgs(a + 1 - vresultbase);
-		} else if (vresultbase == a) {
-			builder.loadVarResult();
-		} else {
-			builder.newVarargsVarResult(pc, a, vresultbase - a);
-		}
-	}
-
-	private void loadLocalOrConstant(Prototype p, JavaBuilder builder, int pc, int borc) {
-		if (borc <= 0xff) {
-			builder.loadLocal(pc, borc);
-		} else {
-			builder.loadConstant(p.k[borc & 0xff]);
 		}
 	}
 }

@@ -18,11 +18,43 @@ public final class LuaVM {
 	private LuaVM() {
 	}
 
-	public static Varargs execute(FunctionWrapper function, LuaValue[] stack, Varargs varargs, int pc) {
-		// Top of the stack and remaining arguments
-		int top = 0;
-		Varargs v = NONE;
+	/**
+	 * Run the Lua interpreter on a function
+	 *
+	 * @param function The function to run
+	 * @param stack    The current stack
+	 * @param varargs  The arguments passed to it
+	 * @return The result
+	 */
+	public static Varargs execute(FunctionWrapper function, LuaValue[] stack, Varargs varargs) {
+		Prototype prototype = function.prototype;
 
+		// Upvalues are only possible when closures create closures
+		AbstractUpvalue[] openups = prototype.p.length > 0 ? new AbstractUpvalue[stack.length] : null;
+
+		// Create varargs "arg" table if needed
+		if (prototype.is_vararg >= Lua.VARARG_NEEDSARG) stack[prototype.numparams] = new LuaTable(varargs);
+
+		// Push the method call
+		LuaThread.CallStack cs = LuaThread.onCall(function);
+
+		return resume(function, stack, varargs, 0, NONE, 0, cs, openups);
+	}
+
+	/**
+	 * Resume the LuaVM on a particular point
+	 *
+	 * @param function The function to run
+	 * @param stack    The current stack
+	 * @param varargs  The arguments passed to it
+	 * @param pc       The current PC
+	 * @param v        The variable points on the stack
+	 * @param top      The top point on the stack
+	 * @param cs       The current call stack
+	 * @param openups  All openupvalues
+	 * @return The result
+	 */
+	public static Varargs resume(FunctionWrapper function, LuaValue[] stack, Varargs varargs, int pc, Varargs v, int top, LuaThread.CallStack cs, AbstractUpvalue[] openups) {
 		// Cache some common features
 		ProtoInfo info = function.info;
 		Prototype prototype = function.prototype;
@@ -32,10 +64,6 @@ public final class LuaVM {
 
 		// Upvalues are only possible when closures create closures
 		AbstractUpvalue[] upvalues = function.upvalues;
-		AbstractUpvalue[] openups = prototype.p.length > 0 ? new AbstractUpvalue[stack.length] : null;
-
-		// Create varargs "arg" table if needed
-		if (prototype.is_vararg >= Lua.VARARG_NEEDSARG) stack[prototype.numparams] = new LuaTable(varargs);
 
 		// Debug wants args to this function
 		DebugLib.DebugState debugState;
@@ -48,9 +76,6 @@ public final class LuaVM {
 			debugState = null;
 			debugInfo = null;
 		}
-
-		// Push the method call
-		LuaThread.CallStack cs = LuaThread.onCall(function);
 
 		{
 			VarInfo[] vars = allVars[0];
@@ -460,6 +485,7 @@ public final class LuaVM {
 							} else {
 								AbstractUpvalue upvalue = openups[b];
 								if (upvalue == null) {
+									// We need the proxy upvalue for closing it
 									upvalue = openups[b] = UpvalueFactory.proxy(new ArrayUpvalue(stack, b));
 								}
 								newcl.upvalues[j] = upvalue;

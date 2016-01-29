@@ -5,6 +5,7 @@ import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.Type;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
+import org.squiddev.luaj.luajc.function.LuaVM;
 import org.squiddev.luaj.luajc.function.executors.*;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
 import org.squiddev.luaj.luajc.upvalue.UpvalueFactory;
@@ -128,6 +129,7 @@ public final class Constants {
 	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(UpvalueFactory.class, "nilUpvalue");
 	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(UpvalueFactory.class, "valueUpvalue", LuaValue.class);
 	public static final TinyMethod METHOD_NEW_UPVALUE_PROXY = new TinyMethod(UpvalueFactory.class, "proxy", AbstractUpvalue.class);
+	public static final TinyMethod METHOD_UPVALUE_REDIRECT = new TinyMethod(UpvalueFactory.class, "redirectTo", AbstractUpvalue.class, LuaValue[].class, int.class);
 
 	// Upvalue modification
 	public static final TinyMethod METHOD_SET_UPVALUE = new TinyMethod(AbstractUpvalue.class, "setUpvalue", LuaValue.class);
@@ -140,10 +142,12 @@ public final class Constants {
 	public static final TinyMethod METHOD_GETSTATE = new TinyMethod(DebugLib.class, "getDebugState");
 	public static final TinyMethod METHOD_GETINFO = new TinyMethod(DebugLib.DebugState.class, "getDebugInfo");
 
+	public static final TinyMethod METHOD_RESUME = new TinyMethod(LuaVM.class, "resume", FunctionWrapper.class, LuaValue[].class, Varargs.class, int.class, Varargs.class, int.class, LuaThread.CallStack.class, AbstractUpvalue[].class);
+
 	// Variable naming
 	public static final String PREFIX_CONSTANT = "constant";
-	public static final String PREFIX_UPVALUE_SLOT = "localUpvalue";
-	public static final String PREFIX_LOCAL_SLOT = "local";
+	public static final String PREFIX_UPVALUE = "localUpvalue";
+	public static final String PREFIX_LOCAL = "local";
 
 	// Super type class
 	public static final int SUPERTYPE_VARARGS_ID = 4;

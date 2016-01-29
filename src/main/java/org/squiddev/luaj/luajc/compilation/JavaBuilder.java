@@ -30,7 +30,9 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.squiddev.luaj.luajc.Constants;
+import org.squiddev.luaj.luajc.analysis.LivenessTracker;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;
@@ -46,35 +48,35 @@ public final class JavaBuilder {
 	public static final int BRANCH_IFEQ = 3;
 
 	// Basic info
-	protected final ProtoInfo pi;
-	protected final Prototype p;
-	protected final String className;
-	protected final String prefix;
+	private final ProtoInfo pi;
+	private final Prototype p;
+	private final String className;
+	private final String prefix;
 
 	/**
 	 * Main class writer
 	 */
-	protected final ClassWriter writer;
+	private final ClassWriter writer;
 
 	/**
 	 * The static constructor method
 	 */
-	protected final MethodVisitor init;
+	private final MethodVisitor init;
 
 	/**
 	 * The function invoke
 	 */
-	protected final MethodVisitor main;
+	private final MethodVisitor main;
 
 	/**
 	 * Max number of locals
 	 */
-	protected int maxLocals;
+	private int maxLocals;
 
 	/**
 	 * The local index of the varargs result
 	 */
-	protected int varargsLocal = -1;
+	private int varargsLocal = -1;
 
 	// Labels for locals
 	private final Label start;
@@ -108,14 +110,33 @@ public final class JavaBuilder {
 	 */
 	private final int upvaluesSlot;
 
+	/**
+	 * Slot to store the variable stack in
+	 */
+	private int stackSlot = -1;
+
+	/**
+	 * Slot to store open upvalues in
+	 */
+	private int openupsSlot = -1;
+
 	private int line = 0;
 
+	/**
+	 * Tracker for variable livelyness
+	 */
+	private final LivenessTracker tracker;
+
+	/**
+	 * Lookup for constant to field names
+	 */
 	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
 	public JavaBuilder(ProtoInfo pi, String prefix, String filename) {
 		this.pi = pi;
 		this.p = pi.prototype;
 		this.prefix = prefix;
+		this.tracker = new LivenessTracker(pi);
 
 		String className = this.className = prefix + pi.name;
 
@@ -260,17 +281,15 @@ public final class JavaBuilder {
 
 		// Add upvalue & local value slot names
 		for (Map.Entry<Integer, Integer> slot : plainSlotVars.entrySet()) {
-			main.visitLocalVariable(PREFIX_LOCAL_SLOT + "_" + slot.getKey(), TYPE_LUAVALUE, null, start, end, slot.getValue());
+			main.visitLocalVariable(PREFIX_LOCAL + "_" + slot.getKey(), TYPE_LUAVALUE, null, start, end, slot.getValue());
 		}
 
 		for (Map.Entry<Integer, Integer> slot : upvalueSlotVars.entrySet()) {
-			main.visitLocalVariable(PREFIX_UPVALUE_SLOT + "_" + slot.getKey(), TYPE_UPVALUE, null, start, end, slot.getValue());
+			main.visitLocalVariable(PREFIX_UPVALUE + "_" + slot.getKey(), TYPE_UPVALUE, null, start, end, slot.getValue());
 		}
 
 		main.visitEnd();
-
 		writer.visitEnd();
-
 		return writer.toByteArray();
 	}
 
@@ -336,7 +355,7 @@ public final class JavaBuilder {
 
 				// We should only proxy when we need to switch back into interpreted mode
 				// and this upvalue will be mutated again
-				// METHOD_NEW_UPVALUE_PROXY.inject(main);
+				METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitInsn(DUP);
 				main.visitVarInsn(ASTORE, index);
 			} else {
@@ -631,9 +650,9 @@ public final class JavaBuilder {
 	}
 
 	public void initUpvalueFromUpvalue(int newUpvalue, int upvalueIndex) {
-		AsmUtils.constantOpcode(main, newUpvalue);
+		constantOpcode(main, newUpvalue);
 		main.visitVarInsn(ALOAD, upvaluesSlot);
-		AsmUtils.constantOpcode(main, upvalueIndex);
+		constantOpcode(main, upvalueIndex);
 		main.visitInsn(AALOAD);
 		main.visitInsn(AASTORE);
 	}
@@ -642,7 +661,7 @@ public final class JavaBuilder {
 		boolean isReadWrite = pi.vars[pc][srcSlot].upvalue.readWrite;
 		int index = findSlotIndex(srcSlot, isReadWrite);
 
-		AsmUtils.constantOpcode(main, newUpvalue);
+		constantOpcode(main, newUpvalue);
 		main.visitVarInsn(ALOAD, index);
 		if (!isReadWrite) METHOD_NEW_UPVALUE_VALUE.inject(main);
 		main.visitInsn(AASTORE);
@@ -757,11 +776,95 @@ public final class JavaBuilder {
 		if (DebugLib.DEBUG_ENABLED) {
 			main.visitVarInsn(ALOAD, debugStateSlot);
 			main.visitVarInsn(ALOAD, debugInfoSlot);
-			AsmUtils.constantOpcode(main, pc);
+			constantOpcode(main, pc);
 			main.visitInsn(ACONST_NULL);
 			main.visitInsn(ICONST_M1);
 			METHOD_BYTECODE.inject(main);
 		}
+	}
+
+	public void visitResume(int pc, int top) {
+		// The main stack
+		int stackS = stackSlot;
+		if (stackS == -1) stackS = stackSlot = ++maxLocals;
+		constantOpcode(main, p.maxstacksize);
+		main.visitTypeInsn(ANEWARRAY, TYPE_LUAVALUE);
+		main.visitVarInsn(ASTORE, stackS);
+
+		// Store the open upvalues
+		boolean upvalues = p.p.length > 0;
+		int openupsS = openupsSlot;
+		if (upvalues) {
+			if (openupsS == -1) openupsS = openupsSlot = ++maxLocals;
+			constantOpcode(main, p.maxstacksize);
+			main.visitTypeInsn(ANEWARRAY, TYPE_UPVALUE);
+			main.visitVarInsn(ASTORE, stackS);
+		}
+
+		// Setup upvalues and stack
+		VarInfo[] vars = pi.vars[pc];
+		for (int slot = 0; slot < p.maxstacksize; slot++) {
+			main.visitVarInsn(ALOAD, stackS);
+
+			VarInfo info = vars[slot];
+			constantOpcode(main, slot);
+			if (tracker.isLive(info, pc)) {
+				boolean isUpvalue = pi.isUpvalueRefer(pc, slot);
+				int index = findSlotIndex(slot, isUpvalue);
+
+				main.visitVarInsn(ALOAD, index);
+				if (isUpvalue) {
+					main.visitVarInsn(ALOAD, stackS);
+					constantOpcode(main, slot);
+
+					// Redirect the upvalue
+					METHOD_UPVALUE_REDIRECT.inject(main);
+
+					assert upvalues : "Must have upvalues if variable is upvalue";
+
+					// If it is open then store it in the openups too
+					dup();
+					main.visitVarInsn(ALOAD, openupsS);
+					constantOpcode(main, slot);
+					main.visitInsn(AASTORE);
+				}
+			} else {
+				loadNil();
+			}
+			main.visitInsn(AASTORE);
+		}
+
+		main.visitVarInsn(ALOAD, 1);
+		main.visitVarInsn(ALOAD, stackS);
+
+		// Load variable arguments
+		if (((p.is_vararg & Lua.VARARG_NEEDSARG) != 0)) {
+			main.visitVarInsn(ALOAD, VARARGS_SLOT);
+		} else {
+			loadNone();
+		}
+
+		constantOpcode(main, pc);
+
+		// Load top
+		if (top >= 0 && varargsLocal >= 0) {
+			main.visitVarInsn(ALOAD, varargsLocal);
+			constantOpcode(main, top);
+		} else {
+			loadNone();
+			main.visitInsn(ICONST_M1);
+		}
+
+		main.visitVarInsn(ALOAD, callStackSlot);
+
+		if (upvalues) {
+			main.visitVarInsn(ALOAD, openupsS);
+		} else {
+			main.visitInsn(ACONST_NULL);
+		}
+
+		METHOD_RESUME.inject(main);
+		main.visitInsn(ARETURN);
 	}
 
 	public void visitSetlistStack(int pc, int a0, int index0, int nvals) {
@@ -793,5 +896,24 @@ public final class JavaBuilder {
 
 	public void visitTovalue() {
 		METHOD_BUFFER_TO_VALUE.inject(main);
+	}
+
+	public void loadVarargResults(int pc, int a, int vresultbase) {
+		if (vresultbase < a) {
+			loadVarResult();
+			subArgs(a + 1 - vresultbase);
+		} else if (vresultbase == a) {
+			loadVarResult();
+		} else {
+			newVarargsVarResult(pc, a, vresultbase - a);
+		}
+	}
+
+	public void loadLocalOrConstant(int pc, int borc) {
+		if (borc <= 0xff) {
+			loadLocal(pc, borc);
+		} else {
+			loadConstant(p.k[borc & 0xff]);
+		}
 	}
 }

@@ -115,7 +115,7 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						pcVar[b].isReferenced = true;
+						pcVar[b].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -130,8 +130,8 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						if (!Lua.ISK(b)) pcVar[b].reference(pc);
+						if (!Lua.ISK(c) && c != b) pcVar[c].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -141,9 +141,9 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[a].isReferenced = true;
-						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[a].reference(pc);
+						if (a != b && !Lua.ISK(b)) pcVar[b].reference(pc);
+						if (a != c && b != c && !Lua.ISK(c)) pcVar[c].reference(pc);
 						break;
 					}
 
@@ -153,7 +153,7 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
 						for (; b <= c; b++) {
-							pcVar[b].isReferenced = true;
+							pcVar[b].reference(pc);
 						}
 						pcVar[a] = new VarInfo(a, pc);
 						break;
@@ -162,7 +162,7 @@ public final class AnalysisBuilder {
 					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
 					{
 						int a = Lua.GETARG_A(ins);
-						pcVar[a + 2].isReferenced = true;
+						pcVar[a + 2].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -172,8 +172,8 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[b].reference(pc);
+						if (b != c && !Lua.ISK(c)) pcVar[c].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -183,8 +183,8 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[b].reference(pc);
+						if (b != c && !Lua.ISK(c)) pcVar[c].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						pcVar[a + 1] = new VarInfo(a + 1, pc);
 						break;
@@ -193,11 +193,11 @@ public final class AnalysisBuilder {
 					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
 					{
 						int a = Lua.GETARG_A(ins);
-						pcVar[a].isReferenced = true;
-						pcVar[a + 2].isReferenced = true;
+						pcVar[a].reference(pc);
+						pcVar[a + 2].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
-						pcVar[a].isReferenced = true;
-						pcVar[a + 1].isReferenced = true;
+						pcVar[a].reference(pc);
+						pcVar[a + 1].reference(pc);
 						pcVar[a + 3] = new VarInfo(a + 3, pc);
 						break;
 					}
@@ -232,10 +232,10 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[a].isReferenced = true;
-						pcVar[a].isReferenced = true;
+						pcVar[a].reference(pc);
+						pcVar[a].reference(pc);
 						for (int i = 1; i <= b - 1; i++) {
-							pcVar[a + i].isReferenced = true;
+							pcVar[a + i].reference(pc);
 						}
 						for (int j = 0; j <= c - 2; j++, a++) {
 							pcVar[a] = new VarInfo(a, pc);
@@ -250,9 +250,9 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						pcVar[a].isReferenced = true;
+						pcVar[a].reference(pc);
 						for (int i = 1; i <= b - 1; i++) {
-							pcVar[a + i].isReferenced = true;
+							pcVar[a + i].reference(pc);
 						}
 						break;
 					}
@@ -262,7 +262,7 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						for (int i = 0; i <= b - 2; i++) {
-							pcVar[a + i].isReferenced = true;
+							pcVar[a + i].reference(pc);
 						}
 						break;
 					}
@@ -271,9 +271,9 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[a++].isReferenced = true;
-						pcVar[a++].isReferenced = true;
-						pcVar[a++].isReferenced = true;
+						pcVar[a++].reference(pc);
+						pcVar[a++].reference(pc);
+						pcVar[a++].reference(pc);
 						for (int j = 0; j < c; j++, a++) {
 							pcVar[a] = new VarInfo(a, pc);
 						}
@@ -292,7 +292,7 @@ public final class AnalysisBuilder {
 							int i = info.prototype.code[pc + k];
 							if ((i & 4) == 0) {
 								b = Lua.GETARG_B(i);
-								pcVar[b].isReferenced = true;
+								pcVar[b].reference(pc);
 							}
 						}
 						pcVar[a] = new VarInfo(a, pc);
@@ -315,9 +315,9 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						pcVar[a].isReferenced = true;
+						pcVar[a].reference(pc);
 						for (int i = 1; i <= b; i++) {
-							pcVar[a + i].isReferenced = true;
+							pcVar[a + i].reference(pc);
 						}
 						break;
 					}
@@ -327,7 +327,7 @@ public final class AnalysisBuilder {
 					case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
 					{
 						int a = Lua.GETARG_A(ins);
-						pcVar[a].isReferenced = true;
+						pcVar[a].reference(pc);
 						break;
 					}
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
@@ -336,8 +336,8 @@ public final class AnalysisBuilder {
 					{
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						if (!Lua.ISK(b)) pcVar[b].reference(pc);
+						if (!Lua.ISK(c)) pcVar[c].reference(pc);
 						break;
 					}
 

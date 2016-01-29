@@ -29,7 +29,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 		LuaValue[] stack = new LuaValue[size];
 		System.arraycopy(NILS, 0, stack, 0, size);
 
-		return LuaVM.execute(function, stack, NONE, 0).arg1();
+		return LuaVM.execute(function, stack, NONE).arg1();
 	}
 
 	@Override
@@ -49,9 +49,9 @@ public final class ClosureExecutor extends FunctionExecutor {
 		switch (prototype.numparams) {
 			default:
 				stack[0] = arg;
-				return LuaVM.execute(function, stack, NONE, 0).arg1();
+				return LuaVM.execute(function, stack, NONE).arg1();
 			case 0:
-				return LuaVM.execute(function, stack, arg, 0).arg1();
+				return LuaVM.execute(function, stack, arg).arg1();
 		}
 	}
 
@@ -73,12 +73,12 @@ public final class ClosureExecutor extends FunctionExecutor {
 			default:
 				stack[0] = arg1;
 				stack[1] = arg2;
-				return LuaVM.execute(function, stack, NONE, 0).arg1();
+				return LuaVM.execute(function, stack, NONE).arg1();
 			case 1:
 				stack[0] = arg1;
-				return LuaVM.execute(function, stack, arg2, 0).arg1();
+				return LuaVM.execute(function, stack, arg2).arg1();
 			case 0:
-				return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2) : NONE, 0).arg1();
+				return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2) : NONE).arg1();
 		}
 	}
 
@@ -101,16 +101,16 @@ public final class ClosureExecutor extends FunctionExecutor {
 				stack[0] = arg1;
 				stack[1] = arg2;
 				stack[2] = arg3;
-				return LuaVM.execute(function, stack, NONE, 0).arg1();
+				return LuaVM.execute(function, stack, NONE).arg1();
 			case 2:
 				stack[0] = arg1;
 				stack[1] = arg2;
-				return LuaVM.execute(function, stack, arg3, 0).arg1();
+				return LuaVM.execute(function, stack, arg3).arg1();
 			case 1:
 				stack[0] = arg1;
-				return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargsOf(arg2, arg3) : NONE, 0).arg1();
+				return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargsOf(arg2, arg3) : NONE).arg1();
 			case 0:
-				return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2, arg3) : NONE, 0).arg1();
+				return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2, arg3) : NONE).arg1();
 		}
 	}
 
@@ -132,6 +132,6 @@ public final class ClosureExecutor extends FunctionExecutor {
 		for (int i = 0; i < numParams; i++) {
 			stack[i] = varargs.arg(i + 1);
 		}
-		return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargs.subargs(numParams + 1) : NONE, 0);
+		return LuaVM.execute(function, stack, prototype.is_vararg != 0 ? varargs.subargs(numParams + 1) : NONE);
 	}
 }
