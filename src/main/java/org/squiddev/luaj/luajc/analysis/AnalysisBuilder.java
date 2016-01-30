@@ -26,6 +26,7 @@ package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -78,7 +79,7 @@ public final class AnalysisBuilder {
 					}
 				}
 				if (var == null) {
-					var = VarInfo.phi(info, slot, b0.pc0);
+					var = new PhiInfo(info, slot, b0.pc0);
 					phis.add(var);
 				}
 				vars[b0.pc0][slot] = var;

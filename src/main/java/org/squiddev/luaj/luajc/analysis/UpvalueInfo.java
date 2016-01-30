@@ -25,6 +25,7 @@
 package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
 import java.util.ArrayList;
 import java.util.List;

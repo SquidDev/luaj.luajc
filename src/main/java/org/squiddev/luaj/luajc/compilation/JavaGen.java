@@ -26,8 +26,8 @@ package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.analysis.BasicBlock;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
 public final class JavaGen {
 	public final byte[] bytecode;
@@ -46,9 +46,7 @@ public final class JavaGen {
 		Prototype p = pi.prototype;
 		int vresultbase = -1;
 
-		for (int bi = 0; bi < pi.blockList.length; bi++) {
-			BasicBlock b0 = pi.blockList[bi];
-
+		for (BasicBlock b0 : pi.blockList) {
 			boolean setUpvalues = false;
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
 				builder.onStartOfLuaInstruction(pc);

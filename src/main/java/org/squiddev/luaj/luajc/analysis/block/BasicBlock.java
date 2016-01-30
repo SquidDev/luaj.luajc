@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc.analysis;
+package org.squiddev.luaj.luajc.analysis.block;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
@@ -57,6 +57,12 @@ public final class BasicBlock {
 	 * If this block is used
 	 */
 	public boolean isLive;
+
+	/**
+	 * The dominator for this block
+	 */
+	public BasicBlock dominator;
+
 
 	public BasicBlock(int pc) {
 		pc0 = pc1 = pc;

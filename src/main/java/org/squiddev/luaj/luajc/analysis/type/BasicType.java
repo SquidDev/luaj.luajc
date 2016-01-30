@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc.analysis;
+package org.squiddev.luaj.luajc.analysis.type;
 
 /**
  * A primitive type

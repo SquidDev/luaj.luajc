@@ -1,5 +1,7 @@
 package org.squiddev.luaj.luajc.analysis;
 
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
+
 import java.util.*;
 
 /**

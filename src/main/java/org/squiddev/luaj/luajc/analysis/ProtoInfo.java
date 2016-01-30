@@ -26,6 +26,7 @@ package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Print;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 import org.squiddev.luaj.luajc.compilation.JavaLoader;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.executors.ClosureExecutor;
@@ -219,6 +220,16 @@ public final class ProtoInfo {
 	 */
 	public boolean isUpvalueCreate(int pc, int slot) {
 		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
+		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
+	}
+
+	/**
+	 * Check if this is the creation of an upvalue
+	 *
+	 * @param pc The current PC
+	 * @return If this is where the upvalue is created
+	 */
+	public boolean isUpvalueCreate(VarInfo v, int pc) {
 		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
 	}
 
