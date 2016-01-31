@@ -1,5 +1,7 @@
 package org.squiddev.luaj.luajc.analysis.type;
 
+import org.squiddev.luaj.luajc.utils.IntArray;
+
 /**
  * Type information about a variable
  */
@@ -11,12 +13,12 @@ public class TypeInformation {
 	/**
 	 * If the specialised type is used
 	 */
-	public boolean usesSpecialised = false;
+	public IntArray usesSpecialised = new IntArray();
 
 	/**
-	 * If the {@link org.luaj.vm2.LuaValue} representation fo thie variable is used.
+	 * If the {@link org.luaj.vm2.LuaValue} representation fo this variable is used.
 	 */
-	public boolean usesValue = false;
+	public IntArray usesValue = new IntArray();
 
 	public TypeInformation(BasicType type) {
 		this.type = type;
