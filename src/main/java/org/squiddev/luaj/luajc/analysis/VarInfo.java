@@ -87,6 +87,11 @@ public class VarInfo {
 	 */
 	public final IntArray references = new IntArray();
 
+	/**
+	 * List of references including through phi nodes
+	 */
+	public final IntArray phiReferences = new IntArray();
+
 	public VarInfo(int slot, int pc) {
 		this.slot = slot;
 		this.pc = pc;
@@ -163,5 +168,6 @@ public class VarInfo {
 	public final void reference(int pc) {
 		isReferenced = true;
 		references.add(pc);
+		phiReferences.add(pc);
 	}
 }

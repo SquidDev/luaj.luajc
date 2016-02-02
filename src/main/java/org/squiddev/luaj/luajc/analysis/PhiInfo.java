@@ -83,6 +83,7 @@ public final class PhiInfo extends VarInfo {
 		values = Collections.unmodifiableSet(vars);
 		for (VarInfo v : vars) {
 			v.isReferenced |= isReferenced;
+			v.phiReferences.add(phiReferences);
 		}
 
 		return null;

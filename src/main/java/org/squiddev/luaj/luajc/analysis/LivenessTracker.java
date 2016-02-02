@@ -89,8 +89,8 @@ public final class LivenessTracker {
 		BasicBlock pcBlock = info.blocks[pc];
 		if (!varBlock.isLive || !pcBlock.isLive) return false;
 
-		int size = var.references.size();
-		int[] pcs = var.references.values();
+		int size = var.phiReferences.size();
+		int[] pcs = var.phiReferences.values();
 		Set<BasicBlock> successors = null;
 
 		for (int i = 0; i < size; i++) {
