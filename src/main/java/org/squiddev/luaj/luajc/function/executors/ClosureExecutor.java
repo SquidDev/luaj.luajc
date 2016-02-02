@@ -23,6 +23,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 			FunctionExecutor executor = info.executor = info.loader.include(info);
 			return executor.execute(function);
 		}
+
 		int size = function.prototype.maxstacksize;
 
 		LuaValue[] stack = new LuaValue[size];
@@ -39,7 +40,6 @@ public final class ClosureExecutor extends FunctionExecutor {
 			return executor.execute(function, arg);
 		}
 
-		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
 
@@ -63,7 +63,6 @@ public final class ClosureExecutor extends FunctionExecutor {
 			return executor.execute(function, arg1, arg2);
 		}
 
-		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
 
@@ -91,7 +90,6 @@ public final class ClosureExecutor extends FunctionExecutor {
 			return executor.execute(function, arg1, arg2, arg3);
 		}
 
-		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
 
@@ -124,7 +122,6 @@ public final class ClosureExecutor extends FunctionExecutor {
 			return executor.execute(function, varargs);
 		}
 
-		function.info.calledClosure++;
 		Prototype prototype = function.prototype;
 		int size = prototype.maxstacksize;
 

@@ -17,8 +17,6 @@ public final class Constants {
 	private Constants() {
 	}
 
-	public static final String PREFIX = "org/squiddev/luaj/luajc/generated/";
-
 	public static final String PROTOTYPE_NAME = "prototype";
 	public static final String PROTOTYPE_STORAGE = "$Prototypes";
 	public static final String EXECUTE_NAME = "execute";
@@ -29,8 +27,6 @@ public final class Constants {
 	public static final String TYPE_PROTOINFO = Type.getDescriptor(ProtoInfo.class);
 	public static final String CLASS_PROTOINFO = Type.getInternalName(ProtoInfo.class);
 	public static final String CLASS_WRAPPER = Type.getInternalName(FunctionWrapper.class);
-	public static final String CLASS_DEBUG_STATE = Type.getInternalName(DebugLib.DebugState.class);
-	public static final String CLASS_DEBUG_INFO = Type.getInternalName(DebugLib.DebugInfo.class);
 
 	public static final class FunctionType {
 		public final String signature;
@@ -146,7 +142,6 @@ public final class Constants {
 
 	// Variable naming
 	public static final String PREFIX_CONSTANT = "constant";
-	public static final String PREFIX_UPVALUE = "upvalue";
 	public static final String PREFIX_UPVALUE_SLOT = "localUpvalue";
 	public static final String PREFIX_LOCAL_SLOT = "local";
 

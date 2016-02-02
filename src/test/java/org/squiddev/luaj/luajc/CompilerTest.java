@@ -125,7 +125,7 @@ public class CompilerTest {
 	 */
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(Constants.PREFIX, 1, true));
+		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, true));
 		run();
 	}
 

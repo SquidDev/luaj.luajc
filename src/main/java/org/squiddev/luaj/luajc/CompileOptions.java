@@ -5,6 +5,16 @@ package org.squiddev.luaj.luajc;
  */
 public class CompileOptions {
 	/**
+	 * Default value for {@link #prefix}
+	 */
+	public static final String PREFIX = "org/squiddev/luaj/luajc/generated/";
+
+	/**
+	 * Default value for {@link #compileThreshold}
+	 */
+	public static final int THRESHOLD = 10;
+
+	/**
 	 * The prefix for all classes in slash form
 	 */
 	public final String prefix;
@@ -30,8 +40,8 @@ public class CompileOptions {
 	/**
 	 * Create a new compilation options
 	 *
-	 * @param prefix           Set {@link #prefix}. The default is {@link Constants#PREFIX}.
-	 * @param compileThreshold Set {@link #compileThreshold}. The default is 10.
+	 * @param prefix           Set {@link #prefix}. The default is {@link #PREFIX}.
+	 * @param compileThreshold Set {@link #compileThreshold}. The default is {@link #THRESHOLD}.
 	 * @param verify           Set {@link #verify}. The default is true.
 	 */
 	public CompileOptions(String prefix, int compileThreshold, boolean verify) {
@@ -42,6 +52,6 @@ public class CompileOptions {
 	}
 
 	public CompileOptions() {
-		this(Constants.PREFIX, 10, true);
+		this(PREFIX, THRESHOLD, true);
 	}
 }
