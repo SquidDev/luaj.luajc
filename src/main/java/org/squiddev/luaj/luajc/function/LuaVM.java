@@ -5,6 +5,7 @@ import org.luaj.vm2.lib.DebugLib;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
 import org.squiddev.luaj.luajc.upvalue.ArrayUpvalue;
+import org.squiddev.luaj.luajc.upvalue.UpvalueFactory;
 
 import static org.luaj.vm2.LuaValue.NONE;
 import static org.luaj.vm2.LuaValue.varargsOf;
@@ -35,7 +36,16 @@ public final class LuaVM {
 		if (prototype.is_vararg >= Lua.VARARG_NEEDSARG) stack[prototype.numparams] = new LuaTable(varargs);
 
 		// Debug wants args to this function
-		if (DebugLib.DEBUG_ENABLED) DebugLib.debugSetupCall(varargs, stack);
+		DebugLib.DebugState debugState;
+		DebugLib.DebugInfo debugInfo;
+		if (DebugLib.DEBUG_ENABLED) {
+			DebugLib.debugSetupCall(varargs, stack);
+			debugState = DebugLib.getDebugState();
+			debugInfo = debugState.getDebugInfo();
+		} else {
+			debugState = null;
+			debugInfo = null;
+		}
 
 		// Push the method call
 		LuaThread.CallStack cs = LuaThread.onCall(function);
@@ -43,7 +53,7 @@ public final class LuaVM {
 		try {
 			while (true) {
 				if (DebugLib.DEBUG_ENABLED) {
-					DebugLib.debugBytecode(pc, v, top);
+					DebugLib.debugBytecode(debugState, debugInfo, pc, v, top);
 				}
 
 				// pull out instruction
@@ -428,7 +438,7 @@ public final class LuaVM {
 							} else {
 								AbstractUpvalue upvalue = openups[b];
 								if (upvalue == null) {
-									upvalue = openups[b] = new ArrayUpvalue(stack, b);
+									upvalue = openups[b] = UpvalueFactory.proxy(new ArrayUpvalue(stack, b));
 								}
 								newcl.upvalues[j] = upvalue;
 							}
