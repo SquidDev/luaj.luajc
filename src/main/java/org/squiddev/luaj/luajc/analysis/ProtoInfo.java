@@ -27,13 +27,17 @@ package org.squiddev.luaj.luajc.analysis;
 import org.luaj.vm2.Print;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
+import org.squiddev.luaj.luajc.analysis.type.BasicType;
+import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.compilation.JavaLoader;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.executors.ClosureExecutor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Prototype information for static single-assignment analysis
@@ -163,11 +167,27 @@ public final class ProtoInfo {
 				// open upvalue storage
 				appendOpenUps(sb, pc);
 
+				@SuppressWarnings("unchecked") Set<VarInfo>[] written = new Set[3];
+				for (int i = 0; i < 3; i++) written[i] = new HashSet<VarInfo>();
+				for (VarInfo[] vars : this.vars) {
+					for (VarInfo v : vars) {
+						if (v == null || v == VarInfo.INVALID || v.pc == pc || v.type == null) continue;
+						TypeInfo info = v.getTypeInfo();
+						for (int i = 0; i < 3; i++) {
+							if (info.definitions[i].contains(pc) && written[i].add(v)) {
+								sb
+									.append("\t\t").append(v).append(" -> ")
+									.append(BasicType.values()[i].toString().toLowerCase())
+									.append("\n");
+							}
+						}
+					}
+				}
+
 				// opcode
 				sb.append("\t\t");
 				VarInfo[] vars = this.vars[pc];
-				for (int j = 0; j < prototype.maxstacksize; j++) {
-					VarInfo v = vars[j];
+				for (VarInfo v : vars) {
 					String u;
 					if (v == null) {
 						u = "";
@@ -262,5 +282,24 @@ public final class ProtoInfo {
 		}
 		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
 		return v != null && v.upvalue != null && v.upvalue.readWrite;
+	}
+
+	/**
+	 * Test if one instruction dominates the other
+	 *
+	 * @param dominator The PC of the dominator
+	 * @param test      The PC to test against
+	 * @return If this instruction dominates another
+	 */
+	public boolean instructionDominates(int dominator, int test) {
+		if (dominator == test) return true;
+		BasicBlock domBlock = blocks[dominator];
+		BasicBlock testBlock = blocks[test];
+
+		// If they are in the same block, check if it occurs before
+		if (domBlock == testBlock) return dominator < test;
+
+		// Otherwise, check that the block dominates the other
+		return domBlock.dominates(testBlock);
 	}
 }

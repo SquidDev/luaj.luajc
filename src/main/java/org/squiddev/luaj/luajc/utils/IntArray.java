@@ -55,6 +55,16 @@ public final class IntArray {
 		values = Arrays.copyOf(values, newCapacity);
 	}
 
+	public boolean contains(int value) {
+		int[] values = this.values;
+		int size = size();
+		for (int i = 0; i < size; i++) {
+			if (values[i] == value) return true;
+		}
+
+		return false;
+	}
+
 	@Override
 	public String toString() {
 		return Arrays.toString(values);

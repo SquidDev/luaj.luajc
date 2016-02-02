@@ -6,9 +6,15 @@ import org.luaj.vm2.LuaValue;
  * A primitive type
  */
 public enum BasicType {
-	BOOLEAN,
-	NUMBER,
-	VALUE;
+	BOOLEAN(1),
+	NUMBER(2),
+	VALUE(4);
+
+	private int flag;
+
+	BasicType(int flag) {
+		this.flag = flag;
+	}
 
 	public static BasicType fromValue(LuaValue value) {
 		switch (value.type()) {
@@ -23,5 +29,9 @@ public enum BasicType {
 
 	public String format() {
 		return name().substring(0, 1);
+	}
+
+	public int flag() {
+		return flag;
 	}
 }

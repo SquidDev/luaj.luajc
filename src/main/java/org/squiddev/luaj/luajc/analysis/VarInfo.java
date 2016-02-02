@@ -27,6 +27,7 @@ package org.squiddev.luaj.luajc.analysis;
 import org.luaj.vm2.LuaValue;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
+import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.utils.IntArray;
 
 import java.util.Set;
@@ -57,6 +58,8 @@ public class VarInfo {
 	public int valueCount = 0;
 
 	public BasicType type;
+
+	private TypeInfo typeInfo;
 
 	/**
 	 * The slot this variable exists in
@@ -190,5 +193,16 @@ public class VarInfo {
 	 */
 	public final BasicType getTypeOrDefault() {
 		return type == null ? BasicType.VALUE : type;
+	}
+
+	public TypeInfo getTypeInfo() {
+		TypeInfo info = typeInfo;
+		if (info == null) {
+			BasicType type = this.type;
+			if (type == null) throw new NullPointerException("Cannot get TypeInformation when type is not defined");
+			info = typeInfo = new TypeInfo(type);
+		}
+
+		return info;
 	}
 }

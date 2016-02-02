@@ -111,6 +111,11 @@ public final class AnalysisBuilder {
 						break;
 					}
 					case Lua.OP_LOADBOOL:  // A B  C  R(A) := (Bool)B; if (C) pc++
+					{
+						int a = Lua.GETARG_A(ins);
+						pcVar[a] = new VarInfo(a, pc, BasicType.BOOLEAN);
+						break;
+					}
 					case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
 					{
 						int a = Lua.GETARG_A(ins);

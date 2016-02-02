@@ -5,7 +5,7 @@ local function add(x, y, step)
 		x = x + 1
 	end
 
-	return x + y
+	return x + "2", x + y
 end
 
 add(1, 2, false)

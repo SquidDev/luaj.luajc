@@ -89,6 +89,21 @@ public final class BasicBlock {
 	}
 
 	/**
+	 * Check if this block dominates another
+	 *
+	 * @param block The block that may be dominated
+	 * @return If this block dominates the other one
+	 */
+	public boolean dominates(BasicBlock block) {
+		while (block != null) {
+			if (block == this) return true;
+			block = block.dominator;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Find all blocks in a prototype
 	 *
 	 * @param p The prototype to find blocks in
