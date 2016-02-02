@@ -33,6 +33,7 @@ import org.squiddev.luaj.luajc.function.executors.ClosureExecutor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.List;
 
 /**
  * Prototype information for static single-assignment analysis
@@ -102,6 +103,8 @@ public final class ProtoInfo {
 	 * List of upvalues from outer scope
 	 */
 	public final UpvalueInfo[] upvalues;
+
+	public final List<VarInfo>[] phiPositions;
 	//endregion
 
 	public ProtoInfo(Prototype p, JavaLoader loader) {
@@ -123,6 +126,9 @@ public final class ProtoInfo {
 		// params are inputs to first block
 		params = new VarInfo[p.maxstacksize];
 		vars = new VarInfo[prototype.code.length][];
+
+		//noinspection unchecked
+		phiPositions = new List[prototype.code.length];
 
 		AnalysisBuilder builder = new AnalysisBuilder(this);
 		builder.fillArguments();

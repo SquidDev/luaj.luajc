@@ -8,6 +8,8 @@ import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
 import org.squiddev.luaj.luajc.upvalue.ArrayUpvalue;
 import org.squiddev.luaj.luajc.upvalue.UpvalueFactory;
 
+import java.util.List;
+
 import static org.luaj.vm2.LuaValue.NONE;
 import static org.luaj.vm2.LuaValue.varargsOf;
 
@@ -61,6 +63,7 @@ public final class LuaVM {
 		int[] code = prototype.code;
 		LuaValue[] constants = prototype.k;
 		VarInfo[][] allVars = info.vars;
+		List<VarInfo>[] phiPositions = info.phiPositions;
 
 		// Upvalues are only possible when closures create closures
 		AbstractUpvalue[] upvalues = function.upvalues;
@@ -88,11 +91,19 @@ public final class LuaVM {
 			while (true) {
 				if (DebugLib.DEBUG_ENABLED) DebugLib.debugBytecode(debugState, debugInfo, pc, v, top);
 
+				// Increment phi nodes.
+				// Yep, this is horrible
+				List<VarInfo> phis = phiPositions[pc];
+				if (phis != null) {
+					for (VarInfo var : phis) {
+						var.increment(stack[var.slot]);
+					}
+				}
+
 				// pull out instruction
 				VarInfo[] vars = allVars[pc];
 				int i = code[pc];
 				pc++;
-
 
 				int a = Lua.GETARG_A(i);
 

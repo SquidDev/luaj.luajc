@@ -102,8 +102,8 @@ public class PerformanceRunner {
 		if (QUIET) installQuite(globals);
 
 		try {
-			InputStream aesStream = PerformanceRunner.class.getResourceAsStream("/org/squiddev/luaj/luajc/aes/AesLua.lua");
-			InputStream speedStream = PerformanceRunner.class.getResourceAsStream("/org/squiddev/luaj/luajc/aes/AesSpeed.lua");
+			InputStream aesStream = Loader.load("aes/AesLua");
+			InputStream speedStream = Loader.load("aes/AesSpeed");
 
 			long start = System.nanoTime();
 			LuaFunction aes = LoadState.load(aesStream, "AesLua.lua", globals);

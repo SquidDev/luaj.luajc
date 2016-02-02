@@ -136,7 +136,7 @@ public class CompilerTest {
 	}
 
 	protected void run() throws Exception {
-		LoadState.load(getClass().getResourceAsStream("/org/squiddev/luaj/luajc/" + name + ".lua"), name + ".lua", globals).invoke();
+		LoadState.load(Loader.load(name), name + ".lua", globals).invoke();
 	}
 
 	private class AssertFunction extends ThreeArgFunction {

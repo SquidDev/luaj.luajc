@@ -11,7 +11,7 @@ import java.util.*;
  */
 public class TypeAnnotator {
 	private final ProtoInfo info;
-	private final Map<VarInfo, TypeInformation> types = new HashMap<VarInfo, TypeInformation>();
+	private final Set<VarInfo> known = new HashSet<VarInfo>();
 
 	public TypeAnnotator(ProtoInfo info) {
 		this.info = info;
@@ -21,18 +21,23 @@ public class TypeAnnotator {
 	 * Fill variables with a type percentage over a threshold
 	 *
 	 * @param threshold The threshold
-	 * @return Remaining unannotated types
+	 * @return Remaining untyped variables
 	 */
 	public Set<VarInfo> fillFromThreshold(double threshold) {
-		Set<VarInfo> unannotated = new HashSet<VarInfo>();
+		Set<VarInfo> unknown = new HashSet<VarInfo>();
 
 		for (VarInfo[] stack : info.vars) {
 			for (VarInfo var : stack) {
-				if (var == null || var == VarInfo.INVALID || types.containsKey(var)) continue;
+				if (var == null || var == VarInfo.INVALID) continue;
+				if (var.type != null) {
+					known.add(var);
+					continue;
+				}
 
 				// If it is a mutable upvalue presume it is a value,
 				if (var.upvalue != null && var.upvalue.readWrite) {
-					types.put(var, new TypeInformation(BasicType.VALUE));
+					var.type = BasicType.VALUE;
+					known.add(var);
 					continue;
 				}
 
@@ -40,33 +45,39 @@ public class TypeAnnotator {
 
 				// If we've never visited this instruction then skip for now
 				if (sum == 0) {
-					unannotated.add(var);
+					unknown.add(var);
 					continue;
 				}
 
 				int countThreshold = (int) (sum * threshold);
 				if (var.booleanCount > countThreshold) {
-					types.put(var, new TypeInformation(BasicType.BOOLEAN));
+					var.type = BasicType.BOOLEAN;
+					known.add(var);
 				} else if (var.numberCount > countThreshold) {
-					types.put(var, new TypeInformation(BasicType.NUMBER));
+					var.type = BasicType.NUMBER;
+					known.add(var);
 				} else {
-					// We presume it is just a value.
-					// It might be worth considering adding this to the unannotated list
-					types.put(var, new TypeInformation(BasicType.VALUE));
+					/*
+						We presume it is just a value.
+						Whilst might be worth considering adding this to the unannotated list,
+						there is sufficient "entropy" in this type, that it isn't needed.
+					*/
+					var.type = BasicType.VALUE;
+					known.add(var);
 				}
 			}
 		}
 
-		return unannotated;
+		return unknown;
 	}
 
 	/**
 	 * Set phi nodes types from its definitions
 	 *
-	 * @param unset Unset nodes. This is modified in place.
+	 * @param unknown Unknown nodes. This is modified in place.
 	 */
-	public void propagatePhiForward(Set<VarInfo> unset) {
-		Iterator<VarInfo> iter = unset.iterator();
+	public void propagatePhiForward(Set<VarInfo> unknown) {
+		Iterator<VarInfo> iter = unknown.iterator();
 		while (iter.hasNext()) {
 			VarInfo var = iter.next();
 			if (var instanceof PhiInfo) {
@@ -74,11 +85,11 @@ public class TypeAnnotator {
 
 				BasicType type = null;
 				for (VarInfo child : phi.values()) {
-					TypeInformation childType = types.get(child);
+					BasicType childType = child.type;
 					if (childType != null) {
 						if (type == null) {
-							type = childType.type;
-						} else if (childType.type != type) {
+							type = childType;
+						} else if (childType != type) {
 							type = null;
 							break;
 						}
@@ -86,7 +97,8 @@ public class TypeAnnotator {
 				}
 
 				if (type != null) {
-					types.put(var, new TypeInformation(type));
+					var.type = type;
+					known.add(var);
 					iter.remove();
 				}
 			}
@@ -96,11 +108,11 @@ public class TypeAnnotator {
 	/**
 	 * Set phi nodes definitions from its type
 	 *
-	 * @param unset Unset nodes. This is modified in place.
+	 * @param unknown Unset nodes. This is modified in place.
 	 */
-	public void propagatePhisBackward(Set<VarInfo> unset) {
-		for (Map.Entry<VarInfo, TypeInformation> entry : types.entrySet()) {
-			VarInfo var = entry.getKey();
+	public void propagatePhisBackward(Set<VarInfo> unknown) {
+		List<VarInfo> additional = new ArrayList<VarInfo>();
+		for (VarInfo var : known) {
 
 			// If this is a phi node
 			if (var instanceof PhiInfo) {
@@ -108,21 +120,29 @@ public class TypeAnnotator {
 
 				// Then propagate its type to its definitions
 				for (VarInfo definition : phi.values()) {
-					if (unset.contains(definition)) {
-						types.put(definition, new TypeInformation(entry.getValue().type));
-						unset.remove(definition);
+					if (unknown.contains(definition)) {
+						definition.type = var.type;
+						additional.add(var);
+						unknown.remove(definition);
 					}
 				}
 			}
 		}
+
+		known.addAll(additional);
 	}
 
-	public TypeInformation getInformation(VarInfo var) {
-		return types.get(var);
+	public void fillUnknown(Set<VarInfo> unknown) {
+		for (VarInfo var : unknown) {
+			var.type = BasicType.VALUE;
+			known.add(var);
+		}
 	}
 
-	public BasicType getType(VarInfo var) {
-		TypeInformation type = types.get(var);
-		return type == null ? BasicType.VALUE : type.type;
+	public void fill(double threshold) {
+		Set<VarInfo> unknown = fillFromThreshold(threshold);
+		propagatePhiForward(unknown);
+		propagatePhisBackward(unknown);
+		fillUnknown(unknown);
 	}
 }

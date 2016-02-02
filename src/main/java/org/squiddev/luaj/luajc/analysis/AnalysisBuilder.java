@@ -25,10 +25,14 @@
 package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
+import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
+import org.squiddev.luaj.luajc.analysis.type.BasicType;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -60,6 +64,9 @@ public final class AnalysisBuilder {
 			vars[i] = new VarInfo[nStack];
 		}
 
+		int[] code = info.prototype.code;
+		LuaValue[] constants = info.prototype.k;
+
 		// Process instructions
 		for (BasicBlock b0 : info.blockList) {
 			// input from previous blocks
@@ -90,7 +97,7 @@ public final class AnalysisBuilder {
 				// Propagate previous values except at block boundaries
 				if (pc > b0.pc0) propagateVars(pc - 1, pc);
 
-				int ins = info.prototype.code[pc];
+				int ins = code[pc];
 				int op = Lua.GET_OPCODE(ins);
 
 				VarInfo[] pcVar = vars[pc];
@@ -98,10 +105,20 @@ public final class AnalysisBuilder {
 				// Account for assignments, references and invalidation
 				switch (op) {
 					case Lua.OP_LOADK:     // A Bx    R(A) := Kst(Bx)
+					{
+						int a = Lua.GETARG_A(ins);
+						pcVar[a] = new VarInfo(a, pc, BasicType.fromValue(constants[Lua.GETARG_Bx(ins)]));
+						break;
+					}
 					case Lua.OP_LOADBOOL:  // A B  C  R(A) := (Bool)B; if (C) pc++
+					case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
+					{
+						int a = Lua.GETARG_A(ins);
+						pcVar[a] = new VarInfo(a, pc, BasicType.VALUE);
+						break;
+					}
 					case Lua.OP_GETUPVAL:  // A B     R(A) := UpValue[B]
 					case Lua.OP_GETGLOBAL: // A Bx    R(A) := Gbl[Kst(Bx)]
-					case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
 					{
 						int a = Lua.GETARG_A(ins);
 						pcVar[a] = new VarInfo(a, pc);
@@ -164,7 +181,9 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						pcVar[a + 2].reference(pc);
-						pcVar[a] = new VarInfo(a, pc);
+
+						// The VM sets this, so it must be a number
+						pcVar[a] = new VarInfo(a, pc, BasicType.NUMBER);
 						break;
 					}
 
@@ -196,10 +215,12 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						pcVar[a].reference(pc);
 						pcVar[a + 2].reference(pc);
-						pcVar[a] = new VarInfo(a, pc);
-						pcVar[a].reference(pc);
 						pcVar[a + 1].reference(pc);
-						pcVar[a + 3] = new VarInfo(a + 3, pc);
+
+						pcVar[a] = new VarInfo(a, pc, BasicType.NUMBER);
+						pcVar[a].reference(pc);
+
+						pcVar[a + 3] = new VarInfo(a + 3, pc, BasicType.NUMBER);
 						break;
 					}
 
@@ -208,7 +229,7 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						for (; a <= b; a++) {
-							pcVar[a] = new VarInfo(a, pc);
+							pcVar[a] = new VarInfo(a, pc, BasicType.VALUE);
 						}
 						break;
 					}
@@ -362,12 +383,21 @@ public final class AnalysisBuilder {
 	private void replaceTrivialPhiVariables(Set<VarInfo> phis) {
 		// Replace trivial Phi variables
 		for (BasicBlock b0 : info.blockList) {
+			List<VarInfo> localPhis = null;
 			VarInfo[] vars = info.vars[b0.pc0];
 			for (int slot = 0; slot < info.prototype.maxstacksize; slot++) {
 				VarInfo oldVar = vars[slot];
+				if (!(oldVar instanceof PhiInfo)) continue;
+
 				VarInfo newVar = oldVar.resolvePhiVariableValues();
 				if (newVar != null) {
 					substituteVariable(slot, oldVar, newVar);
+				} else {
+					if (localPhis == null) {
+						localPhis = new ArrayList<VarInfo>();
+						info.phiPositions[b0.pc0] = localPhis;
+					}
+					localPhis.add(oldVar);
 				}
 
 				phis.remove(oldVar);

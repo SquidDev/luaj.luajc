@@ -26,6 +26,7 @@ package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.LuaValue;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
+import org.squiddev.luaj.luajc.analysis.type.BasicType;
 import org.squiddev.luaj.luajc.utils.IntArray;
 
 import java.util.Set;
@@ -45,7 +46,7 @@ public class VarInfo {
 	public static VarInfo param(int slot) {
 		return new VarInfo(slot, -1) {
 			public String toString() {
-				return slot + ".p";
+				return slot + ".p" + (type == null ? "" : (":" + type.format()));
 			}
 		};
 	}
@@ -54,6 +55,8 @@ public class VarInfo {
 	public int booleanCount = 0;
 	public int numberCount = 0;
 	public int valueCount = 0;
+
+	public BasicType type;
 
 	/**
 	 * The slot this variable exists in
@@ -64,7 +67,7 @@ public class VarInfo {
 	 * The PC this variable is written at
 	 * -1 for a block inputs
 	 */
-	public final int pc; // where assigned, or -1 if for block inputs
+	public final int pc;
 
 	/**
 	 * The upvalue info
@@ -97,8 +100,17 @@ public class VarInfo {
 		this.pc = pc;
 	}
 
+	public VarInfo(int slot, int pc, BasicType type) {
+		this(slot, pc);
+		this.type = type;
+	}
+
 	public String toString() {
-		return slot < 0 ? "x.x" : (slot + "." + pc);
+		if (slot < 0) {
+			return "x.x";
+		} else {
+			return slot + "." + pc + (type == null ? "" : (":" + type.format()));
+		}
 	}
 
 	/**
@@ -169,5 +181,14 @@ public class VarInfo {
 		isReferenced = true;
 		references.add(pc);
 		phiReferences.add(pc);
+	}
+
+	/**
+	 * Get this variable's type
+	 *
+	 * @return The variable's type, or {@link BasicType#VALUE} if unknown.
+	 */
+	public final BasicType getTypeOrDefault() {
+		return type == null ? BasicType.VALUE : type;
 	}
 }

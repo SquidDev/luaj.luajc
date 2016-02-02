@@ -20,4 +20,8 @@ public enum BasicType {
 				return VALUE;
 		}
 	}
+
+	public String format() {
+		return name().substring(0, 1);
+	}
 }
