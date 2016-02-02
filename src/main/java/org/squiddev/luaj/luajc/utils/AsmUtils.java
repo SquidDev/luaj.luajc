@@ -1,6 +1,7 @@
 package org.squiddev.luaj.luajc.utils;
 
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.util.CheckClassAdapter;
 import org.objectweb.asm.util.TraceClassVisitor;
@@ -91,4 +92,27 @@ public final class AsmUtils {
 		validateClass(new ClassReader(bytes), loader);
 	}
 
+	public static void dump(byte[] bytes) {
+		ClassReader reader = new ClassReader(bytes);
+		PrintWriter printWriter = new PrintWriter(System.out, true);
+
+		reader.accept(new TraceClassVisitor(printWriter), 0);
+	}
+
+
+	public static void writeSuperConstructor(MethodVisitor visitor, String name) {
+		visitor.visitVarInsn(ALOAD, 0);
+		visitor.visitMethodInsn(INVOKESPECIAL, name, "<init>", "()V", false);
+	}
+
+	public static void writeDefaultConstructor(ClassVisitor visitor, String name) {
+		MethodVisitor constructor = visitor.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+		constructor.visitCode();
+
+		writeSuperConstructor(constructor, name);
+
+		constructor.visitInsn(RETURN);
+		constructor.visitMaxs(1, 1);
+		constructor.visitEnd();
+	}
 }

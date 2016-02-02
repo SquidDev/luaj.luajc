@@ -22,7 +22,9 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.analysis;
+
+import org.luaj.vm2.LuaValue;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -40,7 +42,7 @@ public class VarInfo {
 	 * @param slot The slot this parameter is in
 	 * @return The resulting parameter variable. The PC is set to -1
 	 */
-	public static VarInfo PARAM(int slot) {
+	public static VarInfo param(int slot) {
 		return new VarInfo(slot, -1) {
 			public String toString() {
 				return slot + ".p";
@@ -56,9 +58,14 @@ public class VarInfo {
 	 * @param pc   The PC this variable is used at
 	 * @return The resulting variable
 	 */
-	public static VarInfo PHI(final ProtoInfo pi, final int slot, final int pc) {
+	public static VarInfo phi(final ProtoInfo pi, final int slot, final int pc) {
 		return new PhiVarInfo(pi, slot, pc);
 	}
+
+	// Counts for value tracking
+	public int booleanCount = 0;
+	public int numberCount = 0;
+	public int valueCount = 0;
 
 	/**
 	 * The slot this variable exists in
@@ -124,6 +131,20 @@ public class VarInfo {
 	 */
 	public boolean isPhiVar() {
 		return false;
+	}
+
+	public final void increment(LuaValue value) {
+		switch (value.type()) {
+			case LuaValue.TBOOLEAN:
+				booleanCount++;
+				break;
+			case LuaValue.TNUMBER:
+				numberCount++;
+				break;
+			default:
+				valueCount++;
+				break;
+		}
 	}
 
 	/**
@@ -209,7 +230,7 @@ public class VarInfo {
 			for (int i = 0, n = b.prev != null ? b.prev.length : 0; i < n; i++) {
 				BasicBlock bp = b.prev[i];
 				if (visitedBlocks.add(bp)) {
-					VarInfo v = pi.vars[slot][bp.pc1];
+					VarInfo v = pi.vars[bp.pc1][slot];
 					if (v != null) {
 						v.collectUniqueValues(visitedBlocks, vars);
 					}

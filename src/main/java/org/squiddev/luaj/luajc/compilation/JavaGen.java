@@ -22,60 +22,27 @@
  * THE SOFTWARE.
  * ****************************************************************************
  */
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.utils.AsmUtils;
+import org.squiddev.luaj.luajc.analysis.BasicBlock;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 
 public final class JavaGen {
-
-	public final String className;
 	public final byte[] bytecode;
-	public final JavaGen[] inners;
-	public final Prototype prototype;
+	public final ProtoInfo prototype;
 
-	protected boolean validated = false;
-
-	public JavaGen(Prototype p, String className, String filename) {
-		this(new ProtoInfo(p, className), className, filename);
-	}
-
-	private JavaGen(ProtoInfo pi, String className, String filename) {
-		this.className = className;
-		prototype = pi.prototype;
+	protected JavaGen(ProtoInfo pi, JavaLoader loader, String filename) {
+		prototype = pi;
 
 		// build this class
-		JavaBuilder builder = new JavaBuilder(pi, className, filename);
-		scanInstructions(pi, className, builder);
+		JavaBuilder builder = new JavaBuilder(pi, loader.options.prefix + loader.name, filename);
+		scanInstructions(pi, builder);
 		bytecode = builder.completeClass();
-
-		// build sub-prototypes
-		if (pi.subprotos != null) {
-			int n = pi.subprotos.length;
-			inners = new JavaGen[n];
-			for (int i = 0; i < n; i++) {
-				inners[i] = new JavaGen(pi.subprotos[i], closureName(className, i), filename);
-			}
-		} else {
-			inners = null;
-		}
 	}
 
-	public void validate(ClassLoader loader) {
-		// Validating is slow, validate if we have to
-		if (validated) return;
-		validated = true;
-
-		// Validate at the end so other classes are generated
-		AsmUtils.validateClass(this.bytecode, loader);
-	}
-
-	private String closureName(String className, int subprotoindex) {
-		return className + "$" + subprotoindex;
-	}
-
-	private void scanInstructions(ProtoInfo pi, String className, JavaBuilder builder) {
+	private void scanInstructions(ProtoInfo pi, JavaBuilder builder) {
 		Prototype p = pi.prototype;
 		int vresultbase = -1;
 
@@ -92,7 +59,7 @@ public final class JavaGen {
 					for (int slot = 0; slot < p.maxstacksize; slot++) {
 						int up_pc = b0.pc0;
 						boolean c = pi.isUpvalueCreate(up_pc, slot);
-						if (c && pi.vars[slot][up_pc].isPhiVar()) {
+						if (c && pi.vars[up_pc][slot].isPhiVar()) {
 							builder.convertToUpvalue(up_pc, slot);
 						}
 					}
@@ -108,53 +75,53 @@ public final class JavaGen {
 				int c = Lua.GETARG_C(ins);
 
 				switch (o) {
-					case Lua.OP_GETUPVAL: /*	A B	R(A):= UpValue[B]				*/
+					case Lua.OP_GETUPVAL: // A B R(A):= UpValue[B]
 						builder.loadUpvalue(b);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_SETUPVAL: /*	A B	UpValue[B]:= R(A)				*/
+					case Lua.OP_SETUPVAL: // A B UpValue[B]:= R(A)
 						builder.storeUpvalue(pc, b, a);
 						break;
 
-					case Lua.OP_NEWTABLE: /*	A B C	R(A):= {} (size = B,C)				*/
+					case Lua.OP_NEWTABLE: // A B C R(A):= {} (size = B,C)
 						builder.newTable(b, c);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_MOVE:/*	A B	R(A):= R(B)					*/
+					case Lua.OP_MOVE:// A B R(A):= R(B)
 						builder.loadLocal(pc, b);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_UNM: /*	A B	R(A):= -R(B)					*/
-					case Lua.OP_NOT: /*	A B	R(A):= not R(B)				*/
-					case Lua.OP_LEN: /*	A B	R(A):= length of R(B)				*/
+					case Lua.OP_UNM: // A B R(A):= -R(B)
+					case Lua.OP_NOT: // A B R(A):= not R(B)
+					case Lua.OP_LEN: // A B R(A):= length of R(B)
 						builder.loadLocal(pc, b);
-						builder.unaryop(o);
+						builder.unaryOp(o);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_LOADK:/*	A Bx	R(A):= Kst(Bx)					*/
+					case Lua.OP_LOADK:// A Bx R(A):= Kst(Bx)
 						builder.loadConstant(p.k[bx]);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_GETGLOBAL: /*	A Bx	R(A):= Gbl[Kst(Bx)]				*/
+					case Lua.OP_GETGLOBAL: // A Bx R(A):= Gbl[Kst(Bx)]
 						builder.loadEnv();
 						builder.loadConstant(p.k[bx]);
 						builder.getTable();
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_SETGLOBAL: /*	A Bx	Gbl[Kst(Bx)]:= R(A)				*/
+					case Lua.OP_SETGLOBAL: // A Bx Gbl[Kst(Bx)]:= R(A)
 						builder.loadEnv();
 						builder.loadConstant(p.k[bx]);
 						builder.loadLocal(pc, a);
 						builder.setTable();
 						break;
 
-					case Lua.OP_LOADNIL: /*	A B	R(A):= ...:= R(B):= nil			*/
+					case Lua.OP_LOADNIL: // A B R(A):= ...:= R(B):= nil
 						builder.loadNil();
 						for (; a <= b; a++) {
 							if (a < b) {
@@ -164,33 +131,33 @@ public final class JavaGen {
 						}
 						break;
 
-					case Lua.OP_GETTABLE: /*	A B C	R(A):= R(B)[RK(C)]				*/
+					case Lua.OP_GETTABLE: // A B C R(A):= R(B)[RK(C)]
 						builder.loadLocal(pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
 						builder.getTable();
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_SETTABLE: /*	A B C	R(A)[RK(B)]:= RK(C)				*/
+					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
 						builder.loadLocal(pc, a);
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
 						builder.setTable();
 						break;
 
-					case Lua.OP_ADD: /*	A B C	R(A):= RK(B) + RK(C)				*/
-					case Lua.OP_SUB: /*	A B C	R(A):= RK(B) - RK(C)				*/
-					case Lua.OP_MUL: /*	A B C	R(A):= RK(B) * RK(C)				*/
-					case Lua.OP_DIV: /*	A B C	R(A):= RK(B) / RK(C)				*/
-					case Lua.OP_MOD: /*	A B C	R(A):= RK(B) % RK(C)				*/
-					case Lua.OP_POW: /*	A B C	R(A):= RK(B) ^ RK(C)				*/
+					case Lua.OP_ADD: // A B C R(A):= RK(B) + RK(C)
+					case Lua.OP_SUB: // A B C R(A):= RK(B) - RK(C)
+					case Lua.OP_MUL: // A B C R(A):= RK(B) * RK(C)
+					case Lua.OP_DIV: // A B C R(A):= RK(B) / RK(C)
+					case Lua.OP_MOD: // A B C R(A):= RK(B) % RK(C)
+					case Lua.OP_POW: // A B C R(A):= RK(B) ^ RK(C)
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.binaryop(o);
+						builder.binaryOp(o);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_SELF: /*	A B C	R(A+1):= R(B): R(A):= R(B)[RK(C)]		*/
+					case Lua.OP_SELF: // A B C R(A+1):= R(B): R(A):= R(B)[RK(C)]
 						builder.loadLocal(pc, b);
 						builder.dup();
 						builder.storeLocal(pc, a + 1);
@@ -199,23 +166,23 @@ public final class JavaGen {
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_CONCAT: /*	A B C	R(A):= R(B).. ... ..R(C)			*/
+					case Lua.OP_CONCAT: // A B C R(A):= R(B).. ... ..R(C)
 						for (int k = b; k <= c; k++) {
 							builder.loadLocal(pc, k);
 						}
 						if (c > b + 1) {
-							builder.tobuffer();
+							builder.visitTobuffer();
 							for (int k = c; --k >= b; ) {
-								builder.concatbuffer();
+								builder.visitConcatBuffer();
 							}
-							builder.tovalue();
+							builder.visitTovalue();
 						} else {
-							builder.concatvalue();
+							builder.visitConcatValue();
 						}
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_LOADBOOL:/*	A B C	R(A):= (Bool)B: if (C) pc++			*/
+					case Lua.OP_LOADBOOL:// A B C R(A):= (Bool)B: if (C) pc++
 						builder.loadBoolean(b != 0);
 						builder.storeLocal(pc, a);
 						if (c != 0) {
@@ -223,35 +190,34 @@ public final class JavaGen {
 						}
 						break;
 
-					case Lua.OP_JMP: /*	sBx	pc+=sBx					*/
+					case Lua.OP_JMP: // sBx pc+=sBx
 						builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx);
 						break;
 
-					case Lua.OP_EQ: /*	A B C	if ((RK(B) == RK(C)) ~= A) then pc++		*/
-					case Lua.OP_LT: /*	A B C	if ((RK(B) <  RK(C)) ~= A) then pc++  		*/
-					case Lua.OP_LE: /*	A B C	if ((RK(B) <= RK(C)) ~= A) then pc++  		*/
+					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
+					case Lua.OP_LT: // A B C if ((RK(B) <  RK(C)) ~= A) then pc++
+					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.compareop(o);
+						builder.compareOp(o);
 						builder.addBranch((a != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						break;
 
-					case Lua.OP_TEST: /*	A C	if not (R(A) <=> C) then pc++			*/
+					case Lua.OP_TEST: // A C if not (R(A) <=> C) then pc++
 						builder.loadLocal(pc, a);
-						builder.toBoolean();
+						builder.visitToBoolean();
 						builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						break;
 
-					case Lua.OP_TESTSET: /*	A B C	if (R(B) <=> C) then R(A):= R(B) else pc++	*/
+					case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A):= R(B) else pc++
 						builder.loadLocal(pc, b);
-						builder.toBoolean();
+						builder.visitToBoolean();
 						builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
 						builder.loadLocal(pc, b);
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_CALL: /*	A B C	R(A), ... ,R(A+C-2):= R(A)(R(A+1), ... ,R(A+B-1)) */
-
+					case Lua.OP_CALL: // A B C R(A), ... ,R(A+C-2):= R(A)(R(A+1), ... ,R(A+B-1))
 						// load function
 						builder.loadLocal(pc, a);
 
@@ -306,13 +272,12 @@ public final class JavaGen {
 								break;
 							case 0: // vararg result
 								vresultbase = a;
-								builder.storeVarresult();
+								builder.storeVarResult();
 								break;
 						}
 						break;
 
-					case Lua.OP_TAILCALL: /*	A B C	return R(A)(R(A+1), ... ,R(A+B-1))		*/
-
+					case Lua.OP_TAILCALL: // A B C return R(A)(R(A+1), ... ,R(A+B-1))
 						// load function
 						builder.loadLocal(pc, a);
 
@@ -332,10 +297,10 @@ public final class JavaGen {
 								break;
 						}
 						builder.newTailcallVarargs();
-						builder.areturn();
+						builder.visitReturn();
 						break;
 
-					case Lua.OP_RETURN: /*	A B	return R(A), ... ,R(A+B-2)	(see note)	*/
+					case Lua.OP_RETURN: // A B return R(A), ... ,R(A+B-2)	(see note)
 						if (c == 1) {
 							builder.loadNone();
 						} else {
@@ -354,21 +319,21 @@ public final class JavaGen {
 									break;
 							}
 						}
-						builder.areturn();
+						builder.visitReturn();
 						break;
 
-					case Lua.OP_FORPREP: /*	A sBx	R(A)-=R(A+2): pc+=sBx				*/
+					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2): pc+=sBx
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
-						builder.binaryop(Lua.OP_SUB);
+						builder.binaryOp(Lua.OP_SUB);
 						builder.storeLocal(pc, a);
 						builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx);
 						break;
 
-					case Lua.OP_FORLOOP: /*	A sBx	R(A)+=R(A+2): if R(A) <?= R(A+1) then { pc+=sBx: R(A+3)=R(A) }*/
+					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2): if R(A) <?= R(A+1) then { pc+=sBx: R(A+3)=R(A) }
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
-						builder.binaryop(Lua.OP_ADD);
+						builder.binaryOp(Lua.OP_ADD);
 						builder.dup();
 						builder.dup();
 						builder.storeLocal(pc, a);
@@ -379,11 +344,12 @@ public final class JavaGen {
 						builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 1 + sbx);
 						break;
 
-					case Lua.OP_TFORLOOP: /*
-									 * A C R(A+3), ... ,R(A+2+C):= R(A)(R(A+1),
-									 * R(A+2)): if R(A+3) ~= nil then R(A+2)=R(A+3)
-									 * else pc++
-									 */
+					case Lua.OP_TFORLOOP:
+						/*
+						 	A C R(A+3), ... ,R(A+2+C):= R(A)(R(A+1),
+						 	R(A+2)): if R(A+3) ~= nil then R(A+2)=R(A+3)
+						 	else pc++
+						*/
 						// v = stack[a].invoke(varargsOf(stack[a+1],stack[a+2]));
 						// if ( (o=v.arg1()).isnil() )
 						//	++pc;
@@ -392,14 +358,14 @@ public final class JavaGen {
 						builder.loadLocal(pc, a + 2);
 						builder.invoke(2); // varresult on stack
 						builder.dup();
-						builder.storeVarresult();
+						builder.storeVarResult();
 						builder.arg(1);
-						builder.isNil();
+						builder.visitIsNil();
 						builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 2);
 
 						// a[2] = a[3] = v[1], leave varargs on stack
 						builder.createUpvalues(pc, a + 3, c);
-						builder.loadVarresult();
+						builder.loadVarResult();
 						if (c >= 2) {
 							builder.dup();
 						}
@@ -418,51 +384,55 @@ public final class JavaGen {
 						}
 						break;
 
-					case Lua.OP_SETLIST: /*	A B C	R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B	*/
+					case Lua.OP_SETLIST: // A B C R(A)[(C-1)*FPF+i]:= R(A+i), 1 <= i <= B
+					{
 						int index0 = (c - 1) * Lua.LFIELDS_PER_FLUSH + 1;
 						builder.loadLocal(pc, a);
 						if (b == 0) {
 							int nstack = vresultbase - (a + 1);
 							if (nstack > 0) {
-								builder.setlistStack(pc, a + 1, index0, nstack);
+								builder.visitSetlistStack(pc, a + 1, index0, nstack);
 								index0 += nstack;
 							}
-							builder.setlistVarargs(index0);
+							builder.visitSetlistVarargs(index0);
 						} else {
-							builder.setlistStack(pc, a + 1, index0, b);
+							builder.visitSetlistStack(pc, a + 1, index0, b);
 							builder.pop();
 						}
 						break;
+					}
 
-					case Lua.OP_CLOSE: /*	A 	close all variables in the stack up to (>=) R(A)*/
+					case Lua.OP_CLOSE: // A  close all variables in the stack up to (>=) R(A)
 						break;
 
-					case Lua.OP_CLOSURE: /*	A Bx	R(A):= closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/ {
-						Prototype newp = p.p[bx];
-						String protoname = closureName(className, bx);
-						int nup = newp.nups;
-						builder.closureCreate(protoname);
+					case Lua.OP_CLOSURE: // A Bx R(A):= closure(KPROTO[Bx], R(A), ... ,R(A+n))
+					{
+						ProtoInfo newp = pi.subprotos[bx];
+						int nup = newp.upvalues == null ? 0 : newp.upvalues.length;
+						builder.closureCreate(newp);
 						if (nup > 0) builder.dup();
 						builder.storeLocal(pc, a);
+
 						if (nup > 0) {
+							builder.upvaluesGet();
 							for (int up = 0; up < nup; ++up) {
 								if (up + 1 < nup) builder.dup();
 								ins = p.code[pc + up + 1];
 								b = Lua.GETARG_B(ins);
 								if ((ins & 4) != 0) {
-									builder.closureInitUpvalueFromUpvalue(protoname, up, b);
+									builder.initUpvalueFromUpvalue(up, b);
 								} else {
-									builder.closureInitUpvalueFromLocal(protoname, up, pc, b);
+									builder.initUpvalueFromLocal(up, pc, b);
 								}
 							}
 							pc += nup;
 						}
 						break;
 					}
-					case Lua.OP_VARARG: /*	A B	R(A), R(A+1), ..., R(A+B-1) = vararg		*/
+					case Lua.OP_VARARG: // A B R(A), R(A+1), ..., R(A+B-1) = vararg
 						if (b == 0) {
 							builder.loadVarargs();
-							builder.storeVarresult();
+							builder.storeVarResult();
 							vresultbase = a;
 						} else {
 							for (int i = 1; i < b; ++a, ++i) {
@@ -478,12 +448,12 @@ public final class JavaGen {
 
 	private void loadVarargResults(JavaBuilder builder, int pc, int a, int vresultbase) {
 		if (vresultbase < a) {
-			builder.loadVarresult();
-			builder.subargs(a + 1 - vresultbase);
+			builder.loadVarResult();
+			builder.subArgs(a + 1 - vresultbase);
 		} else if (vresultbase == a) {
-			builder.loadVarresult();
+			builder.loadVarResult();
 		} else {
-			builder.newVarargsVarresult(pc, a, vresultbase - a);
+			builder.newVarargsVarResult(pc, a, vresultbase - a);
 		}
 	}
 
