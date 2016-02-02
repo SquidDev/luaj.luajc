@@ -35,7 +35,7 @@ import org.luaj.vm2.Varargs;
  * simplifying development.
  * All other uses of {@link #call(LuaValue)}, {@link #invoke(Varargs)},etc,
  * are routed through this method by this class.
- * <
+ * 
  * If one or more arguments are required, or variable argument or variable return values,
  * then use one of the related function
  * {@link OneArgFunction}, {@link TwoArgFunction}, {@link ThreeArgFunction}, or {@link VarArgFunction}.
