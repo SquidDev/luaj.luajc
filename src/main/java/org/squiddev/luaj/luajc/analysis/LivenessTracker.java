@@ -9,8 +9,8 @@ import java.util.*;
  */
 public final class LivenessTracker {
 	private final ProtoInfo info;
-	private Map<BasicBlock, Set<BasicBlock>> successors = new HashMap<BasicBlock, Set<BasicBlock>>();
-	private Map<SlotState, Boolean> active = new HashMap<SlotState, Boolean>();
+	private final Map<BasicBlock, Set<BasicBlock>> successors = new HashMap<BasicBlock, Set<BasicBlock>>();
+	private final Map<SlotState, Boolean> active = new HashMap<SlotState, Boolean>();
 
 	private final class SlotState {
 		private final VarInfo info;

@@ -1202,7 +1202,7 @@ public class StringLib extends OneArgFunction {
 		}
 
 		int min_expand(int soff, int poff, int ep) {
-			for (; ; ) {
+			while (true) {
 				int res = match(soff, ep + 1);
 				if (res != -1) {
 					return res;

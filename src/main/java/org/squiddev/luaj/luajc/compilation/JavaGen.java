@@ -33,7 +33,7 @@ public final class JavaGen {
 	public final byte[] bytecode;
 	public final ProtoInfo prototype;
 
-	protected JavaGen(ProtoInfo pi, JavaLoader loader, String filename) {
+	public JavaGen(ProtoInfo pi, JavaLoader loader, String filename) {
 		prototype = pi;
 
 		// build this class

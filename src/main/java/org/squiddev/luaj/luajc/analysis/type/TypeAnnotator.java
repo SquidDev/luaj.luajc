@@ -28,6 +28,8 @@ public class TypeAnnotator {
 
 		for (VarInfo[] stack : info.vars) {
 			for (VarInfo var : stack) {
+				if (var == null || var == VarInfo.INVALID || types.containsKey(var)) continue;
+
 				// If it is a mutable upvalue presume it is a value,
 				if (var.upvalue != null && var.upvalue.readWrite) {
 					types.put(var, new TypeInformation(BasicType.VALUE));

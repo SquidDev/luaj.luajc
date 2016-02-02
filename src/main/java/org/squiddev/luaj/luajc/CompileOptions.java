@@ -12,7 +12,12 @@ public class CompileOptions {
 	/**
 	 * Default value for {@link #compileThreshold}
 	 */
-	public static final int THRESHOLD = 10;
+	public static final int COMPILE_THRESHOLD = 50;
+
+	/**
+	 * Default value for {@link #typeThreshold}
+	 */
+	public static final float TYPE_THRESHOLD = 0.7f;
 
 	/**
 	 * The prefix for all classes in slash form
@@ -32,6 +37,12 @@ public class CompileOptions {
 	public final int compileThreshold;
 
 	/**
+	 * Percentage a type must be to considered
+	 * worth specialising in
+	 */
+	public final float typeThreshold;
+
+	/**
 	 * Verify the compiled sources
 	 * This helps debug but will slow down compilation massively
 	 */
@@ -41,17 +52,19 @@ public class CompileOptions {
 	 * Create a new compilation options
 	 *
 	 * @param prefix           Set {@link #prefix}. The default is {@link #PREFIX}.
-	 * @param compileThreshold Set {@link #compileThreshold}. The default is {@link #THRESHOLD}.
+	 * @param compileThreshold Set {@link #compileThreshold}. The default is {@link #COMPILE_THRESHOLD}.
+	 * @param typeThreshold    Set {@link #typeThreshold}. The default is {@link #TYPE_THRESHOLD}.
 	 * @param verify           Set {@link #verify}. The default is true.
 	 */
-	public CompileOptions(String prefix, int compileThreshold, boolean verify) {
+	public CompileOptions(String prefix, int compileThreshold, float typeThreshold, boolean verify) {
 		this.prefix = prefix;
 		this.compileThreshold = compileThreshold;
+		this.typeThreshold = typeThreshold;
 		this.verify = verify;
 		dotPrefix = prefix.replace('/', '.');
 	}
 
 	public CompileOptions() {
-		this(PREFIX, THRESHOLD, true);
+		this(PREFIX, COMPILE_THRESHOLD, TYPE_THRESHOLD, true);
 	}
 }
