@@ -108,7 +108,6 @@ public final class Constants {
 
 	// Tail call
 	public static final TinyMethod METHOD_TAILCALL = new TinyMethod(LuaValue.class, "tailcallOf", LuaValue.class, Varargs.class);
-	public static final TinyMethod METHOD_TAILCALL_EVAL = new TinyMethod(Varargs.class, "eval");
 
 	// Invoke (because that is different to call?) Well, it is but really silly
 	public static final TinyMethod METHOD_INVOKE_VAR = new TinyMethod(LuaValue.class, "invoke", Varargs.class);
