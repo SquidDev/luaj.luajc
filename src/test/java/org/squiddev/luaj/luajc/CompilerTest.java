@@ -6,12 +6,18 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.luaj.vm2.LoadState;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Prototype;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JseBaseLib;
 import org.luaj.vm2.lib.jse.JsePlatform;
+import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.analysis.type.ConversionAnnotator;
+import org.squiddev.luaj.luajc.analysis.type.TypeAnnotator;
+import org.squiddev.luaj.luajc.compilation.JavaLoader;
+import org.squiddev.luaj.luajc.function.FunctionWrapper;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -127,6 +133,22 @@ public class CompilerTest {
 	public void testLuaJC() throws Exception {
 		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, CompileOptions.TYPE_THRESHOLD, true));
 		run();
+	}
+
+	@Test
+	public void testTypes() throws Exception {
+		Prototype proto = Loader.loadPrototype(name, name + ".lua");
+		JavaLoader loader = new JavaLoader(new CompileOptions(), LuaJC.toClassName(name), name + ".lua");
+
+		ProtoInfo info = new ProtoInfo(proto, loader);
+
+		FunctionWrapper function = new FunctionWrapper(info, globals);
+		for (int i = 0; i < 9; i++) {
+			function.call();
+		}
+
+		new TypeAnnotator(info).fill(0.7f);
+		new ConversionAnnotator(info).fill();
 	}
 
 	@Test

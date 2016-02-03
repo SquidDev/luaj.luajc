@@ -39,6 +39,20 @@ public final class ConversionAnnotator {
 	private boolean checkInsn(int pc, int insn) {
 		VarInfo[] vars = info.vars[pc];
 		switch (Lua.GET_OPCODE(insn)) {
+			case Lua.OP_MOVE:    // A B R(A) := R(B)
+			{
+				VarInfo a = vars[Lua.GETARG_A(insn)];
+				VarInfo b = info.getVariable(pc, Lua.GETARG_B(insn));
+				if (b.type == a.type && b.type != BasicType.VALUE && definitionDominates(b, pc, b.type)) {
+					ensureSpecialised(b, pc);
+					markSpecialist(a, pc);
+					return true;
+				} else {
+					ensureGeneric(b, pc);
+					markGeneric(a, pc);
+					return false;
+				}
+			}
 			case Lua.OP_LOADK:     // A Bx    R(A) := Kst(Bx)
 			case Lua.OP_LOADBOOL:  // A B  C  R(A) := (Bool)B; if (C) pc++
 				markBoth(vars[Lua.GETARG_A(insn)], pc);
@@ -50,15 +64,15 @@ public final class ConversionAnnotator {
 				return false;
 
 			case Lua.OP_UNM:     // A B R(A) := -R(B)
-				return unaryOp(vars[Lua.GETARG_B(insn)], vars[Lua.GETARG_A(insn)], BasicType.NUMBER, pc);
+				return unaryOp(info.getVariable(pc, Lua.GETARG_B(insn)), info.getVariable(pc, Lua.GETARG_A(insn)), BasicType.NUMBER, pc);
 
 			case Lua.OP_NOT:     // A B R(A) := not R(B)
-				return unaryOp(vars[Lua.GETARG_B(insn)], vars[Lua.GETARG_A(insn)], BasicType.BOOLEAN, pc);
+				return unaryOp(info.getVariable(pc, Lua.GETARG_B(insn)), info.getVariable(pc, Lua.GETARG_A(insn)), BasicType.BOOLEAN, pc);
 
 			case Lua.OP_LEN:     // A B R(A) := length of R(B)
 			case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A) := R(B) else pc++
 				// TODO: If we have a boolean available here we should use it, otherwise we shouldn't
-				ensureGeneric(vars[Lua.GETARG_A(insn)], pc);
+				ensureGeneric(Lua.GETARG_A(insn), pc);
 				markGeneric(vars[Lua.GETARG_B(insn)], pc);
 				return false;
 
@@ -78,7 +92,7 @@ public final class ConversionAnnotator {
 					bVar = null;
 					bType = BasicType.fromValue(info.prototype.k[Lua.INDEXK(b)]);
 				} else {
-					bVar = vars[b];
+					bVar = info.getVariable(pc, b);
 					bType = bVar.type;
 				}
 
@@ -107,10 +121,14 @@ public final class ConversionAnnotator {
 			}
 
 			case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
-				ensureGeneric(vars[Lua.GETARG_B(insn)], pc);
-				ensureGeneric(vars[Lua.GETARG_C(insn)], pc);
-				ensureGeneric(vars[Lua.GETARG_A(insn)], pc);
+			{
+				ensureGeneric(Lua.GETARG_A(insn), pc);
+
+				int b = Lua.GETARG_B(insn), c = Lua.GETARG_C(insn);
+				if (!Lua.ISK(b)) ensureGeneric(b, pc);
+				if (!Lua.ISK(c)) ensureGeneric(c, pc);
 				return false;
+			}
 
 			case Lua.OP_CONCAT: // A B C R(A) := R(B) .. ... .. R(C)
 			{
@@ -118,32 +136,72 @@ public final class ConversionAnnotator {
 				int b = Lua.GETARG_B(insn);
 				int c = Lua.GETARG_C(insn);
 				for (; b <= c; b++) {
-					ensureGeneric(vars[b], pc);
+					ensureGeneric(b, pc);
 				}
 				markGeneric(vars[a], pc);
-				break;
+				return false;
 			}
 
 			case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
-				// TODO: No clue how to handle this
-				return false;
+			{
+				int a = Lua.GETARG_A(insn);
+				VarInfo aVar = vars[a], aCounter = vars[a + 2];
+				if (aVar.type == BasicType.NUMBER && aCounter.type == BasicType.NUMBER) {
+					ensureSpecialised(aCounter, pc);
+					markSpecialist(aVar, pc);
+				} else {
+					ensureGeneric(aCounter, pc);
+					ensureSpecialised(aVar, pc);
+				}
+			}
+			return false;
 
 			case Lua.OP_GETTABLE: // A B C R(A) := R(B)[RK(C)]
-				ensureGeneric(vars[Lua.GETARG_B(insn)], pc);
-				ensureGeneric(vars[Lua.GETARG_C(insn)], pc);
+			{
+				ensureGeneric(Lua.GETARG_B(insn), pc);
+				int c = Lua.GETARG_C(insn);
+				if (!Lua.ISK(c)) ensureGeneric(c, pc);
 				markGeneric(vars[Lua.GETARG_A(insn)], pc);
 				return false;
+			}
 
 			case Lua.OP_SELF: // A B C R(A+1) := R(B); R(A) := R(B)[RK(C)]
-				ensureGeneric(vars[Lua.GETARG_B(insn)], pc);
-				ensureGeneric(vars[Lua.GETARG_C(insn)], pc);
+				ensureGeneric(Lua.GETARG_B(insn), pc);
+				ensureGeneric(Lua.GETARG_C(insn), pc);
 				markGeneric(vars[Lua.GETARG_A(insn)], pc);
 				markGeneric(vars[Lua.GETARG_A(insn) + 1], pc);
 				return false;
 
-			case Lua.OP_FORLOOP:
-				// TODO: No clue how to handle things
-				return false;
+			case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
+			{
+				int a = Lua.GETARG_A(insn);
+				VarInfo counter = info.getVariable(pc, a);
+				VarInfo limit = info.getVariable(pc, a + 1);
+				VarInfo inc = info.getVariable(pc, a + 2);
+
+				VarInfo storedCounter = vars[a];
+				VarInfo publicCounter = vars[a + 3];
+
+				if (counter.type == BasicType.NUMBER && limit.type == BasicType.NUMBER && inc.type == BasicType.NUMBER) {
+					ensureSpecialised(counter, pc);
+					ensureSpecialised(limit, pc);
+					ensureSpecialised(inc, pc);
+
+					if (counter != storedCounter) markSpecialist(storedCounter, pc);
+					markSpecialist(publicCounter, pc);
+
+					return true;
+				} else {
+					ensureGeneric(counter, pc);
+					ensureGeneric(limit, pc);
+					ensureGeneric(inc, pc);
+
+					if (counter != storedCounter) markGeneric(storedCounter, pc);
+					markGeneric(publicCounter, pc);
+
+					return false;
+				}
+			}
 
 			case Lua.OP_LOADNIL: // A B R(A) ... R(B) := nil
 			{
@@ -168,9 +226,9 @@ public final class ConversionAnnotator {
 				int a = Lua.GETARG_A(insn);
 				int b = Lua.GETARG_B(insn);
 				int c = Lua.GETARG_C(insn);
-				ensureGeneric(vars[a], pc);
+				ensureGeneric(a, pc);
 				for (int i = 1; i <= b - 1; i++) {
-					ensureGeneric(vars[a + i], pc);
+					ensureGeneric(a + i, pc);
 				}
 				for (int i = 0; i <= c - 2; i++, a++) {
 					markGeneric(vars[a], pc);
@@ -200,9 +258,9 @@ public final class ConversionAnnotator {
 			{
 				int a = Lua.GETARG_A(insn);
 				int c = Lua.GETARG_C(insn);
-				ensureGeneric(vars[a++], pc);
-				ensureGeneric(vars[a++], pc);
-				ensureGeneric(vars[a++], pc);
+				ensureGeneric(a++, pc);
+				ensureGeneric(a++, pc);
+				ensureGeneric(a++, pc);
 				for (int i = 0; i < c; i++, a++) {
 					markGeneric(vars[a], pc);
 				}
@@ -218,7 +276,7 @@ public final class ConversionAnnotator {
 					int i = info.prototype.code[pc + k];
 					if ((i & 4) == 0) {
 						b = Lua.GETARG_B(i);
-						ensureGeneric(vars[b], pc);
+						ensureGeneric(b, pc);
 					}
 				}
 				markGeneric(vars[a], pc);
@@ -245,7 +303,7 @@ public final class ConversionAnnotator {
 			{
 				int a = Lua.GETARG_A(insn);
 				ensureGeneric(vars[a], pc);
-				break;
+				return false;
 			}
 
 			case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
@@ -294,10 +352,8 @@ public final class ConversionAnnotator {
 			}
 
 			default:
-				throw new IllegalStateException("unhandled opcode: " + insn);
+				throw new IllegalStateException("unhandled opcode: " + Lua.GET_OPCODE(insn));
 		}
-
-		throw new IllegalStateException("Unreachable code!");
 	}
 
 	public boolean unaryOp(VarInfo operand, VarInfo product, BasicType required, int pc) {
@@ -367,12 +423,32 @@ public final class ConversionAnnotator {
 		}
 	}
 
+	public void ensureGeneric(int slot, int pc) {
+		ensureGeneric(info.getVariable(pc, slot), pc);
+	}
+
+	public void ensureSpecialised(int slot, int pc) {
+		ensureGeneric(info.getVariable(pc, slot), pc);
+	}
+
 	public void ensureGeneric(VarInfo var, int pc) {
 		ensure(var, pc, BasicType.VALUE);
 	}
 
 	public void ensureSpecialised(VarInfo var, int pc) {
 		ensure(var, pc, var.type);
+	}
+
+	public void ensureMaybe(VarInfo var, int pc, BasicType type) {
+		if (var.type == type) {
+			ensureSpecialised(var, pc);
+		} else {
+			ensureGeneric(var, pc);
+		}
+	}
+
+	public boolean definitionDominates(VarInfo var, int current, BasicType type) {
+		return definitionDominates(var.getTypeInfo().definitions[type.ordinal()], current, var.pc);
 	}
 
 	public boolean definitionDominates(IntArray defs, int current, int initialDefinition) {

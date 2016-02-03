@@ -26,49 +26,63 @@ public class TypeAnnotator {
 	public Set<VarInfo> fillFromThreshold(double threshold) {
 		Set<VarInfo> unknown = new HashSet<VarInfo>();
 
+		for (VarInfo param : info.params) {
+			if (!annotate(param, threshold)) unknown.add(param);
+		}
 		for (VarInfo[] stack : info.vars) {
 			for (VarInfo var : stack) {
-				if (var == null || var == VarInfo.INVALID) continue;
-				if (var.type != null) {
-					known.add(var);
-					continue;
-				}
-
-				// If it is a mutable upvalue presume it is a value,
-				if (var.upvalue != null && var.upvalue.readWrite) {
-					var.type = BasicType.VALUE;
-					known.add(var);
-					continue;
-				}
-
-				int sum = var.booleanCount + var.numberCount + var.valueCount;
-
-				// If we've never visited this instruction then skip for now
-				if (sum == 0) {
-					unknown.add(var);
-					continue;
-				}
-
-				int countThreshold = (int) (sum * threshold);
-				if (var.booleanCount > countThreshold) {
-					var.type = BasicType.BOOLEAN;
-					known.add(var);
-				} else if (var.numberCount > countThreshold) {
-					var.type = BasicType.NUMBER;
-					known.add(var);
-				} else {
-					/*
-						We presume it is just a value.
-						Whilst might be worth considering adding this to the unannotated list,
-						there is sufficient "entropy" in this type, that it isn't needed.
-					*/
-					var.type = BasicType.VALUE;
-					known.add(var);
-				}
+				if (!annotate(var, threshold)) unknown.add(var);
 			}
 		}
 
 		return unknown;
+	}
+
+	/**
+	 * The variable to annotate
+	 *
+	 * @param var The threshold to set at
+	 * @return If we know the type of the variable
+	 */
+	private boolean annotate(VarInfo var, double threshold) {
+		if (var == null || var == VarInfo.INVALID) return true;
+		if (var.type != null) {
+			known.add(var);
+			return true;
+		}
+
+		// If it is a mutable upvalue presume it is a value,
+		if (var.upvalue != null && var.upvalue.readWrite) {
+			var.type = BasicType.VALUE;
+			known.add(var);
+			return true;
+		}
+
+		int sum = var.booleanCount + var.numberCount + var.valueCount;
+
+		// If we've never visited this instruction then skip for now
+		if (sum == 0) {
+			return false;
+		}
+
+		int countThreshold = (int) (sum * threshold);
+		if (var.booleanCount > countThreshold) {
+			var.type = BasicType.BOOLEAN;
+			known.add(var);
+		} else if (var.numberCount > countThreshold) {
+			var.type = BasicType.NUMBER;
+			known.add(var);
+		} else {
+			/*
+				We presume it is just a value.
+				Whilst might be worth considering adding this to the unannotated list,
+				there is sufficient "entropy" in this type, that it isn't needed.
+			*/
+			var.type = BasicType.VALUE;
+			known.add(var);
+		}
+
+		return true;
 	}
 
 	/**

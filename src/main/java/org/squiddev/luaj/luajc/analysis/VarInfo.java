@@ -196,6 +196,9 @@ public class VarInfo {
 	}
 
 	public TypeInfo getTypeInfo() {
+		if (this == INVALID) {
+			throw new IllegalStateException("Cannot get type info of invalid");
+		}
 		TypeInfo info = typeInfo;
 		if (info == null) {
 			BasicType type = this.type;

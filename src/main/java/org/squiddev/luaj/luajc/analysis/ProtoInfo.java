@@ -276,12 +276,40 @@ public final class ProtoInfo {
 	 * @return If this is a reference to a read/write upvalue
 	 */
 	public boolean isUpvalueRefer(int pc, int slot) {
-		// special case when both refer and assign in same instruction
-		if (pc > 0 && vars[pc][slot] != null && vars[pc][slot].pc == pc && vars[pc - 1][slot] != null) {
-			pc -= 1;
-		}
-		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
+		VarInfo v = getVariable(pc, slot);
 		return v != null && v.upvalue != null && v.upvalue.readWrite;
+	}
+
+	/**
+	 * Get the definition of this variable
+	 *
+	 * @param pc   The current PC
+	 * @param slot The slot the upvalue is stored in
+	 * @return If this is a reference to a read/write upvalue
+	 */
+	public VarInfo getVariable(int pc, int slot) {
+		if (pc < 0) {
+			return params[slot];
+		}
+
+		VarInfo info = vars[pc][slot];
+
+		if (info != null && (info.pc == pc || info == VarInfo.INVALID) && pc > 0) {
+			// special case when both refer and assign in same instruction
+			// This probably isn't accurate
+			BasicBlock currentBlock = blocks[pc];
+			BasicBlock previousBlock = blocks[pc - 1];
+
+			VarInfo previous;
+			if (currentBlock == previousBlock) {
+				previous = vars[pc - 1][slot];
+			} else {
+				previous = vars[currentBlock.prev[currentBlock.prev.length - 1].pc1][slot];
+			}
+			if (previous != null) return previous;
+		}
+
+		return info;
 	}
 
 	/**
