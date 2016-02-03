@@ -2,7 +2,7 @@
 
 local function assertLine(stack, line)
 	local success, msg = pcall(error, "", stack + 2)
-	assertEquals("RecursiveTrace.lua:" .. line .. ": ", msg)
+	assertEquals("new-fragment/RecursiveTrace.lua:" .. line .. ": ", msg)
 end
 
 local function assertStack()

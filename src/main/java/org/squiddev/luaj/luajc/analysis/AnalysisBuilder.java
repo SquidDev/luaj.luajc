@@ -260,7 +260,6 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
 						pcVar[a].reference(pc);
-						pcVar[a].reference(pc);
 						for (int i = 1; i <= b - 1; i++) {
 							pcVar[a + i].reference(pc);
 						}
