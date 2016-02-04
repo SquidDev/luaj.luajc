@@ -5,10 +5,12 @@ local function numbers()
 end
 
 local function tail()
-	return numbers()
+	return nil, "b", numbers()
 end
 
-local a, b, c = tail()
-assertEquals(1, a)
-assertEquals(2, b)
-assertEquals(3, c)
+local a, b, c, d, e = tail()
+assertEquals(nil, a)
+assertEquals("b", b)
+assertEquals(1, c)
+assertEquals(2, d)
+assertEquals(3, e)

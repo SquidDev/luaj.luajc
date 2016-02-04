@@ -21,6 +21,7 @@ public class CompileOnlyTest {
 		return Arrays.asList(new Object[][]{
 			{"vBenchmark"},
 			{"Howl"},
+			{"luaide"},
 		});
 	}
 

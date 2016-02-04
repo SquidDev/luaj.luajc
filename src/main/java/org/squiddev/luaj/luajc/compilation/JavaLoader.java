@@ -57,10 +57,8 @@ public class JavaLoader extends ClassLoader {
 	public FunctionExecutor include(ProtoInfo info) {
 		try {
 			return include(new JavaGen(info, this, filename));
-		} catch (RuntimeException e) {
-			throw e;
 		} catch (Exception e) {
-			throw new RuntimeException(e);
+			throw new RuntimeException(info.toString(), e);
 		}
 	}
 
