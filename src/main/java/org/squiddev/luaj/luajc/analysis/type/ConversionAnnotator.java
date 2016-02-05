@@ -275,8 +275,8 @@ public final class ConversionAnnotator {
 				for (int k = 1; k <= nups; ++k) {
 					int i = info.prototype.code[pc + k];
 					if ((i & 4) == 0) {
-						b = Lua.GETARG_B(i);
-						ensureGeneric(b, pc);
+						int slot = Lua.GETARG_B(i);
+						ensureGeneric(vars[slot], pc);
 					}
 				}
 				markGeneric(vars[a], pc);
