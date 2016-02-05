@@ -14,7 +14,9 @@ import static org.luaj.vm2.LuaValue.NONE;
 import static org.luaj.vm2.LuaValue.varargsOf;
 
 /**
- * An implementation of the LuaVM
+ * An implementation of the LuaVM.
+ *
+ * @see LuaClosure
  */
 public final class LuaVM {
 	private LuaVM() {

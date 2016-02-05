@@ -1,11 +1,11 @@
 -- Tests tail calls
 
 local function numbers()
-	return 1, 2, 3
+	return 2, 3
 end
 
 local function tail()
-	return numbers()
+	return 1, numbers()
 end
 
 local a, b, c = tail()

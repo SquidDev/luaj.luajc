@@ -1,6 +1,7 @@
 package org.squiddev.luaj.luajc;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -46,6 +47,7 @@ public class CompilerTest {
 			{"new-fragment/Function"},
 			{"new-fragment/LoadBytecode"},
 			{"new-fragment/NForLoop"},
+			{"new-fragment/NilCallReturn"},
 			{"new-fragment/Recursive"},
 			{"new-fragment/RecursiveTrace"},
 			{"new-fragment/SetFEnv"},
@@ -127,14 +129,26 @@ public class CompilerTest {
 	}
 
 	/**
-	 * Get the Lua test and run it
+	 * Test the {@link LuaJC} compiler.
 	 */
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, CompileOptions.TYPE_THRESHOLD, true));
+		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, CompileOptions.TYPE_THRESHOLD, true, null));
 		run();
 	}
 
+	/**
+	 * Test the {@link org.squiddev.luaj.luajc.function.LuaVM} implementation.
+	 */
+	@Test
+	public void testLuaVM() throws Exception {
+		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, Integer.MAX_VALUE, 0, true, null));
+		run();
+	}
+
+	/**
+	 * A test to compare against the expected behaviour
+	 */
 	@Test
 	public void testTypes() throws Exception {
 		Prototype proto = Loader.loadPrototype(name, name + ".lua");
@@ -154,6 +168,15 @@ public class CompilerTest {
 	@Test
 	public void testLuaC() throws Exception {
 		LuaC.install();
+		run();
+	}
+
+	/**
+	 * Check bugs that are in this implementation but not in the original, or vice versa.
+	 */
+	@Ignore("Some of these fail")
+	public void testLuaJCOriginal() throws Exception {
+		org.luaj.vm2.luajc.LuaJC.install();
 		run();
 	}
 

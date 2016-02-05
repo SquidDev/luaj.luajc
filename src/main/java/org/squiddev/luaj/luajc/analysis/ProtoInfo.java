@@ -216,11 +216,6 @@ public final class ProtoInfo {
 			}
 		}
 
-		// nested functions
-		for (int i = 0, n = subprotos != null ? subprotos.length : 0; i < n; i++) {
-			sb.append(subprotos[i].toString());
-		}
-
 		return sb.toString();
 	}
 

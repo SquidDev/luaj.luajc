@@ -24,6 +24,7 @@ public class PerformanceRunner {
 		int times = 5;
 		boolean luaC = true;
 		boolean luaJC = true;
+		boolean luaVM = true;
 		boolean compileOnly = false;
 
 		// Ugly parse arguments
@@ -44,6 +45,8 @@ public class PerformanceRunner {
 					luaJC = false;
 				} else if (next.equals("l") || next.equals("luac")) {
 					luaC = false;
+				} else if (next.equals("o") || next.equals("luavm")) {
+					luaVM = false;
 				} else if (next.equals("v") || next.equals("verbose")) {
 					QUIET = false;
 				} else if (next.equals("q") || next.equals("quiet")) {
@@ -63,6 +66,7 @@ public class PerformanceRunner {
 							"  -t|--times <number> Run this n times\n" +
 							"  -j|--luajc          Don't run LuaJC\n" +
 							"  -l|--luac           Don't run LuaC\n" +
+							"  -o|--luavm          Don't run optimised LuaClosure\n" +
 							"  -v|--verbose        Verbose output\n" +
 							"  -q|--quiet          Quiet output\n" +
 							"  -p|--prompt         Prompt to begin\n" +
@@ -85,6 +89,12 @@ public class PerformanceRunner {
 				LuaTable globals = getGlobals();
 				LuaJC.install();
 				testRun("LuaJC", globals, compileOnly);
+			}
+
+			if (luaVM) {
+				LuaTable globals = getGlobals();
+				LuaJC.install(new CompileOptions(CompileOptions.PREFIX, Integer.MAX_VALUE, 0, true, null));
+				testRun("LuaVM", globals, compileOnly);
 			}
 		}
 	}

@@ -49,22 +49,30 @@ public class CompileOptions {
 	public final boolean verify;
 
 	/**
+	 * Used to handle errors on class generation
+	 * When {@code null} the exception will be propagated
+	 */
+	public final ErrorHandler handler;
+
+	/**
 	 * Create a new compilation options
 	 *
 	 * @param prefix           Set {@link #prefix}. The default is {@link #PREFIX}.
 	 * @param compileThreshold Set {@link #compileThreshold}. The default is {@link #COMPILE_THRESHOLD}.
 	 * @param typeThreshold    Set {@link #typeThreshold}. The default is {@link #TYPE_THRESHOLD}.
 	 * @param verify           Set {@link #verify}. The default is true.
+	 * @param handler          Set {@link #handler}. The default is {@code null}.
 	 */
-	public CompileOptions(String prefix, int compileThreshold, float typeThreshold, boolean verify) {
+	public CompileOptions(String prefix, int compileThreshold, float typeThreshold, boolean verify, ErrorHandler handler) {
 		this.prefix = prefix;
 		this.compileThreshold = compileThreshold;
 		this.typeThreshold = typeThreshold;
 		this.verify = verify;
+		this.handler = handler;
 		dotPrefix = prefix.replace('/', '.');
 	}
 
 	public CompileOptions() {
-		this(PREFIX, COMPILE_THRESHOLD, TYPE_THRESHOLD, true);
+		this(PREFIX, COMPILE_THRESHOLD, TYPE_THRESHOLD, true, null);
 	}
 }
