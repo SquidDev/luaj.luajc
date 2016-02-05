@@ -161,7 +161,16 @@ public final class ProtoInfo {
 				VarInfo[] vars = this.vars[pc];
 				for (int j = 0; j < prototype.maxstacksize; j++) {
 					VarInfo v = vars[j];
-					String u = (v == null ? "" : v.upvalue != null ? !v.upvalue.readWrite ? "[C] " : (v.allocUpvalue && v.pc == pc ? "[*] " : "[]  ") : "    ");
+					String u;
+					if (v == null) {
+						u = "";
+					} else if (v.upvalue == null) {
+						u = "    ";
+					} else if (v.upvalue.readWrite) {
+						u = v.allocUpvalue && v.pc == pc ? "[*] " : "[]  ";
+					} else {
+						u = "[C] ";
+					}
 					String s = v == null ? "null   " : String.valueOf(v);
 					sb.append(s).append(u);
 				}

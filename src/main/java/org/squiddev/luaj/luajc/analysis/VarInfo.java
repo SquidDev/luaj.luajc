@@ -45,7 +45,7 @@ public class VarInfo {
 	public static VarInfo param(int slot) {
 		return new VarInfo(slot, -1) {
 			public String toString() {
-				return slot + ".p";
+				return slot + ".p" + (isReferenced ? " " : "?");
 			}
 		};
 	}
@@ -100,7 +100,11 @@ public class VarInfo {
 	}
 
 	public String toString() {
-		return slot < 0 ? "x.x" : (slot + "." + pc);
+		if (slot < 0) {
+			return "x.x ";
+		} else {
+			return slot + "." + pc + (isReferenced ? " " : "?");
+		}
 	}
 
 	/**

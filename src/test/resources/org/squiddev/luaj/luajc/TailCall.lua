@@ -1,16 +1,14 @@
 -- Tests tail calls
 
 local function numbers()
-	return 1, 2, 3
+	return 2, 3
 end
 
 local function tail()
-	return nil, "b", numbers()
+	return 1, numbers()
 end
 
-local a, b, c, d, e = tail()
-assertEquals(nil, a)
-assertEquals("b", b)
-assertEquals(1, c)
-assertEquals(2, d)
-assertEquals(3, e)
+local a, b, c = tail()
+assertEquals(1, a)
+assertEquals(2, b)
+assertEquals(3, c)

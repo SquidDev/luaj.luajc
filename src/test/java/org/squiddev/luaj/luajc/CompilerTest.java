@@ -49,6 +49,7 @@ public class CompilerTest {
 			{"SetFEnv"},
 			{"TailRecursion"},
 			{"UpvalueArgument"},
+			{"NilCallReturn"},
 
 			{"fragment/ForLoopParamUpvalues"},
 			{"fragment/VarVarargsUseArg"},

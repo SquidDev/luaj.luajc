@@ -233,7 +233,6 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
 						pcVar[a].isReferenced = true;
-						pcVar[a].isReferenced = true;
 						for (int i = 1; i <= b - 1; i++) {
 							pcVar[a + i].isReferenced = true;
 						}
@@ -261,8 +260,11 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						for (int i = 0; i <= b - 2; i++) {
-							pcVar[a + i].isReferenced = true;
+						int max = b == 0 ? info.prototype.maxstacksize : a + b - 1;
+						for (int i = a; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.isReferenced = true;
 						}
 						break;
 					}
