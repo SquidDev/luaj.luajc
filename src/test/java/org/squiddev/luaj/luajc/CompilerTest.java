@@ -1,6 +1,7 @@
 package org.squiddev.luaj.luajc;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -140,11 +141,20 @@ public class CompilerTest {
 	}
 
 	/**
-	 * A test to compare against: the expected behaviour
+	 * A test to compare against the expected behaviour
 	 */
 	@Test
 	public void testLuaC() throws Exception {
 		LuaC.install();
+		run();
+	}
+
+	/**
+	 * Check bugs that are in this implementation but not in the original, or vice versa.
+	 */
+	@Ignore("Some of these fail")
+	public void testLuaJCOriginal() throws Exception {
+		org.luaj.vm2.luajc.LuaJC.install();
 		run();
 	}
 
