@@ -11,7 +11,9 @@ import static org.luaj.vm2.LuaValue.NONE;
 import static org.luaj.vm2.LuaValue.varargsOf;
 
 /**
- * An implementation of the LuaVM
+ * An implementation of the LuaVM.
+ *
+ * @see LuaClosure
  */
 public final class LuaVM {
 	private LuaVM() {
@@ -35,6 +37,9 @@ public final class LuaVM {
 		// Create varargs "arg" table if needed
 		if (prototype.is_vararg >= Lua.VARARG_NEEDSARG) stack[prototype.numparams] = new LuaTable(varargs);
 
+		// Push the method call
+		LuaThread.CallStack cs = LuaThread.onCall(function);
+
 		// Debug wants args to this function
 		DebugLib.DebugState debugState;
 		DebugLib.DebugInfo debugInfo;
@@ -46,9 +51,6 @@ public final class LuaVM {
 			debugState = null;
 			debugInfo = null;
 		}
-
-		// Push the method call
-		LuaThread.CallStack cs = LuaThread.onCall(function);
 
 		try {
 			while (true) {

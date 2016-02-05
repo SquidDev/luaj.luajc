@@ -131,6 +131,15 @@ public class CompilerTest {
 	}
 
 	/**
+	 * Test the {@link org.squiddev.luaj.luajc.function.LuaVM} implementation.
+	 */
+	@Test
+	public void testLuaVM() throws Exception {
+		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, Integer.MAX_VALUE, true, null));
+		run();
+	}
+
+	/**
 	 * A test to compare against: the expected behaviour
 	 */
 	@Test
