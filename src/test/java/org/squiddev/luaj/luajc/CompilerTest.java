@@ -122,14 +122,17 @@ public class CompilerTest {
 	}
 
 	/**
-	 * Get the Lua test and run it
+	 * Test the {@link LuaJC} compiler.
 	 */
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, true));
+		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, true, null));
 		run();
 	}
 
+	/**
+	 * A test to compare against: the expected behaviour
+	 */
 	@Test
 	public void testLuaC() throws Exception {
 		LuaC.install();

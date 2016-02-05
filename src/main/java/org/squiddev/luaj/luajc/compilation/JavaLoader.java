@@ -8,7 +8,7 @@ import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
-import org.squiddev.luaj.luajc.utils.AsmUtils;
+import org.squiddev.luaj.luajc.function.executors.FallbackExecutor;
 
 public class JavaLoader extends ClassLoader {
 	/**
@@ -50,20 +50,41 @@ public class JavaLoader extends ClassLoader {
 	}
 
 	public FunctionExecutor include(JavaGen jg) throws Exception {
-		Class<?> klass = defineClass(options.dotPrefix + name.replace('/', '.') + jg.prototype.name, jg.bytecode);
+		String wholeName = options.dotPrefix + name.replace('/', '.') + jg.prototype.name;
+
+		Class<?> klass = defineClass(wholeName, jg.bytecode);
 		return (FunctionExecutor) klass.getConstructor().newInstance();
 	}
 
 	public FunctionExecutor include(ProtoInfo info) {
 		try {
 			return include(new JavaGen(info, this, filename));
+		} catch (RuntimeException e) {
+			if (options.handler != null) {
+				options.handler.handleError(info, e);
+				return FallbackExecutor.INSTANCE;
+			} else {
+				throw e;
+			}
+		} catch (VerifyError e) {
+			if (options.handler != null) {
+				options.handler.handleError(info, e);
+				return FallbackExecutor.INSTANCE;
+			} else {
+				throw e;
+			}
 		} catch (Exception e) {
-			throw new RuntimeException(info.toString(), e);
+			if (options.handler != null) {
+				options.handler.handleError(info, e);
+				return FallbackExecutor.INSTANCE;
+			} else {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
 	protected Class<?> defineClass(String className, byte[] bytes) {
-		if (options.verify) AsmUtils.validateClass(bytes, this);
+//		if (options.verify) AsmUtils.validateClass(bytes, this);
 		return defineClass(className, bytes, 0, bytes.length);
 	}
 }
