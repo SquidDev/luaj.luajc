@@ -333,7 +333,7 @@ public final class JavaBuilder {
 	}
 
 	public void loadLocal(int pc, int slot) {
-		boolean isUpvalue = pi.isUpvalueRefer(pc, slot);
+		boolean isUpvalue = pi.getVariable(pc, slot).isUpvalueRefer();
 		int index = findSlotIndex(slot, isUpvalue);
 
 		main.visitVarInsn(ALOAD, index);
@@ -809,7 +809,7 @@ public final class JavaBuilder {
 			VarInfo info = vars[slot];
 			constantOpcode(main, slot);
 			if (tracker.isLive(info, pc)) {
-				boolean isUpvalue = pi.isUpvalueRefer(pc, slot);
+				boolean isUpvalue = pi.getVariable(pc, slot).isUpvalueRefer();
 				int index = findSlotIndex(slot, isUpvalue);
 
 				main.visitVarInsn(ALOAD, index);
@@ -819,8 +819,6 @@ public final class JavaBuilder {
 
 					// Redirect the upvalue
 					METHOD_UPVALUE_REDIRECT.inject(main);
-
-					assert upvalues : "Must have upvalues if variable is upvalue";
 
 					// If it is open then store it in the openups too
 					dup();

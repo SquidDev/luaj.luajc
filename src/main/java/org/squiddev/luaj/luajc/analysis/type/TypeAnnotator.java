@@ -3,6 +3,7 @@ package org.squiddev.luaj.luajc.analysis.type;
 import org.squiddev.luaj.luajc.analysis.PhiInfo;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
 import java.util.*;
 
@@ -29,9 +30,20 @@ public class TypeAnnotator {
 		for (VarInfo param : info.params) {
 			if (!annotate(param, threshold)) unknown.add(param);
 		}
-		for (VarInfo[] stack : info.vars) {
-			for (VarInfo var : stack) {
-				if (!annotate(var, threshold)) unknown.add(var);
+		for (BasicBlock block : info.blockList) {
+			for (VarInfo var : block.entry) {
+				if (!annotate(var, threshold)) {
+					if (var instanceof PhiInfo && ((PhiInfo) var).values() == null) {
+						throw new NullPointerException();
+					}
+					unknown.add(var);
+				}
+			}
+
+			for (int pc = block.pc0; pc <= block.pc1; pc++) {
+				for (VarInfo var : info.vars[pc]) {
+					if (!annotate(var, threshold)) unknown.add(var);
+				}
 			}
 		}
 

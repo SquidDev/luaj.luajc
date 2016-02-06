@@ -94,7 +94,7 @@ public final class ProtoInfo {
 	public final BasicBlock[] blockList;
 
 	/**
-	 * Parameters and initial values of stack variables
+	 * Parameters and entry values of stack variables
 	 */
 	public final VarInfo[] params;
 
@@ -168,7 +168,9 @@ public final class ProtoInfo {
 				appendOpenUps(sb, pc);
 
 				@SuppressWarnings("unchecked") Set<VarInfo>[] written = new Set[3];
-				for (int i = 0; i < 3; i++) written[i] = new HashSet<VarInfo>();
+				for (int i = 0; i < 3; i++) {
+					written[i] = new HashSet<VarInfo>();
+				}
 				for (VarInfo[] vars : this.vars) {
 					for (VarInfo v : vars) {
 						if (v == null || v == VarInfo.INVALID || v.pc == pc || v.type == null) continue;
@@ -264,18 +266,6 @@ public final class ProtoInfo {
 	}
 
 	/**
-	 * Check if this variable is a reference to a read/write upvalue
-	 *
-	 * @param pc   The current PC
-	 * @param slot The slot the upvalue is stored in
-	 * @return If this is a reference to a read/write upvalue
-	 */
-	public boolean isUpvalueRefer(int pc, int slot) {
-		VarInfo v = getVariable(pc, slot);
-		return v != null && v.upvalue != null && v.upvalue.readWrite;
-	}
-
-	/**
 	 * Get the definition of this variable
 	 *
 	 * @param pc   The current PC
@@ -289,19 +279,19 @@ public final class ProtoInfo {
 
 		VarInfo info = vars[pc][slot];
 
-		if (info != null && (info.pc == pc || info == VarInfo.INVALID) && pc > 0) {
+		if (info.pc == pc || info == VarInfo.INVALID) {
 			// special case when both refer and assign in same instruction
 			// This probably isn't accurate
 			BasicBlock currentBlock = blocks[pc];
-			BasicBlock previousBlock = blocks[pc - 1];
 
 			VarInfo previous;
-			if (currentBlock == previousBlock) {
-				previous = vars[pc - 1][slot];
+			if (pc == currentBlock.pc0) {
+				previous = currentBlock.entry[slot];
 			} else {
-				previous = vars[currentBlock.prev[currentBlock.prev.length - 1].pc1][slot];
+				previous = vars[pc - 1][slot];
 			}
-			if (previous != null) return previous;
+
+			return previous;
 		}
 
 		return info;

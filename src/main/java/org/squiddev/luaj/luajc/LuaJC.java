@@ -78,8 +78,10 @@ public class LuaJC implements LoadState.LuaCompiler {
 			return loader.load(env, p);
 		} catch (IOException e) {
 			throw e;
+		} catch (RuntimeException e) {
+			throw e;
 		} catch (Exception e) {
-			throw new IOException(e.getMessage(), e);
+			throw new RuntimeException(e);
 		}
 	}
 

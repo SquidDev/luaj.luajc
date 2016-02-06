@@ -9,6 +9,7 @@ import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 import org.squiddev.luaj.luajc.function.executors.FallbackExecutor;
+import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 public class JavaLoader extends ClassLoader {
 	/**
@@ -84,7 +85,7 @@ public class JavaLoader extends ClassLoader {
 	}
 
 	protected Class<?> defineClass(String className, byte[] bytes) {
-//		if (options.verify) AsmUtils.validateClass(bytes, this);
+		if (options.verify) AsmUtils.validateClass(bytes, this);
 		return defineClass(className, bytes, 0, bytes.length);
 	}
 }

@@ -187,6 +187,15 @@ public class VarInfo {
 	}
 
 	/**
+	 * Check if this variable is a reference to a read/write upvalue
+	 *
+	 * @return If this is a reference to a read/write upvalue
+	 */
+	public final boolean isUpvalueRefer() {
+		return upvalue != null && upvalue.readWrite;
+	}
+
+	/**
 	 * Get this variable's type
 	 *
 	 * @return The variable's type, or {@link BasicType#VALUE} if unknown.

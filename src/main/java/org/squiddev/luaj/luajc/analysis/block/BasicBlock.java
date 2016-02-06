@@ -25,6 +25,7 @@
 package org.squiddev.luaj.luajc.analysis.block;
 
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.analysis.VarInfo;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -35,7 +36,7 @@ public final class BasicBlock {
 	/**
 	 * Start PC of the block
 	 */
-	public int pc0;
+	public final int pc0;
 
 	/**
 	 * End PC of the block
@@ -62,9 +63,15 @@ public final class BasicBlock {
 	 */
 	public BasicBlock dominator;
 
+	/**
+	 * Variables at block entry
+	 */
+	public final VarInfo[] entry;
 
-	public BasicBlock(int pc) {
+
+	public BasicBlock(int pc, int maxStack) {
 		pc0 = pc1 = pc;
+		entry = new VarInfo[maxStack];
 	}
 
 	@Override
@@ -112,6 +119,7 @@ public final class BasicBlock {
 	public static BasicBlock[] findBasicBlocks(Prototype p) {
 		// mark beginnings, endings
 		final int n = p.code.length;
+		final int stack = p.maxstacksize;
 		final boolean[] isBeginning = new boolean[n];
 		final boolean[] isEnd = new boolean[n];
 		isBeginning[0] = true;
@@ -137,7 +145,7 @@ public final class BasicBlock {
 		final BasicBlock[] blocks = new BasicBlock[n];
 		for (int i = 0; i < n; i++) {
 			isBeginning[i] = true;
-			BasicBlock b = new BasicBlock(i);
+			BasicBlock b = new BasicBlock(i, stack);
 			blocks[i] = b;
 			while (!isEnd[i] && i + 1 < n && !isBeginning[i + 1]) {
 				blocks[b.pc1 = ++i] = b;

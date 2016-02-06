@@ -70,6 +70,7 @@ public final class AnalysisBuilder {
 		// Process instructions
 		for (BasicBlock b0 : info.blockList) {
 			// input from previous blocks
+			VarInfo[] blockVars = b0.entry;
 			int nPrevious = b0.prev != null ? b0.prev.length : 0;
 			for (int slot = 0; slot < nStack; slot++) {
 				VarInfo var = null;
@@ -89,8 +90,10 @@ public final class AnalysisBuilder {
 					var = new PhiInfo(info, slot, b0.pc0);
 					phis.add(var);
 				}
-				vars[b0.pc0][slot] = var;
+				blockVars[slot] = var;
 			}
+
+			System.arraycopy(blockVars, 0, vars[b0.pc0], 0, nStack);
 
 			// Process instructions for this basic block
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
@@ -414,7 +417,13 @@ public final class AnalysisBuilder {
 		// Some phi variables are overwritten resulting in slots not being assigned
 		// https://github.com/SquidDev-CC/Studio/pull/13
 		for (VarInfo phi : phis) {
-			phi.resolvePhiVariableValues();
+			VarInfo newVar = phi.resolvePhiVariableValues();
+			if (newVar != null) {
+				BasicBlock block = info.blocks[phi.pc];
+				if (block.entry[phi.slot] == phi) {
+					block.entry[phi.slot] = newVar;
+				}
+			}
 		}
 	}
 
@@ -427,8 +436,13 @@ public final class AnalysisBuilder {
 	 */
 	private void substituteVariable(int slot, VarInfo oldVar, VarInfo newVar) {
 		VarInfo[][] vars = info.vars;
+		BasicBlock[] blocks = info.blocks;
 		int length = info.prototype.code.length;
 		for (int pc = 0; pc < length; pc++) {
+			BasicBlock block = blocks[pc];
+			if (block.pc0 == pc && block.entry[slot] == oldVar) {
+				block.entry[slot] = newVar;
+			}
 			if (vars[pc][slot] == oldVar) {
 				vars[pc][slot] = newVar;
 			}
