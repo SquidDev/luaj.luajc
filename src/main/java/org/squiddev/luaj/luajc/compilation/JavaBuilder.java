@@ -137,6 +137,7 @@ public final class JavaBuilder {
 		this.p = pi.prototype;
 		this.prefix = prefix;
 		this.tracker = new LivenessTracker(pi);
+		this.slots = new SlotInfo[pi.prototype.maxstacksize];
 
 		String className = this.className = prefix + pi.name;
 
@@ -252,7 +253,7 @@ public final class JavaBuilder {
 		} else {
 			// fixed arg function between 0 and 3 arguments
 			for (slot = 0; slot < p.numparams; slot++) {
-				this.plainSlotVars.put(slot, slot + VARARGS_SLOT);
+				findSlot(slot).valueSlot = slot + VARARGS_SLOT;
 				if (pi.isUpvalueCreate(-1, slot)) {
 					main.visitVarInsn(ALOAD, slot + VARARGS_SLOT);
 					storeLocal(-1, slot);
@@ -280,12 +281,8 @@ public final class JavaBuilder {
 		main.visitMaxs(0, 0);
 
 		// Add upvalue & local value slot names
-		for (Map.Entry<Integer, Integer> slot : plainSlotVars.entrySet()) {
-			main.visitLocalVariable(PREFIX_LOCAL + "_" + slot.getKey(), TYPE_LUAVALUE, null, start, end, slot.getValue());
-		}
-
-		for (Map.Entry<Integer, Integer> slot : upvalueSlotVars.entrySet()) {
-			main.visitLocalVariable(PREFIX_UPVALUE + "_" + slot.getKey(), TYPE_UPVALUE, null, start, end, slot.getValue());
+		for (SlotInfo slot : slots) {
+			if (slot != null) slot.visitLocals(main, start, end);
 		}
 
 		main.visitEnd();
@@ -314,22 +311,26 @@ public final class JavaBuilder {
 		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", field, "Lorg/luaj/vm2/LuaBoolean;");
 	}
 
-	protected final Map<Integer, Integer> plainSlotVars = new HashMap<Integer, Integer>();
-	protected final Map<Integer, Integer> upvalueSlotVars = new HashMap<Integer, Integer>();
+	private final SlotInfo[] slots;
 
-	protected int findSlot(int luaSlot, Map<Integer, Integer> map) {
-		if (map.containsKey(luaSlot)) return map.get(luaSlot);
+	private SlotInfo findSlot(int luaSlot) {
+		SlotInfo info = slots[luaSlot];
+		if (info == null) info = slots[luaSlot] = new SlotInfo(luaSlot);
 
-		// This will always be an Upvalue/LuaValue so the slot size is 1 as it is a reference
-		int javaSlot = ++maxLocals;
-		map.put(luaSlot, javaSlot);
-		return javaSlot;
+		return info;
 	}
 
-	protected int findSlotIndex(int slot, boolean isUpvalue) {
-		return isUpvalue ?
-			findSlot(slot, upvalueSlotVars) :
-			findSlot(slot, plainSlotVars);
+	private int findSlotIndex(int slot, boolean isUpvalue) {
+		SlotInfo info = findSlot(slot);
+		if (isUpvalue) {
+			int index = info.upvalueSlot;
+			if (index < 0) index = info.upvalueSlot = ++maxLocals;
+			return index;
+		} else {
+			int index = info.valueSlot;
+			if (index < 0) index = info.valueSlot = ++maxLocals;
+			return index;
+		}
 	}
 
 	public void loadLocal(int pc, int slot) {
@@ -442,7 +443,7 @@ public final class JavaBuilder {
 		}
 	}
 
-	protected int getVarResultIndex() {
+	private int getVarResultIndex() {
 		if (varargsLocal < 0) varargsLocal = ++maxLocals;
 		return varargsLocal;
 	}

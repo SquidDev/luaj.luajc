@@ -146,8 +146,10 @@ public final class Constants {
 
 	// Variable naming
 	public static final String PREFIX_CONSTANT = "constant";
-	public static final String PREFIX_UPVALUE = "localUpvalue";
 	public static final String PREFIX_LOCAL = "local";
+	public static final String PREFIX_LOCAL_UPVALUE = "localUpvalue";
+	public static final String PREFIX_LOCAL_BOOLEAN = "localBoolean";
+	public static final String PREFIX_LOCAL_NUMBER = "localNumber";
 
 	// Super type class
 	public static final int SUPERTYPE_VARARGS_ID = 4;
