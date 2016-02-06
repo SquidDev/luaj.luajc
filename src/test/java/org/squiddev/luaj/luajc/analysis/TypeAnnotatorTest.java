@@ -7,8 +7,8 @@ import org.luaj.vm2.lib.jse.JsePlatform;
 import org.squiddev.luaj.luajc.CompileOptions;
 import org.squiddev.luaj.luajc.Loader;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
-import org.squiddev.luaj.luajc.analysis.type.ConversionAnnotator;
 import org.squiddev.luaj.luajc.analysis.type.TypeAnnotator;
+import org.squiddev.luaj.luajc.analysis.type.UsageAnnotator;
 import org.squiddev.luaj.luajc.compilation.JavaLoader;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 
@@ -54,7 +54,7 @@ public class TypeAnnotatorTest {
 
 		ProtoInfo typed = info.subprotos[0];
 		new TypeAnnotator(typed).fill(0.7f);
-		new ConversionAnnotator(typed).fill();
+		new UsageAnnotator(typed).fill();
 
 		System.out.println(typed);
 	}

@@ -1,7 +1,5 @@
 package org.squiddev.luaj.luajc.analysis.type;
 
-import org.squiddev.luaj.luajc.utils.IntArray;
-
 /**
  * Extended information about types
  */
@@ -11,17 +9,31 @@ public class TypeInfo {
 	 */
 	public final BasicType type;
 
-	/**
-	 * Places where the generic type is defined
-	 */
-	public final IntArray[] definitions;
+	private boolean valueReferenced = false;
 
-	public int useFlag = 0;
+	private boolean specialisedReferenced = false;
 
 	public TypeInfo(BasicType type) {
 		this.type = type;
-		definitions = new IntArray[3];
-		for (int i = 0; i < 3; i++) definitions[i] = new IntArray();
 	}
 
+	public void referenceValue(int pc) {
+		valueReferenced = true;
+	}
+
+	public void referenceSpecialised(int pc) {
+		specialisedReferenced = true;
+	}
+
+	@Override
+	public String toString() {
+		return type.format() + "(" +
+			(specialisedReferenced ? "S" : "") +
+			(valueReferenced ? "V" : "") + ")";
+	}
+
+	public void absorb(TypeInfo info) {
+		valueReferenced |= info.valueReferenced;
+		specialisedReferenced |= info.specialisedReferenced;
+	}
 }

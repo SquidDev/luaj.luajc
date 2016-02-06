@@ -27,17 +27,13 @@ package org.squiddev.luaj.luajc.analysis;
 import org.luaj.vm2.Print;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
-import org.squiddev.luaj.luajc.analysis.type.BasicType;
-import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.compilation.JavaLoader;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.executors.ClosureExecutor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Prototype information for static single-assignment analysis
@@ -109,6 +105,8 @@ public final class ProtoInfo {
 	public final UpvalueInfo[] upvalues;
 
 	public final List<VarInfo>[] phiPositions;
+
+	public final List<PhiInfo> phis;
 	//endregion
 
 	public ProtoInfo(Prototype p, JavaLoader loader) {
@@ -136,7 +134,7 @@ public final class ProtoInfo {
 
 		AnalysisBuilder builder = new AnalysisBuilder(this);
 		builder.fillArguments();
-		builder.findVariables();
+		phis = builder.findVariables();
 		builder.findUpvalues();
 
 		if (loader.options.compileThreshold <= 0) {
@@ -166,25 +164,6 @@ public final class ProtoInfo {
 
 				// open upvalue storage
 				appendOpenUps(sb, pc);
-
-				@SuppressWarnings("unchecked") Set<VarInfo>[] written = new Set[3];
-				for (int i = 0; i < 3; i++) {
-					written[i] = new HashSet<VarInfo>();
-				}
-				for (VarInfo[] vars : this.vars) {
-					for (VarInfo v : vars) {
-						if (v == null || v == VarInfo.INVALID || v.pc == pc || v.type == null) continue;
-						TypeInfo info = v.getTypeInfo();
-						for (int i = 0; i < 3; i++) {
-							if (info.definitions[i].contains(pc) && written[i].add(v)) {
-								sb
-									.append("\t\t").append(v).append(" -> ")
-									.append(BasicType.values()[i].toString().toLowerCase())
-									.append("\n");
-							}
-						}
-					}
-				}
 
 				// opcode
 				sb.append("\t\t");

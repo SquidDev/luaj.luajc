@@ -47,6 +47,10 @@ public class TypeAnnotator {
 			}
 		}
 
+		for (VarInfo var : info.phis) {
+			if (!annotate(var, threshold)) unknown.add(var);
+		}
+
 		return unknown;
 	}
 

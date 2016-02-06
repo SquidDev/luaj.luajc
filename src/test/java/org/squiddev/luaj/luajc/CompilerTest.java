@@ -15,8 +15,8 @@ import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JseBaseLib;
 import org.luaj.vm2.lib.jse.JsePlatform;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
-import org.squiddev.luaj.luajc.analysis.type.ConversionAnnotator;
 import org.squiddev.luaj.luajc.analysis.type.TypeAnnotator;
+import org.squiddev.luaj.luajc.analysis.type.UsageAnnotator;
 import org.squiddev.luaj.luajc.compilation.JavaLoader;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 
@@ -162,7 +162,7 @@ public class CompilerTest {
 		}
 
 		new TypeAnnotator(info).fill(0.7f);
-		new ConversionAnnotator(info).fill();
+		new UsageAnnotator(info).fill();
 	}
 
 	@Test

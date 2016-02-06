@@ -31,9 +31,9 @@ import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Builds prototype info
@@ -50,12 +50,14 @@ public final class AnalysisBuilder {
 	/**
 	 * Find all variables, storing if they are referenced and creating phi nodes,
 	 * simplifying them if possible
+	 *
+	 * @return All phi nodes
 	 */
-	public void findVariables() {
+	public List<PhiInfo> findVariables() {
 		/**
 		 * List of phi variables used
 		 */
-		Set<VarInfo> phis = new HashSet<VarInfo>();
+		ArrayList<PhiInfo> phis = new ArrayList<PhiInfo>();
 
 		// Create storage for variables
 		int nStack = info.prototype.maxstacksize;
@@ -87,8 +89,9 @@ public final class AnalysisBuilder {
 					}
 				}
 				if (var == null) {
-					var = new PhiInfo(info, slot, b0.pc0);
-					phis.add(var);
+					PhiInfo phi = new PhiInfo(info, slot, b0.pc0);
+					phis.add(phi);
+					var = phi;
 				}
 				blockVars[slot] = var;
 			}
@@ -382,49 +385,40 @@ public final class AnalysisBuilder {
 			}
 		}
 
-		replaceTrivialPhiVariables(phis);
+		return replaceTrivialPhiVariables(phis);
 	}
 
 	/**
 	 * Replace phi variables that reference the same thing
 	 *
 	 * @param phis List of phi nodes to replace
+	 * @return All phi nodes that haven't been replaced
 	 */
-	private void replaceTrivialPhiVariables(Set<VarInfo> phis) {
+	private List<PhiInfo> replaceTrivialPhiVariables(List<PhiInfo> phis) {
 		// Replace trivial Phi variables
-		for (BasicBlock b0 : info.blockList) {
-			List<VarInfo> localPhis = null;
-			VarInfo[] vars = info.vars[b0.pc0];
-			for (int slot = 0; slot < info.prototype.maxstacksize; slot++) {
-				VarInfo oldVar = vars[slot];
-				if (!(oldVar instanceof PhiInfo)) continue;
+		Iterator<PhiInfo> phiIterator = phis.iterator();
+		while (phiIterator.hasNext()) {
+			PhiInfo phi = phiIterator.next();
 
-				VarInfo newVar = oldVar.resolvePhiVariableValues();
-				if (newVar != null) {
-					substituteVariable(slot, oldVar, newVar);
-				} else {
-					if (localPhis == null) {
-						localPhis = new ArrayList<VarInfo>();
-						info.phiPositions[b0.pc0] = localPhis;
-					}
-					localPhis.add(oldVar);
-				}
-
-				phis.remove(oldVar);
-			}
-		}
-
-		// Some phi variables are overwritten resulting in slots not being assigned
-		// https://github.com/SquidDev-CC/Studio/pull/13
-		for (VarInfo phi : phis) {
+			// We only need to assign this if it isn't replacable
 			VarInfo newVar = phi.resolvePhiVariableValues();
-			if (newVar != null) {
-				BasicBlock block = info.blocks[phi.pc];
-				if (block.entry[phi.slot] == phi) {
-					block.entry[phi.slot] = newVar;
+			if (newVar == null) {
+				int pc = info.blocks[phi.pc].pc0;
+
+				List<VarInfo> localPhis = info.phiPositions[pc];
+				if (localPhis == null) {
+					localPhis = new ArrayList<VarInfo>();
+					info.phiPositions[pc] = localPhis;
 				}
+
+				localPhis.add(phi);
+			} else {
+				substituteVariable(phi.slot, phi, newVar);
+				phiIterator.remove();
 			}
 		}
+
+		return Collections.unmodifiableList(phis);
 	}
 
 	/**
