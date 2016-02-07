@@ -74,10 +74,9 @@ public final class AsmUtils {
 			error = e;
 		}
 
-		String contents = writer.toString();
-		if (error != null || contents.length() > 0) {
+		if (error != null || writer.getBuffer().length() > 0) {
 			reader.accept(new TraceClassVisitor(printWriter), 0);
-			throw new RuntimeException("Generation error\nDump for " + reader.getClassName() + "\n" + contents, error);
+			throw new RuntimeException("Generation error\nDump for " + reader.getClassName() + "\n" + writer.toString(), error);
 		}
 	}
 

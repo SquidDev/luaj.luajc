@@ -5,7 +5,6 @@ import org.squiddev.luaj.luajc.analysis.PhiInfo;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
-import org.squiddev.luaj.luajc.utils.IntArray;
 
 /**
  * Marks whether instructions can be specialised or not
@@ -13,7 +12,6 @@ import org.squiddev.luaj.luajc.utils.IntArray;
 public final class UsageAnnotator {
 	public final ProtoInfo info;
 	public final boolean[] specialist;
-	private final IntArray moves = new IntArray();
 
 	public UsageAnnotator(ProtoInfo info) {
 		this.info = info;
@@ -48,7 +46,8 @@ public final class UsageAnnotator {
 				VarInfo a = vars[Lua.GETARG_A(insn)];
 				VarInfo b = info.getVariable(pc, Lua.GETARG_B(insn));
 				if (b.type == a.type && b.type != BasicType.VALUE) {
-					moves.add(pc);
+					// TODO: Can we optimise this at all?
+					b.getTypeInfo().referenceSpecialised(pc);
 					return true;
 				} else {
 					b.getTypeInfo().referenceValue(pc);
@@ -56,6 +55,10 @@ public final class UsageAnnotator {
 				}
 			}
 			case Lua.OP_LOADK:     // A Bx    R(A) := Kst(Bx)
+			{
+				assert BasicType.fromValue(info.prototype.k[Lua.GETARG_Bx(insn)]) == vars[Lua.GETARG_A(insn)].type : "Incompatible types";
+				return true;
+			}
 			case Lua.OP_LOADBOOL:  // A B  C  R(A) := (Bool)B; if (C) pc++
 			case Lua.OP_LOADNIL: // A B R(A) ... R(B) := nil
 				return true;
@@ -74,9 +77,12 @@ public final class UsageAnnotator {
 				return unaryOp(info.getVariable(pc, Lua.GETARG_B(insn)), info.getVariable(pc, Lua.GETARG_A(insn)), BasicType.BOOLEAN, pc);
 
 			case Lua.OP_LEN:     // A B R(A) := length of R(B)
+				vars[Lua.GETARG_A(insn)].getTypeInfo().referenceValue(pc);
+				return false;
+
 			case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A) := R(B) else pc++
-				// TODO: If we have a boolean available here we should use it, otherwise we shouldn't
-				info.getVariable(pc, Lua.GETARG_A(insn)).getTypeInfo().referenceValue(pc);
+				// TODO: We need to check if both A and B are booleans
+				vars[Lua.GETARG_B(insn)].getTypeInfo().referenceValue(pc);
 				return false;
 
 			case Lua.OP_ADD: // A B C R(A) := RK(B) + RK(C)
@@ -144,25 +150,22 @@ public final class UsageAnnotator {
 				if (aVar.type == BasicType.NUMBER && aCounter.type == BasicType.NUMBER) {
 					aVar.getTypeInfo().referenceSpecialised(pc);
 					aCounter.getTypeInfo().referenceSpecialised(pc);
+					return true;
 				} else {
 					aVar.getTypeInfo().referenceValue(pc);
 					aCounter.getTypeInfo().referenceValue(pc);
+					return false;
 				}
 			}
-			return false;
 
 			case Lua.OP_GETTABLE: // A B C R(A) := R(B)[RK(C)]
+			case Lua.OP_SELF: // A B C R(A+1) := R(B); R(A) := R(B)[RK(C)]
 			{
 				info.getVariable(pc, Lua.GETARG_B(insn)).getTypeInfo().referenceValue(pc);
 				int c = Lua.GETARG_C(insn);
 				if (!Lua.ISK(c)) info.getVariable(pc, c).getTypeInfo().referenceValue(pc);
 				return false;
 			}
-
-			case Lua.OP_SELF: // A B C R(A+1) := R(B); R(A) := R(B)[RK(C)]
-				info.getVariable(pc, Lua.GETARG_B(insn)).getTypeInfo().referenceValue(pc);
-				info.getVariable(pc, Lua.GETARG_C(insn)).getTypeInfo().referenceValue(pc);
-				return false;
 
 			case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
 			{
@@ -190,9 +193,14 @@ public final class UsageAnnotator {
 			{
 				int a = Lua.GETARG_A(insn);
 				int b = Lua.GETARG_B(insn);
+
 				info.getVariable(pc, a).getTypeInfo().referenceValue(pc);
-				for (int i = 1; i <= b - 1; i++) {
-					info.getVariable(pc, a + i).getTypeInfo().referenceValue(pc);
+
+				int max = b == 0 ? info.prototype.maxstacksize : a + b;
+				for (int i = a + 1; i < max; i++) {
+					VarInfo info = this.info.getVariable(pc, i);
+					if (info == VarInfo.INVALID) break;
+					info.getTypeInfo().referenceValue(pc);
 				}
 				return false;
 			}
@@ -251,9 +259,14 @@ public final class UsageAnnotator {
 
 			case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
 			{
-				// TODO: If we have a boolean available here we should use it, otherwise we shouldn't
-				vars[Lua.GETARG_A(insn)].getTypeInfo().referenceValue(pc);
-				return false;
+				TypeInfo info = vars[Lua.GETARG_A(insn)].getTypeInfo();
+				if (info.type == BasicType.BOOLEAN) {
+					info.referenceSpecialised(pc);
+					return true;
+				} else {
+					info.referenceValue(pc);
+					return false;
+				}
 			}
 
 			case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
@@ -278,11 +291,12 @@ public final class UsageAnnotator {
 					cVar = null;
 					cType = BasicType.fromValue(info.prototype.k[Lua.INDEXK(c)]);
 				} else {
-					cVar = vars[b];
+					cVar = vars[c];
 					cType = cVar.type;
 				}
 
-				if (bType == BasicType.NUMBER && cType == BasicType.NUMBER) {
+				// We can do == on booleans or numbers, but only < and <= on numbers
+				if (bType == cType && insn == Lua.OP_EQ ? bType != BasicType.VALUE : bType == BasicType.NUMBER) {
 					if (bVar != null) bVar.getTypeInfo().referenceSpecialised(pc);
 					if (cVar != null) cVar.getTypeInfo().referenceSpecialised(pc);
 					return true;

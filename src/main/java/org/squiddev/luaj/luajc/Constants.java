@@ -23,6 +23,7 @@ public final class Constants {
 	public static final String EXECUTE_NAME = "execute";
 
 	public static final String TYPE_UPVALUE = Type.getDescriptor(AbstractUpvalue.class);
+	public static final String CLASS_UPVALUE = Type.getInternalName(AbstractUpvalue.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
 	public static final String TYPE_PROTOINFO = Type.getDescriptor(ProtoInfo.class);
@@ -89,8 +90,16 @@ public final class Constants {
 
 	// Type conversion
 	public static final TinyMethod METHOD_VALUE_TO_BOOL = new TinyMethod(LuaValue.class, "toboolean");
+	public static final TinyMethod METHOD_BOOL_TO_VALUE = new TinyMethod(LuaValue.class, "valueOf", boolean.class);
+	public static final TinyMethod METHOD_NUMBER_TO_VALUE = new TinyMethod(LuaValue.class, "valueOf", double.class);
+	public static final TinyMethod METHOD_VALUE_TO_NUMBER = new TinyMethod(LuaValue.class, "todouble");
+	public static final TinyMethod METHOD_TYPE = new TinyMethod(LuaValue.class, "type");
 	public static final TinyMethod METHOD_VALUE_TO_BUFFER = new TinyMethod(LuaValue.class, "buffer");
 	public static final TinyMethod METHOD_BUFFER_TO_VALUE = new TinyMethod(Buffer.class, "value");
+
+	// Numbers
+	public static final TinyMethod METHOD_POW = new TinyMethod(Math.class, "pow", double.class, double.class);
+	public static final TinyMethod METHOD_MOD = new TinyMethod(LuaDouble.class, "dmod_d", double.class, double.class);
 
 	// Booleans
 	public static final TinyMethod METHOD_TESTFOR_B = new TinyMethod(LuaValue.class, "testfor_b", LuaValue.class, LuaValue.class);
@@ -125,7 +134,6 @@ public final class Constants {
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);
 
 	// Upvalue creation
-	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(UpvalueFactory.class, "emptyUpvalue");
 	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(UpvalueFactory.class, "nilUpvalue");
 	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(UpvalueFactory.class, "valueUpvalue", LuaValue.class);
 	public static final TinyMethod METHOD_NEW_UPVALUE_PROXY = new TinyMethod(UpvalueFactory.class, "proxy", AbstractUpvalue.class);

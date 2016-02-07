@@ -266,8 +266,12 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
 						pcVar[a].reference(pc);
-						for (int i = 1; i <= b - 1; i++) {
-							pcVar[a + i].reference(pc);
+
+						int max = b == 0 ? info.prototype.maxstacksize : a + b;
+						for (int i = a + 1; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.reference(pc);
 						}
 						for (int j = 0; j <= c - 2; j++, a++) {
 							pcVar[a] = new VarInfo(a, pc);
@@ -283,8 +287,12 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						pcVar[a].reference(pc);
-						for (int i = 1; i <= b - 1; i++) {
-							pcVar[a + i].reference(pc);
+
+						int max = b == 0 ? info.prototype.maxstacksize : a + b;
+						for (int i = a + 1; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.reference(pc);
 						}
 						break;
 					}

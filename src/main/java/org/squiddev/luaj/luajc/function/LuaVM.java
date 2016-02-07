@@ -82,8 +82,8 @@ public final class LuaVM {
 			debugInfo = null;
 		}
 
-		{
-			VarInfo[] vars = allVars[0];
+		if (pc == 0) {
+			VarInfo[] vars = info.params;
 			for (int i = 0; i < prototype.maxstacksize; i++) {
 				vars[i].increment(stack[i]);
 			}

@@ -9,9 +9,9 @@ public class TypeInfo {
 	 */
 	public final BasicType type;
 
-	private boolean valueReferenced = false;
+	public boolean valueReferenced = false;
 
-	private boolean specialisedReferenced = false;
+	public boolean specialisedReferenced = false;
 
 	public TypeInfo(BasicType type) {
 		this.type = type;
@@ -22,14 +22,21 @@ public class TypeInfo {
 	}
 
 	public void referenceSpecialised(int pc) {
+		assert type != BasicType.VALUE;
 		specialisedReferenced = true;
 	}
 
 	@Override
 	public String toString() {
-		return type.format() + "(" +
-			(specialisedReferenced ? "S" : "") +
-			(valueReferenced ? "V" : "") + ")";
+		if (specialisedReferenced && valueReferenced) {
+			return type.format() + "b";
+		} else if (specialisedReferenced) {
+			return type.format() + "s";
+		} else if (valueReferenced) {
+			return type.format() + "v";
+		} else {
+			return type.format() + " ";
+		}
 	}
 
 	public void absorb(TypeInfo info) {

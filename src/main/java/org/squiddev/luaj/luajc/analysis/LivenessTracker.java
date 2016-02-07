@@ -85,7 +85,7 @@ public final class LivenessTracker {
 	private boolean isLiveUncached(VarInfo var, int pc) {
 		if (var == VarInfo.INVALID || !var.isReferenced) return false;
 
-		BasicBlock varBlock = info.blocks[var.pc];
+		BasicBlock varBlock = info.blocks[var.pc < 0 ? 0 : var.pc];
 		BasicBlock pcBlock = info.blocks[pc];
 		if (!varBlock.isLive || !pcBlock.isLive) return false;
 
