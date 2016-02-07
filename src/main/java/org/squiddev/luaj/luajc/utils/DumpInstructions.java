@@ -183,9 +183,9 @@ public final class DumpInstructions {
 	protected static String formatArg(int arg, ArgType type, Prototype proto) {
 		if (type == ArgType.Constant) {
 			if (arg >= 256) arg -= 256;
-			return formatConstant(proto.k[arg]);
+			return "k(" + formatConstant(proto.k[arg]) + ")";
 		} else if (type == ArgType.ConstantOrRegister && arg >= 256) {
-			return formatConstant(proto.k[arg - 256]);
+			return "k(" + formatConstant(proto.k[arg - 256]) + ")";
 		} else if (type == ArgType.Upvalue) {
 			return "up-" + arg + "";
 		} else if (type == ArgType.JumpDistance) {

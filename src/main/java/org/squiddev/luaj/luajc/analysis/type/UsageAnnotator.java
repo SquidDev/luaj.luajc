@@ -146,7 +146,7 @@ public final class UsageAnnotator {
 			case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
 			{
 				int a = Lua.GETARG_A(insn);
-				VarInfo aVar = vars[a], aCounter = vars[a + 2];
+				VarInfo aVar = info.getVariable(pc, a), aCounter = vars[a + 2];
 				if (aVar.type == BasicType.NUMBER && aCounter.type == BasicType.NUMBER) {
 					aVar.getTypeInfo().referenceSpecialised(pc);
 					aCounter.getTypeInfo().referenceSpecialised(pc);

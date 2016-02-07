@@ -87,4 +87,17 @@ public final class BuilderHelpers {
 				throw new IllegalArgumentException("Unknown instruction " + op);
 		}
 	}
+
+	/**
+	 * Perform end-condition test in for-loop processing.
+	 * <p>
+	 * Used in lua-bytecode to Java-bytecode conversion.
+	 *
+	 * @param limit the numerical limit to complete the for loop
+	 * @param step  the numberical step size to use.
+	 * @return true if limit has not been reached, false otherwise.
+	 */
+	public static boolean testFor(double current, double limit, double step) {
+		return step > 0 ? current <= limit : current >= limit;
+	}
 }

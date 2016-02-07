@@ -4,6 +4,7 @@ import org.luaj.vm2.*;
 import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.Type;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.compilation.BuilderHelpers;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 import org.squiddev.luaj.luajc.function.LuaVM;
 import org.squiddev.luaj.luajc.function.executors.*;
@@ -102,7 +103,8 @@ public final class Constants {
 	public static final TinyMethod METHOD_MOD = new TinyMethod(LuaDouble.class, "dmod_d", double.class, double.class);
 
 	// Booleans
-	public static final TinyMethod METHOD_TESTFOR_B = new TinyMethod(LuaValue.class, "testfor_b", LuaValue.class, LuaValue.class);
+	public static final TinyMethod METHOD_TESTFOR_VALUE = new TinyMethod(LuaValue.class, "testfor_b", LuaValue.class, LuaValue.class);
+	public static final TinyMethod METHOD_TESTFOR_DOUBLE = new TinyMethod(BuilderHelpers.class, "testFor", double.class, double.class, double.class);
 	public static final TinyMethod METHOD_IS_NIL = new TinyMethod(LuaValue.class, "isnil");
 
 	// Calling

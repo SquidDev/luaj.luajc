@@ -192,6 +192,7 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						pcVar[a + 2].reference(pc);
+						pcVar[a].reference(pc);
 
 						// The VM sets this, so it must be a number
 						pcVar[a] = new VarInfo(a, pc, BasicType.NUMBER);

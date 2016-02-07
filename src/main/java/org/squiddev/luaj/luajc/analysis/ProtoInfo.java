@@ -159,6 +159,23 @@ public final class ProtoInfo {
 			sb.append("\tblock ").append(b.toString()).append('\n');
 			appendOpenUps(sb, -1);
 
+			sb.append("\t\tentry: ");
+			for (VarInfo v : b.entry) {
+				String u;
+				if (v == null) {
+					u = "";
+				} else if (v.upvalue == null) {
+					u = "    ";
+				} else if (!v.upvalue.readWrite) {
+					u = "[C] ";
+				} else {
+					u = "[]  ";
+				}
+				String s = v == null ? "null   " : String.valueOf(v);
+				sb.append(s).append(u);
+			}
+			sb.append("\n");
+
 			// instructions
 			for (int pc = pc0; pc <= b.pc1; pc++) {
 
@@ -205,43 +222,9 @@ public final class ProtoInfo {
 		for (int i = 0; i < prototype.maxstacksize; i++) {
 			VarInfo v = vars[i];
 			if (v != null && v.pc == pc && v.allocUpvalue) {
-				sb.append("\t\topen: ").append(v.upvalue).append("\n");
+				sb.append("\t\topen:  ").append(v.upvalue).append("\n");
 			}
 		}
-	}
-
-	/**
-	 * Check if this is an assignment to an upvalue
-	 *
-	 * @param pc   The current PC
-	 * @param slot The slot the upvalue is stored in
-	 * @return If an upvalue is assigned to at this point
-	 */
-	public boolean isUpvalueAssign(int pc, int slot) {
-		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
-		return v != null && v.upvalue != null && v.upvalue.readWrite;
-	}
-
-	/**
-	 * Check if this is the creation of an upvalue
-	 *
-	 * @param pc   The current PC
-	 * @param slot The slot the upvalue is stored in
-	 * @return If this is where the upvalue is created
-	 */
-	public boolean isUpvalueCreate(int pc, int slot) {
-		VarInfo v = pc < 0 ? params[slot] : vars[pc][slot];
-		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
-	}
-
-	/**
-	 * Check if this is the creation of an upvalue
-	 *
-	 * @param pc The current PC
-	 * @return If this is where the upvalue is created
-	 */
-	public boolean isUpvalueCreate(VarInfo v, int pc) {
-		return v != null && v.upvalue != null && v.upvalue.readWrite && v.allocUpvalue && pc == v.pc;
 	}
 
 	/**

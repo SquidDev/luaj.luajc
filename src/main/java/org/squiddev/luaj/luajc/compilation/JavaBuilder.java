@@ -33,13 +33,17 @@ import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.LivenessTracker;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
+import org.squiddev.luaj.luajc.analysis.type.BasicType;
+import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
+import org.squiddev.luaj.luajc.utils.IndentLogger;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.squiddev.luaj.luajc.Constants.*;
+import static org.squiddev.luaj.luajc.compilation.BuilderHelpers.*;
 import static org.squiddev.luaj.luajc.utils.AsmUtils.constantOpcode;
 
 public final class JavaBuilder {
@@ -123,6 +127,11 @@ public final class JavaBuilder {
 	private int line = 0;
 
 	/**
+	 * Active slots
+	 */
+	private final SlotInfo[] slots;
+
+	/**
 	 * Tracker for variable livelyness
 	 */
 	private final LivenessTracker tracker;
@@ -133,6 +142,7 @@ public final class JavaBuilder {
 	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
 	public JavaBuilder(ProtoInfo pi, String prefix, String filename) {
+		IndentLogger.output.println(pi); // 12 failed
 		this.pi = pi;
 		this.p = pi.prototype;
 		this.prefix = prefix;
@@ -231,19 +241,35 @@ public final class JavaBuilder {
 
 		if (superclass == SUPERTYPE_VARARGS) {
 			for (slot = 0; slot < p.numparams; slot++) {
-				if (pi.params[slot].isReferenced) {
+				VarInfo info = pi.params[slot];
+				if (info.isReferenced) {
 					main.visitVarInsn(ALOAD, VARARGS_SLOT);
 					constantOpcode(main, slot + 1);
 					METHOD_VARARGS_ARG.inject(main, INVOKEVIRTUAL);
-					storeLocal(-1, slot);
+
+					if (info.type == BasicType.VALUE || !info.getTypeInfo().specialisedReferenced) {
+						storeLocal(info, BasicType.VALUE);
+					} else {
+						storeLocalNoChecks(info, false);
+					}
 				}
 			}
+
+			// Then refresh the locals
+			for (slot = 0; slot < p.numparams; slot++) {
+				VarInfo info = pi.params[slot];
+				if (info.isReferenced && info.type != BasicType.VALUE && info.getTypeInfo().specialisedReferenced) {
+					refreshLocal(info);
+				}
+			}
+
 			boolean needsArg = ((p.is_vararg & Lua.VARARG_NEEDSARG) != 0);
 			if (needsArg) {
 				main.visitVarInsn(ALOAD, VARARGS_SLOT);
 				constantOpcode(main, p.numparams + 1);
 				METHOD_TABLEOF.inject(main, INVOKESTATIC);
-				storeLocal(-1, slot++);
+
+				storeLocal(-1, slot++, BasicType.VALUE);
 			} else if (p.numparams > 0) {
 				main.visitVarInsn(ALOAD, VARARGS_SLOT);
 				constantOpcode(main, p.numparams + 1);
@@ -254,9 +280,9 @@ public final class JavaBuilder {
 			// fixed arg function between 0 and 3 arguments
 			for (slot = 0; slot < p.numparams; slot++) {
 				findSlot(slot).valueSlot = slot + VARARGS_SLOT;
-				if (pi.isUpvalueCreate(-1, slot)) {
-					main.visitVarInsn(ALOAD, slot + VARARGS_SLOT);
-					storeLocal(-1, slot);
+				VarInfo info = pi.params[slot];
+				if (info.isUpvalueCreate(-1) || info.getTypeInfo().specialisedReferenced) {
+					refreshLocal(info);
 				}
 			}
 		}
@@ -265,7 +291,8 @@ public final class JavaBuilder {
 		for (; slot < p.maxstacksize; slot++) {
 			if (pi.params[slot].isReferenced) {
 				loadNil();
-				storeLocal(-1, slot);
+				// We should be OK to do this as they should all be values
+				storeLocal(-1, slot, BasicType.VALUE);
 			}
 		}
 	}
@@ -290,8 +317,268 @@ public final class JavaBuilder {
 		return writer.toByteArray();
 	}
 
+	//region Slot loading/storing
+	public SlotInfo findSlot(int luaSlot) {
+		SlotInfo info = slots[luaSlot];
+		if (info == null) info = slots[luaSlot] = new SlotInfo(luaSlot);
+
+		return info;
+	}
+
+	public int findUpvalueIndex(int luaSlot) {
+		SlotInfo info = findSlot(luaSlot);
+		int slot = info.upvalueSlot;
+		if (slot < 0) slot = info.upvalueSlot = ++maxLocals;
+
+		return slot;
+	}
+
+	public int findTypedSlot(int luaSlot, BasicType type) {
+		SlotInfo info = findSlot(luaSlot);
+		switch (type) {
+			default:
+			case VALUE: {
+				int slot = info.valueSlot;
+				if (slot < 0) slot = info.valueSlot = ++maxLocals;
+				return slot;
+			}
+			case BOOLEAN: {
+				int slot = info.booleanSlot;
+				if (slot < 0) slot = info.booleanSlot = ++maxLocals;
+				return slot;
+			}
+			case NUMBER: {
+				int slot = info.numberSlot;
+				if (slot < 0) {
+					slot = info.numberSlot = ++maxLocals;
+					maxLocals++;
+				}
+				return slot;
+			}
+		}
+	}
+
+	public void loadLocal(int pc, int slot, boolean specialist) {
+		loadLocal(pi.getVariable(pc, slot), specialist);
+	}
+
+	public void loadLocal(VarInfo info, boolean specialist) {
+		int slot = info.slot;
+		boolean isUpvalue = info.isUpvalueRefer();
+		if (isUpvalue) {
+			assert !specialist : "Cannot load non-value upvalue";
+
+			main.visitVarInsn(ALOAD, findUpvalueIndex(slot));
+			IndentLogger.output.println(info + " => " + findUpvalueIndex(slot));
+			METHOD_GET_UPVALUE.inject(main);
+		} else if (specialist) {
+			main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
+			IndentLogger.output.println(info + " => " + findTypedSlot(slot, info.type) + ":" + info.type);
+		} else if (info.type == BasicType.VALUE || info.getTypeInfo().valueReferenced) {
+			IndentLogger.output.println(info + " => " + findTypedSlot(slot, BasicType.VALUE) + ":Value");
+			main.visitVarInsn(ALOAD, findTypedSlot(slot, BasicType.VALUE));
+		} else {
+			IndentLogger.output.println(info + " => " + findTypedSlot(slot, info.type) + ":Convert");
+			// Only used when exiting to the interpreter, so we don't have to be efficient
+			main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
+			specialToValue(info.type);
+		}
+	}
+
+	private void specialToValue(BasicType type) {
+		switch (type) {
+			case BOOLEAN:
+				METHOD_BOOL_TO_VALUE.inject(main);
+				break;
+			case NUMBER:
+				METHOD_NUMBER_TO_VALUE.inject(main);
+				break;
+			default:
+				throw new IllegalStateException("Type " + type + " is not a specialist type");
+		}
+	}
+
+	private void assertType(BasicType type, int typeNo, int pc) {
+		Label success = new Label();
+
+		dup(type);
+		METHOD_TYPE.inject(main);
+		AsmUtils.constantOpcode(main, typeNo);
+
+		main.visitJumpInsn(IFNE, success);
+		visitResume(pc);
+
+		main.visitLabel(success);
+	}
+
+	private void valueToSpecial(BasicType type, int pc) {
+		switch (type) {
+			case BOOLEAN:
+				assertType(BasicType.BOOLEAN, LuaValue.TBOOLEAN, pc);
+				METHOD_VALUE_TO_BOOL.inject(main);
+				break;
+			case NUMBER:
+				assertType(BasicType.NUMBER, LuaValue.TNUMBER, pc);
+				METHOD_VALUE_TO_NUMBER.inject(main);
+				break;
+			default:
+				throw new IllegalStateException("Type " + type + " is not a specialist type");
+		}
+	}
+
+	public void storeLocalNoChecks(int pc, int slot, boolean specialist) {
+		storeLocalNoChecks(pc < 0 ? pi.params[slot] : pi.vars[pc][slot], specialist);
+	}
+
+	/**
+	 * Store a {@link LuaValue} without checking it was typed or not
+	 *
+	 * @param var        The variable to store
+	 * @param specialist Store in a specialist slot
+	 */
+	public void storeLocalNoChecks(VarInfo var, boolean specialist) {
+		boolean isUpvalue = var.isUpvalueAssign();
+		if (isUpvalue) {
+			storeLocalUpvalue(var);
+		} else if (specialist) {
+			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
+			main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
+		} else {
+			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
+			main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
+		}
+	}
+
+	public void storeLocal(int pc, int slot, BasicType fromType) {
+		storeLocal(pc < 0 ? pi.params[slot] : pi.vars[pc][slot], fromType);
+	}
+
+	public void storeLocal(VarInfo var, BasicType fromType) {
+		boolean isUpvalue = var.isUpvalueAssign();
+		if (isUpvalue) {
+			if (fromType != BasicType.VALUE) specialToValue(var.type);
+			storeLocalUpvalue(var);
+		} else if (fromType != BasicType.VALUE) {
+			TypeInfo info = var.getTypeInfo();
+			if (info.valueReferenced) dup(var.type);
+
+			if (info.valueReferenced) {
+				specialToValue(fromType);
+				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
+				main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
+			}
+
+			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
+			main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
+		} else {
+			TypeInfo info = var.getTypeInfo();
+			if (info.specialisedReferenced) main.visitInsn(DUP);
+
+			// Always store the value. Just in case
+			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
+			main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
+
+			if (info.specialisedReferenced) {
+				valueToSpecial(var.type, var.pc);
+				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
+				main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
+			}
+		}
+	}
+
+	/**
+	 * Load a local variable and refresh its subtypes
+	 *
+	 * @param var The types to load
+	 */
+	public void refreshLocal(VarInfo var) {
+		boolean isUpvalue = var.isUpvalueAssign();
+		if (isUpvalue) {
+			main.visitVarInsn(ALOAD, findTypedSlot(var.slot, BasicType.VALUE));
+			storeLocalUpvalue(var);
+		} else {
+			// We only need to load if we used a specialist value
+			if (var.getTypeInfo().specialisedReferenced) {
+				main.visitVarInsn(ALOAD, findTypedSlot(var.slot, BasicType.VALUE));
+				valueToSpecial(var.type, var.pc);
+				main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
+
+				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":Refresh");
+			}
+		}
+	}
+
+	/**
+	 * Store an upvalue, creating it if needed
+	 *
+	 * @param var The upvalue to create
+	 */
+	private void storeLocalUpvalue(VarInfo var) {
+		int index = findUpvalueIndex(var.slot);
+		boolean isUpCreate = var.isUpvalueCreate(var.pc);
+		IndentLogger.output.println(var + " <= " + index + ":Upvalue");
+		if (isUpCreate) {
+			// As we are creating it we need to write
+			METHOD_NEW_UPVALUE_VALUE.inject(main);
+
+			// We should only proxy when we need to switch back into interpreted mode
+			// and this upvalue will be mutated again
+			METHOD_NEW_UPVALUE_PROXY.inject(main);
+			main.visitVarInsn(ASTORE, index);
+		} else {
+			// Then store the upvalue in the index
+			main.visitVarInsn(ALOAD, index);
+			main.visitInsn(SWAP);
+			Constants.METHOD_SET_UPVALUE.inject(main);
+		}
+	}
+	//endregion
+
+
+	//region Local upvalues
+	public void createUpvalues(int pc, int firstSlot, int numSlots) {
+		for (int i = 0; i < numSlots; i++) {
+			int slot = firstSlot + i;
+			if (pi.getVariable(pc, slot).isUpvalueCreate(pc)) {
+				int index = findUpvalueIndex(slot);
+				METHOD_NEW_UPVALUE_NIL.inject(main);
+				METHOD_NEW_UPVALUE_PROXY.inject(main);
+				main.visitVarInsn(ASTORE, index);
+			}
+		}
+	}
+
+
+	public void convertToUpvalue(int pc, int slot) {
+		VarInfo info = pi.getVariable(pc, slot);
+		boolean isUpvalueAssign = info.isUpvalueAssign();
+		if (isUpvalueAssign) {
+			int index = findTypedSlot(slot, BasicType.VALUE);
+
+			// Load it from the slot
+			main.visitVarInsn(ALOAD, index);
+
+			// Convert to upvalue
+			METHOD_NEW_UPVALUE_VALUE.inject(main);
+			if (info.upvalue.readWrite) METHOD_NEW_UPVALUE_PROXY.inject(main);
+
+			// Store in upvalue slot
+			int upvalueIndex = findUpvalueIndex(slot);
+			main.visitVarInsn(ASTORE, upvalueIndex);
+		}
+	}
+	//endregion
+
 	public void dup() {
 		main.visitInsn(DUP);
+	}
+
+	public void dup(BasicType type) {
+		main.visitInsn(type == BasicType.NUMBER ? DUP2 : DUP);
+	}
+
+	public void pop(BasicType type) {
+		main.visitInsn(type == BasicType.NUMBER ? POP2 : POP);
 	}
 
 	public void pop() {
@@ -311,93 +598,6 @@ public final class JavaBuilder {
 		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", field, "Lorg/luaj/vm2/LuaBoolean;");
 	}
 
-	private final SlotInfo[] slots;
-
-	private SlotInfo findSlot(int luaSlot) {
-		SlotInfo info = slots[luaSlot];
-		if (info == null) info = slots[luaSlot] = new SlotInfo(luaSlot);
-
-		return info;
-	}
-
-	private int findSlotIndex(int slot, boolean isUpvalue) {
-		SlotInfo info = findSlot(slot);
-		if (isUpvalue) {
-			int index = info.upvalueSlot;
-			if (index < 0) index = info.upvalueSlot = ++maxLocals;
-			return index;
-		} else {
-			int index = info.valueSlot;
-			if (index < 0) index = info.valueSlot = ++maxLocals;
-			return index;
-		}
-	}
-
-	public void loadLocal(int pc, int slot) {
-		boolean isUpvalue = pi.getVariable(pc, slot).isUpvalueRefer();
-		int index = findSlotIndex(slot, isUpvalue);
-
-		main.visitVarInsn(ALOAD, index);
-		if (isUpvalue) {
-			Constants.METHOD_GET_UPVALUE.inject(main);
-		}
-	}
-
-	public void storeLocal(int pc, int slot) {
-		boolean isUpvalue = pi.isUpvalueAssign(pc, slot);
-		int index = findSlotIndex(slot, isUpvalue);
-		if (isUpvalue) {
-			boolean isUpCreate = pi.isUpvalueCreate(pc, slot);
-			if (isUpCreate) {
-				// If we are creating the upvalue for the first time then we call LibFunction.emptyUpvalue (but actually call
-				// <className>.emptyUpvalue but I need to check that). The we duplicate the object, so it remains on the stack
-				// and store it
-				METHOD_NEW_UPVALUE_EMPTY.inject(main);
-
-				// We should only proxy when we need to switch back into interpreted mode
-				// and this upvalue will be mutated again
-				METHOD_NEW_UPVALUE_PROXY.inject(main);
-				main.visitInsn(DUP);
-				main.visitVarInsn(ASTORE, index);
-			} else {
-				main.visitVarInsn(ALOAD, index);
-			}
-
-			// We swap the values which is the value and the reference
-			// And store to the reference
-			main.visitInsn(SWAP);
-			Constants.METHOD_SET_UPVALUE.inject(main);
-		} else {
-			main.visitVarInsn(ASTORE, index);
-		}
-	}
-
-	public void createUpvalues(int pc, int firstSlot, int numSlots) {
-		for (int i = 0; i < numSlots; i++) {
-			int slot = firstSlot + i;
-			if (pi.isUpvalueCreate(pc, slot)) {
-				int index = findSlotIndex(slot, true);
-				METHOD_NEW_UPVALUE_NIL.inject(main);
-				METHOD_NEW_UPVALUE_PROXY.inject(main);
-				main.visitVarInsn(ASTORE, index);
-			}
-		}
-	}
-
-	public void convertToUpvalue(int pc, int slot) {
-		boolean isUpvalueAssign = pi.isUpvalueAssign(pc, slot);
-		if (isUpvalueAssign) {
-			int index = findSlotIndex(slot, false);
-
-			// Load it from the slot, convert to an array and store it to the upvalue slot
-			main.visitVarInsn(ALOAD, index);
-			METHOD_NEW_UPVALUE_VALUE.inject(main);
-			METHOD_NEW_UPVALUE_PROXY.inject(main);
-			int upvalueIndex = findSlotIndex(slot, true);
-			main.visitVarInsn(ASTORE, upvalueIndex);
-		}
-	}
-
 	public void loadUpvalue(int upvalueIndex) {
 		main.visitVarInsn(ALOAD, upvaluesSlot);
 		constantOpcode(main, upvalueIndex);
@@ -410,7 +610,7 @@ public final class JavaBuilder {
 		constantOpcode(main, upvalueIndex);
 		main.visitInsn(AALOAD);
 
-		loadLocal(pc, slot);
+		loadLocal(pc, slot, false);
 		Constants.METHOD_SET_UPVALUE.inject(main);
 	}
 
@@ -469,65 +669,40 @@ public final class JavaBuilder {
 		METHOD_TABLE_SET.inject(main);
 	}
 
-	public void unaryOp(int o) {
-		String op;
-		switch (o) {
-			default:
-			case Lua.OP_UNM:
-				op = "min";
-				break;
-			case Lua.OP_NOT:
-				op = "not";
-				break;
-			case Lua.OP_LEN:
-				op = "len";
-				break;
+	public void unaryOp(int op, boolean specialist) {
+		if (specialist) {
+			main.visitInsn(getOpcode(op));
+		} else {
+			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "()" + TYPE_LUAVALUE, false);
 		}
-
-		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "()" + TYPE_LUAVALUE, false);
 	}
 
-	public void binaryOp(int o) {
-		String op;
-		switch (o) {
-			default:
-			case Lua.OP_ADD:
-				op = "add";
-				break;
-			case Lua.OP_SUB:
-				op = "sub";
-				break;
-			case Lua.OP_MUL:
-				op = "mul";
-				break;
-			case Lua.OP_DIV:
-				op = "div";
-				break;
-			case Lua.OP_MOD:
-				op = "mod";
-				break;
-			case Lua.OP_POW:
-				op = "pow";
-				break;
+	public void binaryOp(int op, boolean specialist) {
+		if (specialist) {
+			if (op == Lua.OP_MOD) {
+				METHOD_MOD.inject(main);
+			} else if (op == Lua.OP_POW) {
+				METHOD_POW.inject(main);
+			} else {
+				main.visitInsn(getOpcode(op));
+			}
+		} else {
+			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "(" + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
 		}
-		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "(" + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
 	}
 
-	public void compareOp(int o) {
-		String op;
-		switch (o) {
-			default:
-			case Lua.OP_EQ:
-				op = "eq_b";
-				break;
-			case Lua.OP_LT:
-				op = "lt_b";
-				break;
-			case Lua.OP_LE:
-				op = "lteq_b";
-				break;
+	public void compareOp(int op, boolean specialist) {
+		if (specialist) {
+			if (op == Lua.OP_NOT) {
+				// I *think* this is valid: XOR the current variable with 1.
+				main.visitInsn(ICONST_1);
+				main.visitInsn(IXOR);
+			} else {
+				main.visitInsn(getOpcode(op));
+			}
+		} else {
+			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "(" + TYPE_LUAVALUE + ")Z", false);
 		}
-		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "(" + TYPE_LUAVALUE + ")Z", false);
 	}
 
 	public void visitReturn() {
@@ -546,8 +721,12 @@ public final class JavaBuilder {
 		METHOD_IS_NIL.inject(main);
 	}
 
-	public void testForLoop() {
-		METHOD_TESTFOR_B.inject(main);
+	public void testForLoop(boolean specialise) {
+		if (specialise) {
+			METHOD_TESTFOR_DOUBLE.inject(main);
+		} else {
+			METHOD_TESTFOR_VALUE.inject(main);
+		}
 	}
 
 	public void loadArrayArgs(int pc, int firstSlot, int nargs) {
@@ -556,7 +735,7 @@ public final class JavaBuilder {
 		for (int i = 0; i < nargs; i++) {
 			main.visitInsn(DUP);
 			constantOpcode(main, i);
-			loadLocal(pc, firstSlot++);
+			loadLocal(pc, firstSlot++, false);
 			main.visitInsn(AASTORE);
 		}
 	}
@@ -567,17 +746,17 @@ public final class JavaBuilder {
 				loadNone();
 				break;
 			case 1:
-				loadLocal(pc, firstslot);
+				loadLocal(pc, firstslot, false);
 				break;
 			case 2:
-				loadLocal(pc, firstslot);
-				loadLocal(pc, firstslot + 1);
+				loadLocal(pc, firstslot, false);
+				loadLocal(pc, firstslot + 1, false);
 				METHOD_VARARGS_ONE.inject(main);
 				break;
 			case 3:
-				loadLocal(pc, firstslot);
-				loadLocal(pc, firstslot + 1);
-				loadLocal(pc, firstslot + 2);
+				loadLocal(pc, firstslot, false);
+				loadLocal(pc, firstslot + 1, false);
+				loadLocal(pc, firstslot + 2, false);
 				METHOD_VARARGS_TWO.inject(main);
 				break;
 			default:
@@ -660,7 +839,7 @@ public final class JavaBuilder {
 
 	public void initUpvalueFromLocal(int newUpvalue, int pc, int srcSlot) {
 		boolean isReadWrite = pi.vars[pc][srcSlot].upvalue.readWrite;
-		int index = findSlotIndex(srcSlot, isReadWrite);
+		int index = isReadWrite ? findUpvalueIndex(srcSlot) : findTypedSlot(srcSlot, BasicType.VALUE);
 
 		constantOpcode(main, newUpvalue);
 		main.visitVarInsn(ALOAD, index);
@@ -668,31 +847,45 @@ public final class JavaBuilder {
 		main.visitInsn(AASTORE);
 	}
 
-	public void loadConstant(LuaValue value) {
+	public void loadConstant(LuaValue value, boolean specialised) {
 		switch (value.type()) {
 			case LuaValue.TNIL:
 				loadNil();
 				break;
 			case LuaValue.TBOOLEAN:
-				loadBoolean(value.toboolean());
+				if (specialised) {
+					main.visitInsn(value.toboolean() ? ICONST_1 : ICONST_0);
+				} else {
+					loadBoolean(value.toboolean());
+				}
 				break;
 			case LuaValue.TNUMBER:
-			case LuaValue.TSTRING:
-				String name = constants.get(value);
-				if (name == null) {
-					if (value.type() == LuaValue.TNUMBER) {
-						name = value.isinttype() ? createLuaIntegerField(value.checkint()) : createLuaDoubleField(value.checkdouble());
-					} else {
-						name = createLuaStringField(value.checkstring());
-					}
-
-					constants.put(value, name);
+				if (specialised) {
+					AsmUtils.constantOpcode(main, value.todouble());
+				} else {
+					loadCachedConstant(value);
 				}
-				main.visitFieldInsn(GETSTATIC, className, name, TYPE_LUAVALUE);
+				break;
+			case LuaValue.TSTRING:
+				loadCachedConstant(value);
 				break;
 			default:
 				throw new IllegalArgumentException("bad constant type: " + value.type());
 		}
+	}
+
+	private void loadCachedConstant(LuaValue value) {
+		String name = constants.get(value);
+		if (name == null) {
+			if (value.type() == LuaValue.TNUMBER) {
+				name = value.isinttype() ? createLuaIntegerField(value.checkint()) : createLuaDoubleField(value.checkdouble());
+			} else {
+				name = createLuaStringField(value.checkstring());
+			}
+
+			constants.put(value, name);
+		}
+		main.visitFieldInsn(GETSTATIC, className, name, TYPE_LUAVALUE);
 	}
 
 	private String createLuaIntegerField(int value) {
@@ -784,12 +977,16 @@ public final class JavaBuilder {
 		}
 	}
 
+	public void visitResume(int pc) {
+		visitResume(pc, 0);
+	}
+
 	public void visitResume(int pc, int top) {
 		// The main stack
 		int stackS = stackSlot;
 		if (stackS == -1) stackS = stackSlot = ++maxLocals;
 		constantOpcode(main, p.maxstacksize);
-		main.visitTypeInsn(ANEWARRAY, TYPE_LUAVALUE);
+		main.visitTypeInsn(ANEWARRAY, CLASS_LUAVALUE);
 		main.visitVarInsn(ASTORE, stackS);
 
 		// Store the open upvalues
@@ -798,7 +995,7 @@ public final class JavaBuilder {
 		if (upvalues) {
 			if (openupsS == -1) openupsS = openupsSlot = ++maxLocals;
 			constantOpcode(main, p.maxstacksize);
-			main.visitTypeInsn(ANEWARRAY, TYPE_UPVALUE);
+			main.visitTypeInsn(ANEWARRAY, CLASS_UPVALUE);
 			main.visitVarInsn(ASTORE, stackS);
 		}
 
@@ -811,7 +1008,7 @@ public final class JavaBuilder {
 			constantOpcode(main, slot);
 			if (tracker.isLive(info, pc)) {
 				boolean isUpvalue = pi.getVariable(pc, slot).isUpvalueRefer();
-				int index = findSlotIndex(slot, isUpvalue);
+				int index = isUpvalue ? findUpvalueIndex(slot) : findTypedSlot(slot, BasicType.VALUE);
 
 				main.visitVarInsn(ALOAD, index);
 				if (isUpvalue) {
@@ -822,7 +1019,7 @@ public final class JavaBuilder {
 					METHOD_UPVALUE_REDIRECT.inject(main);
 
 					// If it is open then store it in the openups too
-					dup();
+					main.visitInsn(DUP);
 					main.visitVarInsn(ALOAD, openupsS);
 					constantOpcode(main, slot);
 					main.visitInsn(AASTORE);
@@ -870,7 +1067,7 @@ public final class JavaBuilder {
 		for (int i = 0; i < nvals; i++) {
 			main.visitInsn(DUP);
 			constantOpcode(main, index0 + i);
-			loadLocal(pc, a0 + i);
+			loadLocal(pc, a0 + i, false);
 			METHOD_RAWSET.inject(main);
 		}
 	}
@@ -908,11 +1105,11 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void loadLocalOrConstant(int pc, int borc) {
+	public void loadLocalOrConstant(int pc, int borc, boolean specialist) {
 		if (borc <= 0xff) {
-			loadLocal(pc, borc);
+			loadLocal(pc, borc, specialist);
 		} else {
-			loadConstant(p.k[borc & 0xff]);
+			loadConstant(p.k[borc & 0xff], specialist);
 		}
 	}
 }

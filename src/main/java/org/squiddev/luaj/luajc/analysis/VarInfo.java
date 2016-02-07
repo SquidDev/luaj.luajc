@@ -196,6 +196,25 @@ public class VarInfo {
 	}
 
 	/**
+	 * Check if this variable's creation is an assignment to an upvalue
+	 *
+	 * @return If an upvalue is assigned to at this point
+	 */
+	public final boolean isUpvalueAssign() {
+		return upvalue != null && upvalue.readWrite;
+	}
+
+	/**
+	 * Check if this is the creation of an upvalue
+	 *
+	 * @param pc The current PC
+	 * @return If this is where the upvalue is created
+	 */
+	public final boolean isUpvalueCreate(int pc) {
+		return upvalue != null && upvalue.readWrite && allocUpvalue && pc == this.pc;
+	}
+
+	/**
 	 * Get this variable's type
 	 *
 	 * @return The variable's type, or {@link BasicType#VALUE} if unknown.
@@ -204,7 +223,7 @@ public class VarInfo {
 		return type == null ? BasicType.VALUE : type;
 	}
 
-	public TypeInfo getTypeInfo() {
+	public final TypeInfo getTypeInfo() {
 		if (this == INVALID) {
 			throw new IllegalStateException("Cannot get type info of invalid");
 		}
