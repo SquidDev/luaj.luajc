@@ -480,17 +480,17 @@ public final class JavaGen {
 							builder.storeVarResult();
 							vresultbase = a;
 						} else {
-							for (int i = 1; i < b; ++a, ++i) {
+							for (int i = 1; i < b; i++) {
 								builder.loadVarargs(i);
-								VarInfo var = pi.vars[pc][a];
+								VarInfo var = pi.vars[pc][a + i - 1];
 								if (var.type == BasicType.VALUE || !var.getTypeInfo().specialisedReferenced) {
 									builder.storeLocal(var, BasicType.VALUE);
 								} else {
 									builder.storeLocalNoChecks(var, false);
 								}
 							}
-							for (int i = 1; i < b; ++a, ++i) {
-								VarInfo var = pi.vars[pc][a];
+							for (int i = 1; i < b; i++) {
+								VarInfo var = pi.vars[pc][a + i - 1];
 								if (var.type != BasicType.VALUE && var.getTypeInfo().specialisedReferenced) {
 									builder.refreshLocal(var);
 								}

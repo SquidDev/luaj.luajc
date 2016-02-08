@@ -110,7 +110,7 @@ public final class UsageAnnotator {
 					cVar = null;
 					cType = BasicType.fromValue(info.prototype.k[Lua.INDEXK(c)]);
 				} else {
-					cVar = vars[b];
+					cVar = info.getVariable(pc, c);
 					cType = cVar.type;
 				}
 
@@ -243,9 +243,14 @@ public final class UsageAnnotator {
 				int a = Lua.GETARG_A(insn);
 				int b = Lua.GETARG_B(insn);
 				vars[a].getTypeInfo().referenceValue(pc);
-				for (int i = 1; i <= b; i++) {
-					vars[a + i].getTypeInfo().referenceValue(pc);
+
+				int max = b == 0 ? info.prototype.maxstacksize : a + b + 1;
+				for (int i = a + 1; i < max; i++) {
+					VarInfo info = vars[i];
+					if (info == VarInfo.INVALID) break;
+					info.getTypeInfo().referenceValue(pc);
 				}
+
 				return false;
 			}
 

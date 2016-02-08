@@ -142,7 +142,8 @@ public final class JavaBuilder {
 	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
 	public JavaBuilder(ProtoInfo pi, String prefix, String filename) {
-		IndentLogger.output.println(pi); // 12 failed
+		IndentLogger.output.println(filename + pi.name);
+		IndentLogger.output.println(pi); // 2 failed
 		this.pi = pi;
 		this.p = pi.prototype;
 		this.prefix = prefix;
@@ -372,6 +373,7 @@ public final class JavaBuilder {
 			IndentLogger.output.println(info + " => " + findUpvalueIndex(slot));
 			METHOD_GET_UPVALUE.inject(main);
 		} else if (specialist) {
+			assert info.type != BasicType.VALUE : "Value is not a specialist type";
 			main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
 			IndentLogger.output.println(info + " => " + findTypedSlot(slot, info.type) + ":" + info.type);
 		} else if (info.type == BasicType.VALUE || info.getTypeInfo().valueReferenced) {
@@ -398,14 +400,15 @@ public final class JavaBuilder {
 		}
 	}
 
-	private void assertType(BasicType type, int typeNo, int pc) {
+	private void assertType(int typeNo, int pc) {
 		Label success = new Label();
 
-		dup(type);
+		main.visitInsn(DUP);
 		METHOD_TYPE.inject(main);
 		AsmUtils.constantOpcode(main, typeNo);
 
-		main.visitJumpInsn(IFNE, success);
+		main.visitJumpInsn(IF_ICMPNE, success);
+		main.visitInsn(POP);
 		visitResume(pc);
 
 		main.visitLabel(success);
@@ -414,11 +417,11 @@ public final class JavaBuilder {
 	private void valueToSpecial(BasicType type, int pc) {
 		switch (type) {
 			case BOOLEAN:
-				assertType(BasicType.BOOLEAN, LuaValue.TBOOLEAN, pc);
+				assertType(LuaValue.TBOOLEAN, pc);
 				METHOD_VALUE_TO_BOOL.inject(main);
 				break;
 			case NUMBER:
-				assertType(BasicType.NUMBER, LuaValue.TNUMBER, pc);
+				assertType(LuaValue.TNUMBER, pc);
 				METHOD_VALUE_TO_NUMBER.inject(main);
 				break;
 			default:
@@ -705,7 +708,7 @@ public final class JavaBuilder {
 
 	public void compareOp(int op, boolean specialist, boolean expected, int targetPc) {
 		if (specialist) {
-			Label success = branchDestinations[targetPc], failure = new Label();
+			Label success = branchDestinations[targetPc];
 
 			if (expected) {
 				// a > b :: 1
@@ -750,11 +753,9 @@ public final class JavaBuilder {
 						break;
 				}
 			}
-
-			main.visitLabel(failure);
 		} else {
 			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "(" + TYPE_LUAVALUE + ")Z", false);
-			addBranch(expected ? IFEQ : IFNE, targetPc);
+			addBranch(expected ? BRANCH_IFEQ : BRANCH_IFNE, targetPc);
 		}
 	}
 

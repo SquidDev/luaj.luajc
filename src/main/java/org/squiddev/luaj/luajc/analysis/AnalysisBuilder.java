@@ -360,8 +360,12 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						pcVar[a].reference(pc);
-						for (int i = 1; i <= b; i++) {
-							pcVar[a + i].reference(pc);
+
+						int max = b == 0 ? info.prototype.maxstacksize : a + b + 1;
+						for (int i = a + 1; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.reference(pc);
 						}
 						break;
 					}
