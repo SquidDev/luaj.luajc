@@ -38,7 +38,7 @@ public class PerformanceCompile {
 
 	@Test
 	public void compileLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 0, CompileOptions.TYPE_THRESHOLD, true, null));
+		Loader.install(0);
 		load();
 	}
 

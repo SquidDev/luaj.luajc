@@ -22,7 +22,7 @@ public class TypeInfo {
 	}
 
 	public void referenceSpecialised(int pc) {
-		assert type != BasicType.VALUE;
+		assert type != BasicType.VALUE : "Value is not a specialised type";
 		specialisedReferenced = true;
 	}
 

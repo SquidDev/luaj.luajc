@@ -34,9 +34,7 @@ import org.squiddev.luaj.luajc.analysis.LivenessTracker;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
-import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
-import org.squiddev.luaj.luajc.utils.IndentLogger;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -92,7 +90,11 @@ public final class JavaBuilder {
 	/**
 	 * Go to destinations
 	 */
-	private final Label[] branchDestinations;
+	private final Label[] specialisedBranch;
+
+	private final Label[] genericBranch;
+
+	private final Label[] resumeBranch;
 
 	/**
 	 * The slot for the {@link LuaThread.CallStack}
@@ -141,9 +143,12 @@ public final class JavaBuilder {
 	 */
 	private final Map<LuaValue, String> constants = new HashMap<LuaValue, String>();
 
+	private final Label paramsLabel = new Label();
+
+	public final VariableLoaderGeneric genericLoader;
+	public final VariableLoaderSpecialised specialisedLoader;
+
 	public JavaBuilder(ProtoInfo pi, String prefix, String filename) {
-		IndentLogger.output.println(filename + pi.name);
-		IndentLogger.output.println(pi); // 2 failed
 		this.pi = pi;
 		this.p = pi.prototype;
 		this.prefix = prefix;
@@ -220,28 +225,34 @@ public final class JavaBuilder {
 			upvaluesSlot = -1;
 		}
 
-		// Initialize the values in the slots
-		initializeSlots();
+		genericLoader = new VariableLoaderGeneric(this, main, pi);
+		specialisedLoader = new VariableLoaderSpecialised(this, main, pi);
 
 		{
 			// Generate a label for every instruction
 			int nc = p.code.length;
-			Label[] branchDestinations = this.branchDestinations = new Label[nc];
+			Label[] specialisedBranch = this.specialisedBranch = new Label[nc];
+			Label[] genericBranch = this.genericBranch = new Label[nc];
+			Label[] resumeBranch = this.resumeBranch = new Label[nc];
 			for (int pc = 0; pc < nc; pc++) {
-				branchDestinations[pc] = new Label();
+				specialisedBranch[pc] = new Label();
+				genericBranch[pc] = new Label();
+				resumeBranch[pc] = new Label();
 			}
 		}
+
+		initializeMainSlots();
 	}
 
 	/**
 	 * Setup slots for arguments
 	 */
-	public void initializeSlots() {
-		int slot;
+	private void initializeMainSlots() {
 		createUpvalues(-1, 0, p.maxstacksize);
+		int endSlot = p.numparams;
 
 		if (superclass == SUPERTYPE_VARARGS) {
-			for (slot = 0; slot < p.numparams; slot++) {
+			for (int slot = 0; slot < p.numparams; slot++) {
 				VarInfo info = pi.params[slot];
 				if (info.isReferenced) {
 					main.visitVarInsn(ALOAD, VARARGS_SLOT);
@@ -249,18 +260,10 @@ public final class JavaBuilder {
 					METHOD_VARARGS_ARG.inject(main, INVOKEVIRTUAL);
 
 					if (info.type == BasicType.VALUE || !info.getTypeInfo().specialisedReferenced) {
-						storeLocal(info, BasicType.VALUE);
+						specialisedLoader.storeLocal(info, BasicType.VALUE);
 					} else {
-						storeLocalNoChecks(info, false);
+						specialisedLoader.storeLocalNoChecks(info, false);
 					}
-				}
-			}
-
-			// Then refresh the locals
-			for (slot = 0; slot < p.numparams; slot++) {
-				VarInfo info = pi.params[slot];
-				if (info.isReferenced && info.type != BasicType.VALUE && info.getTypeInfo().specialisedReferenced) {
-					refreshLocal(info);
 				}
 			}
 
@@ -270,30 +273,75 @@ public final class JavaBuilder {
 				constantOpcode(main, p.numparams + 1);
 				METHOD_TABLEOF.inject(main, INVOKESTATIC);
 
-				storeLocal(-1, slot++, BasicType.VALUE);
+				specialisedLoader.storeLocal(-1, p.numparams, BasicType.VALUE);
+				endSlot++;
 			} else if (p.numparams > 0) {
 				main.visitVarInsn(ALOAD, VARARGS_SLOT);
 				constantOpcode(main, p.numparams + 1);
 				METHOD_VARARGS_SUBARGS.inject(main, INVOKEVIRTUAL);
 				main.visitVarInsn(ASTORE, VARARGS_SLOT);
 			}
+
+			// Then refresh the locals
+			for (int slot = 0; slot < p.numparams; slot++) {
+				VarInfo info = pi.params[slot];
+				if (info.isReferenced && info.type != BasicType.VALUE && info.getTypeInfo().specialisedReferenced) {
+					specialisedLoader.refreshLocal(info);
+				}
+			}
 		} else {
 			// fixed arg function between 0 and 3 arguments
-			for (slot = 0; slot < p.numparams; slot++) {
+			for (int slot = 0; slot < p.numparams; slot++) {
 				findSlot(slot).valueSlot = slot + VARARGS_SLOT;
 				VarInfo info = pi.params[slot];
 				if (info.isUpvalueCreate(-1) || info.getTypeInfo().specialisedReferenced) {
-					refreshLocal(info);
+					specialisedLoader.refreshLocal(info);
 				}
 			}
 		}
 
 		// nil parameters
-		for (; slot < p.maxstacksize; slot++) {
-			if (pi.params[slot].isReferenced) {
+		for (; endSlot < p.maxstacksize; endSlot++) {
+			if (pi.params[endSlot].isReferenced) {
 				loadNil();
 				// We should be OK to do this as they should all be values
-				storeLocal(-1, slot, BasicType.VALUE);
+				specialisedLoader.storeLocal(-1, endSlot, BasicType.VALUE);
+			}
+		}
+	}
+
+	public void initializeSlots(boolean specialist) {
+		VariableLoader loader = specialist ? specialisedLoader : genericLoader;
+		if (!specialist) main.visitLabel(paramsLabel);
+
+		int endSlot = p.numparams;
+		if (((p.is_vararg & Lua.VARARG_NEEDSARG) != 0)) endSlot++;
+
+		if (superclass == SUPERTYPE_VARARGS) {
+			// Then refresh the locals
+			for (int slot = 0; slot < p.numparams; slot++) {
+				VarInfo info = pi.params[slot];
+				if (info.isReferenced && info.type != BasicType.VALUE && info.getTypeInfo().specialisedReferenced) {
+					loader.refreshLocal(info);
+				}
+			}
+		} else {
+			// fixed arg function between 0 and 3 arguments
+			for (int slot = 0; slot < p.numparams; slot++) {
+				findSlot(slot).valueSlot = slot + VARARGS_SLOT;
+				VarInfo info = pi.params[slot];
+				if (info.isUpvalueCreate(-1) || info.getTypeInfo().specialisedReferenced) {
+					loader.refreshLocal(info);
+				}
+			}
+		}
+
+		// nil parameters
+		for (; endSlot < p.maxstacksize; endSlot++) {
+			if (pi.params[endSlot].isReferenced) {
+				loadNil();
+				// We should be OK to do this as they should all be values
+				specialisedLoader.storeLocal(-1, endSlot, BasicType.VALUE);
 			}
 		}
 	}
@@ -318,7 +366,7 @@ public final class JavaBuilder {
 		return writer.toByteArray();
 	}
 
-	//region Slot loading/storing
+	// Slot loading/storing
 	public SlotInfo findSlot(int luaSlot) {
 		SlotInfo info = slots[luaSlot];
 		if (info == null) info = slots[luaSlot] = new SlotInfo(luaSlot);
@@ -358,191 +406,7 @@ public final class JavaBuilder {
 			}
 		}
 	}
-
-	public void loadLocal(int pc, int slot, boolean specialist) {
-		loadLocal(pi.getVariable(pc, slot), specialist);
-	}
-
-	public void loadLocal(VarInfo info, boolean specialist) {
-		int slot = info.slot;
-		boolean isUpvalue = info.isUpvalueRefer();
-		if (isUpvalue) {
-			assert !specialist : "Cannot load non-value upvalue";
-
-			main.visitVarInsn(ALOAD, findUpvalueIndex(slot));
-			IndentLogger.output.println(info + " => " + findUpvalueIndex(slot));
-			METHOD_GET_UPVALUE.inject(main);
-		} else if (specialist) {
-			assert info.type != BasicType.VALUE : "Value is not a specialist type";
-			main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
-			IndentLogger.output.println(info + " => " + findTypedSlot(slot, info.type) + ":" + info.type);
-		} else if (info.type == BasicType.VALUE || info.getTypeInfo().valueReferenced) {
-			IndentLogger.output.println(info + " => " + findTypedSlot(slot, BasicType.VALUE) + ":Value");
-			main.visitVarInsn(ALOAD, findTypedSlot(slot, BasicType.VALUE));
-		} else {
-			IndentLogger.output.println(info + " => " + findTypedSlot(slot, info.type) + ":Convert");
-			// Only used when exiting to the interpreter, so we don't have to be efficient
-			main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
-			specialToValue(info.type);
-		}
-	}
-
-	private void specialToValue(BasicType type) {
-		switch (type) {
-			case BOOLEAN:
-				METHOD_BOOL_TO_VALUE.inject(main);
-				break;
-			case NUMBER:
-				METHOD_NUMBER_TO_VALUE.inject(main);
-				break;
-			default:
-				throw new IllegalStateException("Type " + type + " is not a specialist type");
-		}
-	}
-
-	private void assertType(int typeNo, int pc) {
-		Label success = new Label();
-
-		main.visitInsn(DUP);
-		METHOD_TYPE.inject(main);
-		AsmUtils.constantOpcode(main, typeNo);
-
-		main.visitJumpInsn(IF_ICMPNE, success);
-		main.visitInsn(POP);
-		visitResume(pc);
-
-		main.visitLabel(success);
-	}
-
-	private void valueToSpecial(BasicType type, int pc) {
-		switch (type) {
-			case BOOLEAN:
-				assertType(LuaValue.TBOOLEAN, pc);
-				METHOD_VALUE_TO_BOOL.inject(main);
-				break;
-			case NUMBER:
-				assertType(LuaValue.TNUMBER, pc);
-				METHOD_VALUE_TO_NUMBER.inject(main);
-				break;
-			default:
-				throw new IllegalStateException("Type " + type + " is not a specialist type");
-		}
-	}
-
-	public void storeLocalNoChecks(int pc, int slot, boolean specialist) {
-		storeLocalNoChecks(pc < 0 ? pi.params[slot] : pi.vars[pc][slot], specialist);
-	}
-
-	/**
-	 * Store a {@link LuaValue} without checking it was typed or not
-	 *
-	 * @param var        The variable to store
-	 * @param specialist Store in a specialist slot
-	 */
-	public void storeLocalNoChecks(VarInfo var, boolean specialist) {
-		boolean isUpvalue = var.isUpvalueAssign();
-		if (isUpvalue) {
-			storeLocalUpvalue(var);
-		} else if (specialist) {
-			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
-			main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
-		} else {
-			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
-			main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
-		}
-	}
-
-	public void storeLocal(int pc, int slot, BasicType fromType) {
-		storeLocal(pc < 0 ? pi.params[slot] : pi.vars[pc][slot], fromType);
-	}
-
-	public void storeLocal(VarInfo var, BasicType fromType) {
-		boolean isUpvalue = var.isUpvalueAssign();
-		if (isUpvalue) {
-			if (fromType != BasicType.VALUE) specialToValue(var.type);
-			storeLocalUpvalue(var);
-		} else if (fromType != BasicType.VALUE) {
-			TypeInfo info = var.getTypeInfo();
-
-			if (var.type == BasicType.VALUE) {
-				specialToValue(fromType);
-				main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
-			} else {
-				if (info.valueReferenced) dup(var.type);
-
-				if (info.valueReferenced) {
-					specialToValue(fromType);
-					IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
-					main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
-				}
-
-				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
-				main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
-			}
-		} else {
-			TypeInfo info = var.getTypeInfo();
-			if (info.specialisedReferenced) main.visitInsn(DUP);
-
-			// Always store the value. Just in case
-			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
-			main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
-
-			if (info.specialisedReferenced) {
-				valueToSpecial(var.type, var.pc);
-				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
-				main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
-			}
-		}
-	}
-
-	/**
-	 * Load a local variable and refresh its subtypes
-	 *
-	 * @param var The types to load
-	 */
-	public void refreshLocal(VarInfo var) {
-		boolean isUpvalue = var.isUpvalueAssign();
-		if (isUpvalue) {
-			main.visitVarInsn(ALOAD, findTypedSlot(var.slot, BasicType.VALUE));
-			storeLocalUpvalue(var);
-		} else {
-			// We only need to load if we used a specialist value
-			if (var.getTypeInfo().specialisedReferenced) {
-				main.visitVarInsn(ALOAD, findTypedSlot(var.slot, BasicType.VALUE));
-				valueToSpecial(var.type, var.pc);
-				main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
-
-				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":Refresh");
-			}
-		}
-	}
-
-	/**
-	 * Store an upvalue, creating it if needed
-	 *
-	 * @param var The upvalue to create
-	 */
-	private void storeLocalUpvalue(VarInfo var) {
-		int index = findUpvalueIndex(var.slot);
-		boolean isUpCreate = var.isUpvalueCreate(var.pc);
-		IndentLogger.output.println(var + " <= " + index + ":Upvalue");
-		if (isUpCreate) {
-			// As we are creating it we need to write
-			METHOD_NEW_UPVALUE_VALUE.inject(main);
-
-			// We should only proxy when we need to switch back into interpreted mode
-			// and this upvalue will be mutated again
-			METHOD_NEW_UPVALUE_PROXY.inject(main);
-			main.visitVarInsn(ASTORE, index);
-		} else {
-			// Then store the upvalue in the index
-			main.visitVarInsn(ALOAD, index);
-			main.visitInsn(SWAP);
-			Constants.METHOD_SET_UPVALUE.inject(main);
-		}
-	}
 	//endregion
-
 
 	//region Local upvalues
 	public void createUpvalues(int pc, int firstSlot, int numSlots) {
@@ -586,10 +450,6 @@ public final class JavaBuilder {
 		main.visitInsn(type == BasicType.NUMBER ? DUP2 : DUP);
 	}
 
-	public void pop(BasicType type) {
-		main.visitInsn(type == BasicType.NUMBER ? POP2 : POP);
-	}
-
 	public void pop() {
 		main.visitInsn(POP);
 	}
@@ -619,7 +479,7 @@ public final class JavaBuilder {
 		constantOpcode(main, upvalueIndex);
 		main.visitInsn(AALOAD);
 
-		loadLocal(pc, slot, false);
+		genericLoader.loadLocal(pc, slot);
 		Constants.METHOD_SET_UPVALUE.inject(main);
 	}
 
@@ -706,9 +566,9 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void compareOp(int op, boolean specialist, boolean expected, int targetPc) {
+	public void compareOp(int op, boolean specialist, boolean expected, int targetPc, boolean specialisedMode) {
 		if (specialist) {
-			Label success = branchDestinations[targetPc];
+			Label success = (specialisedMode ? specialisedBranch : genericBranch)[targetPc];
 
 			if (expected) {
 				// a > b :: 1
@@ -755,7 +615,7 @@ public final class JavaBuilder {
 			}
 		} else {
 			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "(" + TYPE_LUAVALUE + ")Z", false);
-			addBranch(expected ? BRANCH_IFEQ : BRANCH_IFNE, targetPc);
+			addBranch(expected ? BRANCH_IFEQ : BRANCH_IFNE, targetPc, specialisedMode);
 		}
 	}
 
@@ -789,7 +649,7 @@ public final class JavaBuilder {
 		for (int i = 0; i < nargs; i++) {
 			main.visitInsn(DUP);
 			constantOpcode(main, i);
-			loadLocal(pc, firstSlot++, false);
+			genericLoader.loadLocal(pc, firstSlot++);
 			main.visitInsn(AASTORE);
 		}
 	}
@@ -800,17 +660,17 @@ public final class JavaBuilder {
 				loadNone();
 				break;
 			case 1:
-				loadLocal(pc, firstslot, false);
+				genericLoader.loadLocal(pc, firstslot);
 				break;
 			case 2:
-				loadLocal(pc, firstslot, false);
-				loadLocal(pc, firstslot + 1, false);
+				genericLoader.loadLocal(pc, firstslot);
+				genericLoader.loadLocal(pc, firstslot + 1);
 				METHOD_VARARGS_ONE.inject(main);
 				break;
 			case 3:
-				loadLocal(pc, firstslot, false);
-				loadLocal(pc, firstslot + 1, false);
-				loadLocal(pc, firstslot + 2, false);
+				genericLoader.loadLocal(pc, firstslot);
+				genericLoader.loadLocal(pc, firstslot + 1);
+				genericLoader.loadLocal(pc, firstslot + 2);
 				METHOD_VARARGS_TWO.inject(main);
 				break;
 			default:
@@ -982,7 +842,7 @@ public final class JavaBuilder {
 		return name;
 	}
 
-	public void addBranch(int branchType, int targetPc) {
+	public void addBranch(int branchType, int targetPc, boolean specialised) {
 		int type;
 		switch (branchType) {
 			default:
@@ -997,7 +857,7 @@ public final class JavaBuilder {
 				break;
 		}
 
-		main.visitJumpInsn(type, branchDestinations[targetPc]);
+		main.visitJumpInsn(type, (specialised ? specialisedBranch : genericBranch)[targetPc]);
 	}
 
 	/**
@@ -1008,8 +868,8 @@ public final class JavaBuilder {
 	 *
 	 * @param pc The current Lua program counter
 	 */
-	public void onStartOfLuaInstruction(int pc) {
-		Label currentLabel = branchDestinations[pc];
+	public void onStartOfLuaInstruction(int pc, boolean specialist) {
+		Label currentLabel = (specialist ? specialisedBranch : genericBranch)[pc];
 
 		main.visitLabel(currentLabel);
 
@@ -1031,97 +891,42 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void visitResume(int pc) {
-		visitResume(pc, 0);
+	public void visitResumeLabel(int pc) {
+		main.visitLabel(resumeBranch[pc]);
 	}
 
-	public void visitResume(int pc, int top) {
-		// The main stack
-		int stackS = stackSlot;
-		if (stackS == -1) stackS = stackSlot = ++maxLocals;
-		constantOpcode(main, p.maxstacksize);
-		main.visitTypeInsn(ANEWARRAY, CLASS_LUAVALUE);
-		main.visitVarInsn(ASTORE, stackS);
+	public void visitGenericLabel(int pc) {
+		main.visitLabel(genericBranch[pc]);
+	}
 
-		// Store the open upvalues
-		boolean upvalues = p.p.length > 0;
-		int openupsS = openupsSlot;
-		if (upvalues) {
-			if (openupsS == -1) openupsS = openupsSlot = ++maxLocals;
-			constantOpcode(main, p.maxstacksize);
-			main.visitTypeInsn(ANEWARRAY, CLASS_UPVALUE);
-			main.visitVarInsn(ASTORE, stackS);
+	public void visitResume(int pc) {
+		if (pc < 0) {
+			main.visitJumpInsn(GOTO, paramsLabel);
+			return;
 		}
 
 		// Setup upvalues and stack
 		VarInfo[] vars = pi.vars[pc];
 		for (int slot = 0; slot < p.maxstacksize; slot++) {
-			main.visitVarInsn(ALOAD, stackS);
-
 			VarInfo info = vars[slot];
-			constantOpcode(main, slot);
-			if (tracker.isLive(info, pc)) {
-				boolean isUpvalue = pi.getVariable(pc, slot).isUpvalueRefer();
-				int index = isUpvalue ? findUpvalueIndex(slot) : findTypedSlot(slot, BasicType.VALUE);
 
-				main.visitVarInsn(ALOAD, index);
-				if (isUpvalue) {
-					main.visitVarInsn(ALOAD, stackS);
-					constantOpcode(main, slot);
+			if (info == VarInfo.INVALID) break;
 
-					// Redirect the upvalue
-					METHOD_UPVALUE_REDIRECT.inject(main);
-
-					// If it is open then store it in the openups too
-					main.visitInsn(DUP);
-					main.visitVarInsn(ALOAD, openupsS);
-					constantOpcode(main, slot);
-					main.visitInsn(AASTORE);
-				}
-			} else {
-				loadNil();
+			if (info.type != BasicType.VALUE && !info.getTypeInfo().valueReferenced && !tracker.isLive(info, pc)) {
+				main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
+				genericLoader.specialToValue(info.type);
+				main.visitVarInsn(getStoreOpcode(info.type), findTypedSlot(slot, info.type));
 			}
-			main.visitInsn(AASTORE);
 		}
 
-		main.visitVarInsn(ALOAD, 1);
-		main.visitVarInsn(ALOAD, stackS);
-
-		// Load variable arguments
-		if (((p.is_vararg & Lua.VARARG_NEEDSARG) != 0)) {
-			main.visitVarInsn(ALOAD, VARARGS_SLOT);
-		} else {
-			loadNone();
-		}
-
-		constantOpcode(main, pc);
-
-		// Load top
-		if (top >= 0 && varargsLocal >= 0) {
-			main.visitVarInsn(ALOAD, varargsLocal);
-			constantOpcode(main, top);
-		} else {
-			loadNone();
-			main.visitInsn(ICONST_M1);
-		}
-
-		main.visitVarInsn(ALOAD, callStackSlot);
-
-		if (upvalues) {
-			main.visitVarInsn(ALOAD, openupsS);
-		} else {
-			main.visitInsn(ACONST_NULL);
-		}
-
-		METHOD_RESUME.inject(main);
-		main.visitInsn(ARETURN);
+		main.visitJumpInsn(GOTO, resumeBranch[pc]);
 	}
 
 	public void visitSetlistStack(int pc, int a0, int index0, int nvals) {
 		for (int i = 0; i < nvals; i++) {
 			main.visitInsn(DUP);
 			constantOpcode(main, index0 + i);
-			loadLocal(pc, a0 + i, false);
+			genericLoader.loadLocal(pc, a0 + i);
 			METHOD_RAWSET.inject(main);
 		}
 	}
@@ -1161,7 +966,7 @@ public final class JavaBuilder {
 
 	public void loadLocalOrConstant(int pc, int borc, boolean specialist) {
 		if (borc <= 0xff) {
-			loadLocal(pc, borc, specialist);
+			(specialist ? specialisedLoader : genericLoader).loadLocal(pc, borc, specialist);
 		} else {
 			loadConstant(p.k[borc & 0xff], specialist);
 		}

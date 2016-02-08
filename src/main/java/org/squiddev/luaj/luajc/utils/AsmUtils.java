@@ -61,7 +61,7 @@ public final class AsmUtils {
 	 *
 	 * @param reader The class to read
 	 * @param loader The appropriate class loader
-	 * @throws RuntimeException On bad validation
+	 * @throws ValidationException On bad validation
 	 */
 	public static void validateClass(ClassReader reader, ClassLoader loader) {
 		StringWriter writer = new StringWriter();
@@ -75,8 +75,7 @@ public final class AsmUtils {
 		}
 
 		if (error != null || writer.getBuffer().length() > 0) {
-			reader.accept(new TraceClassVisitor(printWriter), 0);
-			throw new RuntimeException("Generation error\nDump for " + reader.getClassName() + "\n" + writer.toString(), error);
+			throw new ValidationException(reader, writer.toString(), error);
 		}
 	}
 

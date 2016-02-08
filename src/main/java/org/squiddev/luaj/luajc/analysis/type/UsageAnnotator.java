@@ -6,28 +6,38 @@ import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
+import java.util.*;
+
 /**
- * Marks whether instructions can be specialised or not
+ * Marks whether instructions consume specialist values, and if
+ * blocks (or blocks leading up to them) consume specialist values.
  */
 public final class UsageAnnotator {
 	public final ProtoInfo info;
 	public final boolean[] specialist;
+	public final Set<BasicBlock> specialistBlocks;
+
+	public boolean paramsSpecialised = false;
 
 	public UsageAnnotator(ProtoInfo info) {
 		this.info = info;
 		this.specialist = new boolean[info.prototype.code.length];
+		specialistBlocks = new HashSet<BasicBlock>(info.blockList.length);
 	}
 
 	public void fill() {
 		int[] code = info.prototype.code;
 		for (BasicBlock block : info.blockList) {
+			boolean bSpecialist = false;
 			for (int pc = block.pc0; pc <= block.pc1; pc++) {
 				int insn = code[pc];
-				specialist[pc] = checkInsn(pc, insn);
+				bSpecialist |= specialist[pc] = checkInsn(pc, insn);
 				if (Lua.GET_OPCODE(insn) == Lua.OP_CLOSURE) {
 					pc += info.prototype.p[Lua.GETARG_Bx(insn)].nups;
 				}
 			}
+
+			if (bSpecialist) setSpecialist(block);
 		}
 
 		for (PhiInfo phi : info.phis) {
@@ -36,7 +46,31 @@ public final class UsageAnnotator {
 				var.getTypeInfo().absorb(info);
 			}
 		}
+
+		for (VarInfo param : info.params) {
+			if (param.getTypeInfo().specialisedReferenced) {
+				setSpecialist(info.blocks[0]);
+				paramsSpecialised = true;
+				break;
+			}
+		}
 	}
+
+	private void setSpecialist(BasicBlock block) {
+		if (!specialistBlocks.add(block) || block.prev == null) return;
+		Queue<BasicBlock> queue = new ArrayDeque<BasicBlock>();
+
+		// A block is specialist if it is specialist or if it can link to a specialist block
+		Collections.addAll(queue, block.prev);
+
+		while (!queue.isEmpty()) {
+			block = queue.remove();
+			if (specialistBlocks.add(block)) {
+				if (block.prev != null) Collections.addAll(queue, block.prev);
+			}
+		}
+	}
+
 
 	private boolean checkInsn(int pc, int insn) {
 		VarInfo[] vars = info.vars[pc];
@@ -55,13 +89,10 @@ public final class UsageAnnotator {
 				}
 			}
 			case Lua.OP_LOADK:     // A Bx    R(A) := Kst(Bx)
-			{
-				assert BasicType.fromValue(info.prototype.k[Lua.GETARG_Bx(insn)]) == vars[Lua.GETARG_A(insn)].type : "Incompatible types";
-				return true;
-			}
 			case Lua.OP_LOADBOOL:  // A B  C  R(A) := (Bool)B; if (C) pc++
 			case Lua.OP_LOADNIL: // A B R(A) ... R(B) := nil
-				return true;
+				// These do not require conversion, and so we can ignore
+				return false;
 			case Lua.OP_NEWTABLE:  // A B  C  R(A) := {} (size = B,C)
 			case Lua.OP_GETUPVAL:  // A B     R(A) := UpValue[B]
 			case Lua.OP_GETGLOBAL: // A Bx    R(A) := Gbl[Kst(Bx)]
@@ -301,7 +332,7 @@ public final class UsageAnnotator {
 				}
 
 				// We can do == on booleans or numbers, but only < and <= on numbers
-				if (bType == cType && insn == Lua.OP_EQ ? bType != BasicType.VALUE : bType == BasicType.NUMBER) {
+				if (bType == cType && (insn == Lua.OP_EQ ? bType != BasicType.VALUE : bType == BasicType.NUMBER)) {
 					if (bVar != null) bVar.getTypeInfo().referenceSpecialised(pc);
 					if (cVar != null) cVar.getTypeInfo().referenceSpecialised(pc);
 					return true;

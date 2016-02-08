@@ -39,8 +39,7 @@ public class CompileOnlyTest {
 
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 0, CompileOptions.TYPE_THRESHOLD, true, null));
-
+		Loader.install(0);
 		LoadState.load(Loader.load("compileonly/" + name), name + ".lua", globals);
 	}
 }

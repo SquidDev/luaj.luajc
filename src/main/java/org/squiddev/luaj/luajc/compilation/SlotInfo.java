@@ -33,4 +33,9 @@ public final class SlotInfo {
 			visitor.visitLocalVariable(PREFIX_LOCAL_UPVALUE + "_" + luaSlot, TYPE_UPVALUE, null, start, end, upvalueSlot);
 		}
 	}
+
+	@Override
+	public String toString() {
+		return "{" + "u=" + upvalueSlot + ", v=" + valueSlot + ", n=" + numberSlot + ", b=" + booleanSlot + '}';
+	}
 }
