@@ -460,16 +460,22 @@ public final class JavaBuilder {
 			storeLocalUpvalue(var);
 		} else if (fromType != BasicType.VALUE) {
 			TypeInfo info = var.getTypeInfo();
-			if (info.valueReferenced) dup(var.type);
 
-			if (info.valueReferenced) {
+			if (var.type == BasicType.VALUE) {
 				specialToValue(fromType);
-				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
 				main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
-			}
+			} else {
+				if (info.valueReferenced) dup(var.type);
 
-			IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
-			main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
+				if (info.valueReferenced) {
+					specialToValue(fromType);
+					IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, BasicType.VALUE) + ":Value");
+					main.visitVarInsn(ASTORE, findTypedSlot(var.slot, BasicType.VALUE));
+				}
+
+				IndentLogger.output.println(var + " <= " + findTypedSlot(var.slot, var.type) + ":" + var.type);
+				main.visitVarInsn(getStoreOpcode(var.type), findTypedSlot(var.slot, var.type));
+			}
 		} else {
 			TypeInfo info = var.getTypeInfo();
 			if (info.specialisedReferenced) main.visitInsn(DUP);
@@ -671,7 +677,13 @@ public final class JavaBuilder {
 
 	public void unaryOp(int op, boolean specialist) {
 		if (specialist) {
-			main.visitInsn(getOpcode(op));
+			if (op == Lua.OP_NOT) {
+				// I *think* this is valid: XOR the current variable with 1.
+				main.visitInsn(ICONST_1);
+				main.visitInsn(IXOR);
+			} else {
+				main.visitInsn(getOpcode(op));
+			}
 		} else {
 			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "()" + TYPE_LUAVALUE, false);
 		}
@@ -691,17 +703,58 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void compareOp(int op, boolean specialist) {
+	public void compareOp(int op, boolean specialist, boolean expected, int targetPc) {
 		if (specialist) {
-			if (op == Lua.OP_NOT) {
-				// I *think* this is valid: XOR the current variable with 1.
-				main.visitInsn(ICONST_1);
-				main.visitInsn(IXOR);
+			Label success = branchDestinations[targetPc], failure = new Label();
+
+			if (expected) {
+				// a > b :: 1
+				// a = b :: 0
+				// a < b :: -1
+				// a = nan || b = nan :: 1
+				main.visitInsn(DCMPG);
+
+				// a =  b == 1 :: jump
+				// a <= b == 1 :: jump
+				// a <  b == 1 :: jump
+				switch (op) {
+					case Lua.OP_EQ:
+						main.visitJumpInsn(IFNE, success);
+						break;
+					case Lua.OP_LE:
+						main.visitJumpInsn(IFGE, success);
+						break;
+					case Lua.OP_LT:
+						main.visitJumpInsn(IFGT, success);
+						break;
+				}
 			} else {
-				main.visitInsn(getOpcode(op));
+				// a > b :: 1
+				// a = b :: 0
+				// a < b :: -1
+				// a = nan || b = nan :: -1
+				main.visitInsn(DCMPL);
+
+				// a =  b == 0 :: jump
+				// a <= b == 0 :: jump
+				// a <  b == 0 :: jump
+				switch (op) {
+					case Lua.OP_EQ:
+						main.visitJumpInsn(IFEQ, success);
+						break;
+					case Lua.OP_LE:
+						main.visitJumpInsn(IFLT, success);
+						break;
+					case Lua.OP_LT:
+						main.visitJumpInsn(IFLE, success);
+						break;
+				}
 			}
+
+			main.visitLabel(failure);
 		} else {
 			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "(" + TYPE_LUAVALUE + ")Z", false);
+			addBranch(expected ? IFEQ : IFNE, targetPc);
 		}
 	}
 

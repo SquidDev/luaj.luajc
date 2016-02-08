@@ -230,8 +230,7 @@ public final class JavaGen {
 					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
 						builder.loadLocalOrConstant(pc, b, specialise);
 						builder.loadLocalOrConstant(pc, c, specialise);
-						builder.compareOp(o, specialise);
-						builder.addBranch((a != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2);
+						builder.compareOp(o, specialise, a != 0, pc + 2);
 						break;
 
 					case Lua.OP_TEST: // A C if not (R(A) <=> C) then pc++
