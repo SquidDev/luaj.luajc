@@ -51,7 +51,7 @@ public final class VariableLoaderSpecialised extends VariableLoader {
 				specialToValue(fromType);
 				main.visitVarInsn(ASTORE, builder.findTypedSlot(var.slot, BasicType.VALUE));
 			} else {
-				assert fromType == var.type : "Cannot cross convert types";
+				assert fromType == var.type : "Cannot cross convert types " + fromType + " => " + var;
 
 				if (info.valueReferenced) {
 					builder.dup(fromType);
@@ -69,14 +69,14 @@ public final class VariableLoaderSpecialised extends VariableLoader {
 			main.visitVarInsn(ASTORE, builder.findTypedSlot(var.slot, BasicType.VALUE));
 
 			if (info.specialisedReferenced) {
-				valueToSpecial(var.type, var.pc);
+				valueToSpecial(var.type, var.pc < 0 ? -1 : var.pc + 1);
 				main.visitVarInsn(getStoreOpcode(var.type), builder.findTypedSlot(var.slot, var.type));
 			}
 		}
 	}
 
 	@Override
-	public void refreshLocal(VarInfo var) {
+	public void refreshLocal(VarInfo var, int pc) {
 		boolean isUpvalue = var.isUpvalueAssign();
 		if (isUpvalue) {
 			main.visitVarInsn(ALOAD, builder.findTypedSlot(var.slot, BasicType.VALUE));
@@ -85,7 +85,7 @@ public final class VariableLoaderSpecialised extends VariableLoader {
 			// We only need to load if we used a specialist value
 			if (var.getTypeInfo().specialisedReferenced) {
 				main.visitVarInsn(ALOAD, builder.findTypedSlot(var.slot, BasicType.VALUE));
-				valueToSpecial(var.type, var.pc);
+				valueToSpecial(var.type, pc);
 				main.visitVarInsn(getStoreOpcode(var.type), builder.findTypedSlot(var.slot, var.type));
 			}
 		}

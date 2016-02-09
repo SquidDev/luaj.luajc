@@ -58,7 +58,7 @@ public final class VariableLoaderGeneric extends VariableLoader {
 	}
 
 	@Override
-	public void refreshLocal(VarInfo var) {
+	public void refreshLocal(VarInfo var, int pc) {
 		boolean isUpvalue = var.isUpvalueAssign();
 		if (isUpvalue) {
 			main.visitVarInsn(ALOAD, builder.findTypedSlot(var.slot, BasicType.VALUE));

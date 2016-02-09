@@ -9,6 +9,18 @@ import java.io.*;
 
 public final class Loader {
 	private static final File root = new File("build/test-out");
+
+	static {
+		if (root.exists()) {
+			File[] files = root.listFiles();
+			if (files != null) {
+				for (File child : files) {
+					child.delete();
+				}
+			}
+		}
+	}
+
 	private static final ErrorHandler handler = new ErrorHandler() {
 		@Override
 		public void handleError(ProtoInfo info, Throwable throwable) {
@@ -22,7 +34,8 @@ public final class Loader {
 				File file = new File(root, info.loader.name + info.name + ".dump");
 				try {
 					PrintWriter writer = new PrintWriter(new FileWriter(file));
-					validation.printStackTrace(writer);
+					writer.println(validation.getMessage());
+					if (validation.getCause() != null) validation.getCause().printStackTrace(writer);
 					writer.println(info);
 					writer.println(validation.getTrace());
 					writer.println(validation.getClassDump());
@@ -42,8 +55,12 @@ public final class Loader {
 		}
 	};
 
+	public static CompileOptions getOptions(int threshold) {
+		return new CompileOptions(CompileOptions.PREFIX, threshold, CompileOptions.TYPE_THRESHOLD, true, handler);
+	}
+
 	public static void install(int threshold) {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, threshold, CompileOptions.TYPE_THRESHOLD, true, handler));
+		LuaJC.install(getOptions(threshold));
 	}
 
 	public static InputStream load(String path) throws IOException {

@@ -54,7 +54,7 @@ public abstract class VariableLoader {
 
 		main.visitJumpInsn(IF_ICMPNE, success);
 		main.visitInsn(POP);
-		builder.visitResume(pc < 0 ? pc : pc + 1);
+		builder.visitResume(pc);
 
 		main.visitLabel(success);
 	}
@@ -106,8 +106,9 @@ public abstract class VariableLoader {
 	 * Load a local variable and refresh its subtypes
 	 *
 	 * @param var The types to load
+	 * @param pc  The pc to jump to on failure
 	 */
-	public abstract void refreshLocal(VarInfo var);
+	public abstract void refreshLocal(VarInfo var, int pc);
 
 	/**
 	 * Store an upvalue, creating it if needed

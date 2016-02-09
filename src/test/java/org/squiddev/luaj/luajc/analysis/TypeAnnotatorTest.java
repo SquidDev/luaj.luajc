@@ -43,19 +43,22 @@ public class TypeAnnotatorTest {
 	}
 
 	@Test
-	public void testConversions() throws Exception {
+	public void testCompile() throws Exception {
 		LuaValue globals = JsePlatform.debugGlobals();
 		Prototype proto = Loader.loadPrototype("analysis/types", "types.lua");
-		JavaLoader loader = new JavaLoader(new CompileOptions(), "types", "types.lua");
+		JavaLoader loader = new JavaLoader(Loader.getOptions(Integer.MAX_VALUE), "types", "types.lua");
 
 		ProtoInfo info = new ProtoInfo(proto, loader);
 
-		new FunctionWrapper(info, globals).call();
+		FunctionWrapper wrapper = new FunctionWrapper(info, globals);
+		wrapper.call();
 
 		ProtoInfo typed = info.subprotos[0];
 		new TypeAnnotator(typed).fill(0.7f);
 		new UsageAnnotator(typed).fill();
 
-		System.out.println(typed);
+		typed.executor = loader.include(typed);
+
+		wrapper.call();
 	}
 }

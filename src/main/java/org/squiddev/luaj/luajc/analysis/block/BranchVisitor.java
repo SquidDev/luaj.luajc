@@ -86,4 +86,14 @@ public abstract class BranchVisitor {
 			}
 		}
 	}
+
+	/**
+	 * If an opcode is a branch op
+	 *
+	 * @param opcode The opcode to check
+	 * @return If it is a branch op
+	 */
+	public static boolean isTerminator(int opcode) {
+		return opcode == Lua.OP_JMP || opcode == Lua.OP_FORLOOP || opcode == Lua.OP_FORPREP || opcode == Lua.OP_RETURN || opcode == Lua.OP_TAILCALL;
+	}
 }

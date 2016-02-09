@@ -34,6 +34,7 @@ import org.squiddev.luaj.luajc.analysis.LivenessTracker;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
+import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;
@@ -281,23 +282,6 @@ public final class JavaBuilder {
 				METHOD_VARARGS_SUBARGS.inject(main, INVOKEVIRTUAL);
 				main.visitVarInsn(ASTORE, VARARGS_SLOT);
 			}
-
-			// Then refresh the locals
-			for (int slot = 0; slot < p.numparams; slot++) {
-				VarInfo info = pi.params[slot];
-				if (info.isReferenced && info.type != BasicType.VALUE && info.getTypeInfo().specialisedReferenced) {
-					specialisedLoader.refreshLocal(info);
-				}
-			}
-		} else {
-			// fixed arg function between 0 and 3 arguments
-			for (int slot = 0; slot < p.numparams; slot++) {
-				findSlot(slot).valueSlot = slot + VARARGS_SLOT;
-				VarInfo info = pi.params[slot];
-				if (info.isUpvalueCreate(-1) || info.getTypeInfo().specialisedReferenced) {
-					specialisedLoader.refreshLocal(info);
-				}
-			}
 		}
 
 		// nil parameters
@@ -322,7 +306,7 @@ public final class JavaBuilder {
 			for (int slot = 0; slot < p.numparams; slot++) {
 				VarInfo info = pi.params[slot];
 				if (info.isReferenced && info.type != BasicType.VALUE && info.getTypeInfo().specialisedReferenced) {
-					loader.refreshLocal(info);
+					loader.refreshLocal(info, -1);
 				}
 			}
 		} else {
@@ -331,7 +315,7 @@ public final class JavaBuilder {
 				findSlot(slot).valueSlot = slot + VARARGS_SLOT;
 				VarInfo info = pi.params[slot];
 				if (info.isUpvalueCreate(-1) || info.getTypeInfo().specialisedReferenced) {
-					loader.refreshLocal(info);
+					loader.refreshLocal(info, -1);
 				}
 			}
 		}
@@ -566,8 +550,9 @@ public final class JavaBuilder {
 		}
 	}
 
-	public void compareOp(int op, boolean specialist, boolean expected, int targetPc, boolean specialisedMode) {
+	public void compareOp(int op, boolean specialist, boolean expected, int targetPc, int currentPc, boolean specialisedMode) {
 		if (specialist) {
+			Label failure = new Label();
 			Label success = (specialisedMode ? specialisedBranch : genericBranch)[targetPc];
 
 			if (expected) {
@@ -582,13 +567,13 @@ public final class JavaBuilder {
 				// a <  b == 1 :: jump
 				switch (op) {
 					case Lua.OP_EQ:
-						main.visitJumpInsn(IFNE, success);
+						main.visitJumpInsn(IFEQ, failure);
 						break;
 					case Lua.OP_LE:
-						main.visitJumpInsn(IFGE, success);
+						main.visitJumpInsn(IFLT, failure);
 						break;
 					case Lua.OP_LT:
-						main.visitJumpInsn(IFGT, success);
+						main.visitJumpInsn(IFLE, failure);
 						break;
 				}
 			} else {
@@ -603,19 +588,24 @@ public final class JavaBuilder {
 				// a <  b == 0 :: jump
 				switch (op) {
 					case Lua.OP_EQ:
-						main.visitJumpInsn(IFEQ, success);
+						main.visitJumpInsn(IFNE, failure);
 						break;
 					case Lua.OP_LE:
-						main.visitJumpInsn(IFLT, success);
+						main.visitJumpInsn(IFGE, failure);
 						break;
 					case Lua.OP_LT:
-						main.visitJumpInsn(IFLE, success);
+						main.visitJumpInsn(IFGT, failure);
 						break;
 				}
 			}
+
+			setupPhis(currentPc, targetPc);
+			main.visitJumpInsn(GOTO, success);
+
+			main.visitLabel(failure);
 		} else {
 			main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, getOpName(op), "(" + TYPE_LUAVALUE + ")Z", false);
-			addBranch(expected ? BRANCH_IFEQ : BRANCH_IFNE, targetPc, specialisedMode);
+			addBranch(expected ? BRANCH_IFEQ : BRANCH_IFNE, targetPc, currentPc, specialisedMode);
 		}
 	}
 
@@ -842,7 +832,7 @@ public final class JavaBuilder {
 		return name;
 	}
 
-	public void addBranch(int branchType, int targetPc, boolean specialised) {
+	public void addBranch(int branchType, int targetPc, int currentPc, boolean specialised) {
 		int type;
 		switch (branchType) {
 			default:
@@ -857,7 +847,28 @@ public final class JavaBuilder {
 				break;
 		}
 
+		if (specialised) setupPhis(currentPc, targetPc);
+
 		main.visitJumpInsn(type, (specialised ? specialisedBranch : genericBranch)[targetPc]);
+	}
+
+	public void setupPhis(int currentPc, int targetPc) {
+		VarInfo[] exit = pi.vars[currentPc];
+		VarInfo[] entry = pi.blocks[targetPc].entry;
+		for (int i = 0; i < exit.length; i++) {
+			VarInfo exitVar = exit[i];
+			VarInfo entryVar = entry[i];
+
+			if (entryVar == VarInfo.INVALID || entryVar.type == BasicType.VALUE || !entryVar.isPhiVar()) continue;
+
+			TypeInfo exitInfo = exitVar.getTypeInfo();
+			TypeInfo entryInfo = entryVar.getTypeInfo();
+
+			if (entryInfo.specialisedReferenced && !exitInfo.specialisedReferenced && exitInfo.valueAvailable) {
+				System.out.println("Refreshing " + currentPc + "/" + exitVar + " => " + targetPc + "/" + entryVar);
+				specialisedLoader.refreshLocal(entryVar, targetPc);
+			}
+		}
 	}
 
 	/**
@@ -906,13 +917,12 @@ public final class JavaBuilder {
 		}
 
 		// Setup upvalues and stack
-		VarInfo[] vars = pi.vars[pc];
 		for (int slot = 0; slot < p.maxstacksize; slot++) {
-			VarInfo info = vars[slot];
-
+			VarInfo info = pi.getVariable(pc, slot);
 			if (info == VarInfo.INVALID) break;
 
-			if (info.type != BasicType.VALUE && !info.getTypeInfo().valueReferenced && tracker.isLive(info, pc)) {
+			TypeInfo typeInfo = info.getTypeInfo();
+			if (info.type != BasicType.VALUE && !typeInfo.valueAvailable && tracker.isLive(info, pc)) {
 				main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
 				genericLoader.specialToValue(info.type);
 				main.visitVarInsn(ASTORE, findTypedSlot(slot, BasicType.VALUE));

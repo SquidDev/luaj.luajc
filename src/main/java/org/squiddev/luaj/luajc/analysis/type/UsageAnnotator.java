@@ -31,7 +31,15 @@ public final class UsageAnnotator {
 			boolean bSpecialist = false;
 			for (int pc = block.pc0; pc <= block.pc1; pc++) {
 				int insn = code[pc];
-				bSpecialist |= specialist[pc] = checkInsn(pc, insn);
+				boolean thisSpecialist = specialist[pc] = checkInsn(pc, insn);
+				bSpecialist |= thisSpecialist;
+
+				if (!thisSpecialist) {
+					for (VarInfo var : info.vars[pc]) {
+						if (var.pc == pc) var.getTypeInfo().valueAvailable = true;
+					}
+				}
+
 				if (Lua.GET_OPCODE(insn) == Lua.OP_CLOSURE) {
 					pc += info.prototype.p[Lua.GETARG_Bx(insn)].nups;
 				}

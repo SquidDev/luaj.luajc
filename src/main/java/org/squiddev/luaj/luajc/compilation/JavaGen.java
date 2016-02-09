@@ -25,10 +25,12 @@
 package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
+import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
+import org.squiddev.luaj.luajc.analysis.block.BranchVisitor;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
 import org.squiddev.luaj.luajc.analysis.type.TypeAnnotator;
 import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
@@ -76,6 +78,11 @@ public final class JavaGen {
 					pc += p.p[Lua.GETARG_Bx(insn)].nups;
 				}
 			}
+
+			if (!BranchVisitor.isTerminator(Lua.GET_OPCODE(p.code[b0.pc1]))) {
+				assert b0.next != null && b0.next.length == 1 : "Expected 1 successor for " + b0;
+				builder.setupPhis(b0.pc1, b0.next[0].pc0);
+			}
 		}
 
 		vresultbase = -1;
@@ -98,6 +105,11 @@ public final class JavaGen {
 					if (Lua.GET_OPCODE(insn) == Lua.OP_CLOSURE) {
 						pc += p.p[Lua.GETARG_Bx(insn)].nups;
 					}
+				}
+
+				if (!BranchVisitor.isTerminator(Lua.GET_OPCODE(p.code[b0.pc1]))) {
+					assert b0.next != null && b0.next.length == 1 : "Expected 1 successor for " + b0;
+					builder.addBranch(JavaBuilder.BRANCH_GOTO, b0.next[0].pc0, b0.pc1, false);
 				}
 			}
 		}
@@ -256,15 +268,28 @@ public final class JavaGen {
 				break;
 
 			case Lua.OP_LOADBOOL:// A B C R(A):= (Bool)B: if (C) pc++
-				builder.loadBoolean(b != 0);
-				loader.storeLocal(pc, a, BasicType.VALUE);
+			{
+				LuaValue value = b != 0 ? LuaValue.TRUE : LuaValue.FALSE;
+				TypeInfo info = pi.vars[pc][a].getTypeInfo();
+
+				if (blockSpecialise && info.specialisedReferenced) {
+					builder.loadConstant(value, true);
+					loader.storeLocalNoChecks(pc, a, true);
+				}
+
+				if (!blockSpecialise || info.valueReferenced) {
+					builder.loadConstant(value, false);
+					loader.storeLocalNoChecks(pc, a, false);
+				}
+
 				if (c != 0) {
-					builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 2, blockSpecialise);
+					builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 2, pc, blockSpecialise);
 				}
 				break;
+			}
 
 			case Lua.OP_JMP: // sBx pc+=sBx
-				builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx, blockSpecialise);
+				builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx, pc, blockSpecialise);
 				break;
 
 			case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
@@ -272,19 +297,19 @@ public final class JavaGen {
 			case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
 				builder.loadLocalOrConstant(pc, b, insnSpecialise);
 				builder.loadLocalOrConstant(pc, c, insnSpecialise);
-				builder.compareOp(o, insnSpecialise, a != 0, pc + 2, blockSpecialise);
+				builder.compareOp(o, insnSpecialise, a != 0, pc + 2, pc, blockSpecialise);
 				break;
 
 			case Lua.OP_TEST: // A C if not (R(A) <=> C) then pc++
 				loader.loadLocal(pc, a, insnSpecialise);
 				if (!insnSpecialise) builder.visitToBoolean();
-				builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2, blockSpecialise);
+				builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2, pc, blockSpecialise);
 				break;
 
 			case Lua.OP_TESTSET: // A B C if (R(B) <=> C) then R(A):= R(B) else pc++
 				loader.loadLocal(pc, b, insnSpecialise);
 				if (!insnSpecialise) builder.visitToBoolean();
-				builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2, blockSpecialise);
+				builder.addBranch((c != 0 ? JavaBuilder.BRANCH_IFEQ : JavaBuilder.BRANCH_IFNE), pc + 2, pc, blockSpecialise);
 
 				loader.loadLocal(pc, b, false);
 				loader.storeLocal(pc, a, BasicType.VALUE);
@@ -350,7 +375,7 @@ public final class JavaGen {
 						for (int i = 1; i < c; i++) {
 							VarInfo var = pi.vars[pc][a + i - 1];
 							if (var.type != BasicType.VALUE && var.getTypeInfo().specialisedReferenced) {
-								loader.refreshLocal(var);
+								loader.refreshLocal(var, pc + 1);
 							}
 						}
 						break;
@@ -411,7 +436,7 @@ public final class JavaGen {
 				loader.loadLocal(pc, a + 2, insnSpecialise);
 				builder.binaryOp(Lua.OP_SUB, insnSpecialise);
 				loader.storeLocal(pc, a, insnSpecialise ? BasicType.NUMBER : BasicType.VALUE);
-				builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx, blockSpecialise);
+				builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx, pc, blockSpecialise);
 				break;
 
 			case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2): if R(A) <?= R(A+1) then { pc+=sBx: R(A+3)=R(A) }
@@ -427,7 +452,7 @@ public final class JavaGen {
 				loader.loadLocal(pc, a + 1, insnSpecialise); // limit
 				loader.loadLocal(pc, a + 2, insnSpecialise); // step
 				builder.testForLoop(insnSpecialise);
-				builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 1 + sbx, blockSpecialise);
+				builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 1 + sbx, pc, blockSpecialise);
 				break;
 			}
 
@@ -448,7 +473,7 @@ public final class JavaGen {
 				builder.storeVarResult();
 				builder.arg(1);
 				builder.visitIsNil();
-				builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 2, blockSpecialise);
+				builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 2, pc, blockSpecialise);
 
 				// a[2] = a[3] = v[1], leave varargs on stack
 				builder.createUpvalues(pc, a + 3, c);
@@ -533,7 +558,7 @@ public final class JavaGen {
 					for (int i = 1; i < b; i++) {
 						VarInfo var = pi.vars[pc][a + i - 1];
 						if (var.type != BasicType.VALUE && var.getTypeInfo().specialisedReferenced) {
-							loader.refreshLocal(var);
+							loader.refreshLocal(var, pc + 1);
 						}
 					}
 				}
