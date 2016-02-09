@@ -97,6 +97,23 @@ public final class AsmUtils {
 		reader.accept(new TraceClassVisitor(printWriter), 0);
 	}
 
+	public static void dumpCFG(byte[] bytes, final String method) {
+		ClassReader reader = new ClassReader(bytes);
+		reader.accept(new ClassVisitor(ASM5) {
+			@Override
+			public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+				if (name.equals(method)) {
+					System.out.println("Done!");
+					return new CFG(new PrintWriter(System.out, true));
+				} else {
+					return null;
+				}
+			}
+		}, 0);
+
+		System.out.flush();
+	}
+
 
 	public static void writeSuperConstructor(MethodVisitor visitor, String name) {
 		visitor.visitVarInsn(ALOAD, 0);
