@@ -26,6 +26,7 @@ public final class Loader {
 					writer.println(info);
 					writer.println(validation.getTrace());
 					writer.println(validation.getClassDump());
+					writer.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}

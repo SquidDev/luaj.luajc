@@ -912,10 +912,10 @@ public final class JavaBuilder {
 
 			if (info == VarInfo.INVALID) break;
 
-			if (info.type != BasicType.VALUE && !info.getTypeInfo().valueReferenced && !tracker.isLive(info, pc)) {
+			if (info.type != BasicType.VALUE && !info.getTypeInfo().valueReferenced && tracker.isLive(info, pc)) {
 				main.visitVarInsn(getLoadOpcode(info.type), findTypedSlot(slot, info.type));
 				genericLoader.specialToValue(info.type);
-				main.visitVarInsn(getStoreOpcode(info.type), findTypedSlot(slot, info.type));
+				main.visitVarInsn(ASTORE, findTypedSlot(slot, BasicType.VALUE));
 			}
 		}
 
