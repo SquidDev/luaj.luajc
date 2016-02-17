@@ -6,6 +6,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.util.CheckClassAdapter;
 import org.objectweb.asm.util.TraceClassVisitor;
 
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -92,11 +93,15 @@ public final class AsmUtils {
 		validateClass(new ClassReader(bytes), loader);
 	}
 
-	public static void dump(byte[] bytes) {
+	public static void dump(byte[] bytes, OutputStream out) {
 		ClassReader reader = new ClassReader(bytes);
-		PrintWriter printWriter = new PrintWriter(System.out, true);
+		PrintWriter printWriter = new PrintWriter(out, true);
 
 		reader.accept(new TraceClassVisitor(printWriter), 0);
+	}
+
+	public static void dump(byte[] bytes) {
+		dump(bytes, System.out);
 	}
 
 

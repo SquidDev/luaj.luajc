@@ -11,7 +11,7 @@ import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
 /**
  * Subclass of {@link LuaFunction} common to LuaJC compiled functions.
  */
-public class FunctionWrapper extends BasicLuaFunction implements IGetPrototype {
+public final class FunctionWrapper extends BasicLuaFunction implements IGetPrototype {
 	public final ProtoInfo info;
 	public final Prototype prototype;
 
@@ -51,6 +51,11 @@ public class FunctionWrapper extends BasicLuaFunction implements IGetPrototype {
 
 	@Override
 	public Varargs invoke(Varargs args) {
+		return onInvoke(args).eval();
+	}
+
+	@Override
+	public Varargs onInvoke(Varargs args) {
 		return info.executor.execute(this, args);
 	}
 }
