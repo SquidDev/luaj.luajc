@@ -38,7 +38,7 @@ public class PerformanceCompile {
 
 	@Test
 	public void compileLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 0, true, null));
+		Loader.install(0);
 		load();
 	}
 
@@ -50,7 +50,7 @@ public class PerformanceCompile {
 
 	public void load() throws IOException {
 		for (int i = 0; i < 10; i++) {
-			LoadState.load(getClass().getResourceAsStream("/org/squiddev/luaj/luajc/compileonly/" + name + ".lua"), name + ".lua", globals);
+			LoadState.load(Loader.load("compileonly/" + name), name + ".lua", globals);
 		}
 	}
 }

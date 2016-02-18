@@ -25,10 +25,14 @@
 package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
+import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Builds prototype info
@@ -45,12 +49,14 @@ public final class AnalysisBuilder {
 	/**
 	 * Find all variables, storing if they are referenced and creating phi nodes,
 	 * simplifying them if possible
+	 *
+	 * @return All phi nodes
 	 */
-	public void findVariables() {
+	public List<PhiInfo> findVariables() {
 		/**
 		 * List of phi variables used
 		 */
-		Set<VarInfo> phis = new HashSet<VarInfo>();
+		ArrayList<PhiInfo> phis = new ArrayList<PhiInfo>();
 
 		// Create storage for variables
 		int nStack = info.prototype.maxstacksize;
@@ -59,9 +65,13 @@ public final class AnalysisBuilder {
 			vars[i] = new VarInfo[nStack];
 		}
 
+		int[] code = info.prototype.code;
+		LuaValue[] constants = info.prototype.k;
+
 		// Process instructions
 		for (BasicBlock b0 : info.blockList) {
 			// input from previous blocks
+			VarInfo[] blockVars = b0.entry;
 			int nPrevious = b0.prev != null ? b0.prev.length : 0;
 			for (int slot = 0; slot < nStack; slot++) {
 				VarInfo var = null;
@@ -78,18 +88,21 @@ public final class AnalysisBuilder {
 					}
 				}
 				if (var == null) {
-					var = VarInfo.phi(info, slot, b0.pc0);
-					phis.add(var);
+					PhiInfo phi = new PhiInfo(info, slot, b0.pc0);
+					phis.add(phi);
+					var = phi;
 				}
-				vars[b0.pc0][slot] = var;
+				blockVars[slot] = var;
 			}
+
+			System.arraycopy(blockVars, 0, vars[b0.pc0], 0, nStack);
 
 			// Process instructions for this basic block
 			for (int pc = b0.pc0; pc <= b0.pc1; pc++) {
 				// Propagate previous values except at block boundaries
 				if (pc > b0.pc0) propagateVars(pc - 1, pc);
 
-				int ins = info.prototype.code[pc];
+				int ins = code[pc];
 				int op = Lua.GET_OPCODE(ins);
 
 				VarInfo[] pcVar = vars[pc];
@@ -115,7 +128,7 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						pcVar[b].isReferenced = true;
+						pcVar[b].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -130,8 +143,8 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						if (!Lua.ISK(b)) pcVar[b].reference(pc);
+						if (!Lua.ISK(c) && c != b) pcVar[c].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -141,9 +154,9 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[a].isReferenced = true;
-						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[a].reference(pc);
+						if (a != b && !Lua.ISK(b)) pcVar[b].reference(pc);
+						if (a != c && b != c && !Lua.ISK(c)) pcVar[c].reference(pc);
 						break;
 					}
 
@@ -153,7 +166,7 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
 						for (; b <= c; b++) {
-							pcVar[b].isReferenced = true;
+							pcVar[b].reference(pc);
 						}
 						pcVar[a] = new VarInfo(a, pc);
 						break;
@@ -162,7 +175,10 @@ public final class AnalysisBuilder {
 					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2); pc+=sBx
 					{
 						int a = Lua.GETARG_A(ins);
-						pcVar[a + 2].isReferenced = true;
+						pcVar[a + 2].reference(pc);
+						pcVar[a].reference(pc);
+
+						// The VM sets this, so it must be a number
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -172,8 +188,8 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[b].reference(pc);
+						if (b != c && !Lua.ISK(c)) pcVar[c].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						break;
 					}
@@ -183,8 +199,8 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						pcVar[b].reference(pc);
+						if (b != c && !Lua.ISK(c)) pcVar[c].reference(pc);
 						pcVar[a] = new VarInfo(a, pc);
 						pcVar[a + 1] = new VarInfo(a + 1, pc);
 						break;
@@ -193,11 +209,13 @@ public final class AnalysisBuilder {
 					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2); if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }
 					{
 						int a = Lua.GETARG_A(ins);
-						pcVar[a].isReferenced = true;
-						pcVar[a + 2].isReferenced = true;
+						pcVar[a].reference(pc);
+						pcVar[a + 2].reference(pc);
+						pcVar[a + 1].reference(pc);
+
 						pcVar[a] = new VarInfo(a, pc);
-						pcVar[a].isReferenced = true;
-						pcVar[a + 1].isReferenced = true;
+						pcVar[a].reference(pc);
+
 						pcVar[a + 3] = new VarInfo(a + 3, pc);
 						break;
 					}
@@ -232,9 +250,13 @@ public final class AnalysisBuilder {
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[a].isReferenced = true;
-						for (int i = 1; i <= b - 1; i++) {
-							pcVar[a + i].isReferenced = true;
+						pcVar[a].reference(pc);
+
+						int max = b == 0 ? nStack : a + b;
+						for (int i = a + 1; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.reference(pc);
 						}
 						for (int j = 0; j <= c - 2; j++, a++) {
 							pcVar[a] = new VarInfo(a, pc);
@@ -249,9 +271,13 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						pcVar[a].isReferenced = true;
-						for (int i = 1; i <= b - 1; i++) {
-							pcVar[a + i].isReferenced = true;
+						pcVar[a].reference(pc);
+
+						int max = b == 0 ? nStack : a + b;
+						for (int i = a + 1; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.reference(pc);
 						}
 						break;
 					}
@@ -260,11 +286,11 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						int max = b == 0 ? info.prototype.maxstacksize : a + b - 1;
+						int max = b == 0 ? nStack : a + b - 1;
 						for (int i = a; i < max; i++) {
 							VarInfo info = pcVar[i];
 							if (info == VarInfo.INVALID) break;
-							info.isReferenced = true;
+							info.reference(pc);
 						}
 						break;
 					}
@@ -273,9 +299,9 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int c = Lua.GETARG_C(ins);
-						pcVar[a++].isReferenced = true;
-						pcVar[a++].isReferenced = true;
-						pcVar[a++].isReferenced = true;
+						pcVar[a++].reference(pc);
+						pcVar[a++].reference(pc);
+						pcVar[a++].reference(pc);
 						for (int j = 0; j < c; j++, a++) {
 							pcVar[a] = new VarInfo(a, pc);
 						}
@@ -294,7 +320,7 @@ public final class AnalysisBuilder {
 							int i = info.prototype.code[pc + k];
 							if ((i & 4) == 0) {
 								b = Lua.GETARG_B(i);
-								pcVar[b].isReferenced = true;
+								pcVar[b].reference(pc);
 							}
 						}
 						pcVar[a] = new VarInfo(a, pc);
@@ -317,9 +343,13 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						pcVar[a].isReferenced = true;
-						for (int i = 1; i <= b; i++) {
-							pcVar[a + i].isReferenced = true;
+						pcVar[a].reference(pc);
+
+						int max = b == 0 ? nStack : a + b + 1;
+						for (int i = a + 1; i < max; i++) {
+							VarInfo info = pcVar[i];
+							if (info == VarInfo.INVALID) break;
+							info.reference(pc);
 						}
 						break;
 					}
@@ -329,7 +359,7 @@ public final class AnalysisBuilder {
 					case Lua.OP_TEST:      // A C  if not (R(A) <=> C) then pc++
 					{
 						int a = Lua.GETARG_A(ins);
-						pcVar[a].isReferenced = true;
+						pcVar[a].reference(pc);
 						break;
 					}
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
@@ -338,8 +368,8 @@ public final class AnalysisBuilder {
 					{
 						int b = Lua.GETARG_B(ins);
 						int c = Lua.GETARG_C(ins);
-						if (!Lua.ISK(b)) pcVar[b].isReferenced = true;
-						if (!Lua.ISK(c)) pcVar[c].isReferenced = true;
+						if (!Lua.ISK(b)) pcVar[b].reference(pc);
+						if (!Lua.ISK(c)) pcVar[c].reference(pc);
 						break;
 					}
 
@@ -347,39 +377,35 @@ public final class AnalysisBuilder {
 						break;
 
 					default:
-						throw new IllegalStateException("unhandled opcode: " + ins);
+						throw new IllegalStateException("unhandled opcode: " + Lua.GET_OPCODE(op));
 				}
 			}
 		}
 
-		replaceTrivialPhiVariables(phis);
+		return replaceTrivialPhiVariables(phis);
 	}
 
 	/**
 	 * Replace phi variables that reference the same thing
 	 *
 	 * @param phis List of phi nodes to replace
+	 * @return All phi nodes that haven't been replaced
 	 */
-	private void replaceTrivialPhiVariables(Set<VarInfo> phis) {
+	private List<PhiInfo> replaceTrivialPhiVariables(List<PhiInfo> phis) {
 		// Replace trivial Phi variables
-		for (BasicBlock b0 : info.blockList) {
-			VarInfo[] vars = info.vars[b0.pc0];
-			for (int slot = 0; slot < info.prototype.maxstacksize; slot++) {
-				VarInfo oldVar = vars[slot];
-				VarInfo newVar = oldVar.resolvePhiVariableValues();
-				if (newVar != null) {
-					substituteVariable(slot, oldVar, newVar);
-				}
+		Iterator<PhiInfo> phiIterator = phis.iterator();
+		while (phiIterator.hasNext()) {
+			PhiInfo phi = phiIterator.next();
 
-				phis.remove(oldVar);
+			// We only need to assign this if it isn't replacable
+			VarInfo newVar = phi.resolvePhiVariableValues();
+			if (newVar != null) {
+				substituteVariable(phi.slot, phi, newVar);
+				phiIterator.remove();
 			}
 		}
 
-		// Some phi variables are overwritten resulting in slots not being assigned
-		// https://github.com/SquidDev-CC/Studio/pull/13
-		for (VarInfo phi : phis) {
-			phi.resolvePhiVariableValues();
-		}
+		return Collections.unmodifiableList(phis);
 	}
 
 	/**
@@ -391,8 +417,13 @@ public final class AnalysisBuilder {
 	 */
 	private void substituteVariable(int slot, VarInfo oldVar, VarInfo newVar) {
 		VarInfo[][] vars = info.vars;
+		BasicBlock[] blocks = info.blocks;
 		int length = info.prototype.code.length;
 		for (int pc = 0; pc < length; pc++) {
+			BasicBlock block = blocks[pc];
+			if (block.pc0 == pc && block.entry[slot] == oldVar) {
+				block.entry[slot] = newVar;
+			}
 			if (vars[pc][slot] == oldVar) {
 				vars[pc][slot] = newVar;
 			}

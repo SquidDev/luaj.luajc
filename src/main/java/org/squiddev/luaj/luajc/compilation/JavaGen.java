@@ -26,8 +26,8 @@ package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.Lua;
 import org.luaj.vm2.Prototype;
-import org.squiddev.luaj.luajc.analysis.BasicBlock;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
 public final class JavaGen {
 	public final byte[] bytecode;
@@ -58,7 +58,7 @@ public final class JavaGen {
 					// convert upvalues that are phi-variables
 					for (int slot = 0; slot < p.maxstacksize; slot++) {
 						int up_pc = b0.pc0;
-						boolean c = pi.isUpvalueCreate(up_pc, slot);
+						boolean c = pi.getVariable(up_pc, slot).isUpvalueCreate(up_pc);
 						if (c && pi.vars[up_pc][slot].isPhiVar()) {
 							builder.convertToUpvalue(up_pc, slot);
 						}

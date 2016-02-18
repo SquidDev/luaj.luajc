@@ -127,7 +127,7 @@ public class CompilerTest {
 	 */
 	@Test
 	public void testLuaJC() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, 1, true, null));
+		Loader.install(1);
 		run();
 	}
 
@@ -136,7 +136,7 @@ public class CompilerTest {
 	 */
 	@Test
 	public void testLuaVM() throws Exception {
-		LuaJC.install(new CompileOptions(CompileOptions.PREFIX, Integer.MAX_VALUE, true, null));
+		Loader.install(Integer.MAX_VALUE);
 		run();
 	}
 
@@ -159,7 +159,7 @@ public class CompilerTest {
 	}
 
 	protected void run() throws Exception {
-		LoadState.load(getClass().getResourceAsStream("/org/squiddev/luaj/luajc/" + name + ".lua"), name + ".lua", globals).invoke();
+		LoadState.load(Loader.load(name), name + ".lua", globals).invoke();
 	}
 
 	private class AssertFunction extends ThreeArgFunction {
@@ -188,7 +188,6 @@ public class CompilerTest {
 				assertEquals("Type mismatch at arg #" + i, expected.typename(), actual.typename());
 				assertEquals("Value mismatch at arg #" + i, expected.tojstring(), actual.tojstring());
 			}
-
 
 			return LuaValue.NONE;
 		}

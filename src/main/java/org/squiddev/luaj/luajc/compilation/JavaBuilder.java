@@ -31,6 +31,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
+import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import java.util.HashMap;
@@ -46,35 +47,35 @@ public final class JavaBuilder {
 	public static final int BRANCH_IFEQ = 3;
 
 	// Basic info
-	protected final ProtoInfo pi;
-	protected final Prototype p;
-	protected final String className;
-	protected final String prefix;
+	private final ProtoInfo pi;
+	private final Prototype p;
+	private final String className;
+	private final String prefix;
 
 	/**
 	 * Main class writer
 	 */
-	protected final ClassWriter writer;
+	private final ClassWriter writer;
 
 	/**
 	 * The static constructor method
 	 */
-	protected final MethodVisitor init;
+	private final MethodVisitor init;
 
 	/**
 	 * The function invoke
 	 */
-	protected final MethodVisitor main;
+	private final MethodVisitor main;
 
 	/**
 	 * Max number of locals
 	 */
-	protected int maxLocals;
+	private int maxLocals;
 
 	/**
 	 * The local index of the varargs result
 	 */
-	protected int varargsLocal = -1;
+	private int varargsLocal = -1;
 
 	// Labels for locals
 	private final Label start;
@@ -232,7 +233,7 @@ public final class JavaBuilder {
 			// fixed arg function between 0 and 3 arguments
 			for (slot = 0; slot < p.numparams; slot++) {
 				this.plainSlotVars.put(slot, slot + VARARGS_SLOT);
-				if (pi.isUpvalueCreate(-1, slot)) {
+				if (pi.params[slot].isUpvalueCreate(-1)) {
 					main.visitVarInsn(ALOAD, slot + VARARGS_SLOT);
 					storeLocal(-1, slot);
 				}
@@ -295,10 +296,10 @@ public final class JavaBuilder {
 		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", field, "Lorg/luaj/vm2/LuaBoolean;");
 	}
 
-	protected final Map<Integer, Integer> plainSlotVars = new HashMap<Integer, Integer>();
-	protected final Map<Integer, Integer> upvalueSlotVars = new HashMap<Integer, Integer>();
+	private final Map<Integer, Integer> plainSlotVars = new HashMap<Integer, Integer>();
+	private final Map<Integer, Integer> upvalueSlotVars = new HashMap<Integer, Integer>();
 
-	protected int findSlot(int luaSlot, Map<Integer, Integer> map) {
+	private int findSlot(int luaSlot, Map<Integer, Integer> map) {
 		if (map.containsKey(luaSlot)) return map.get(luaSlot);
 
 		// This will always be an Upvalue/LuaValue so the slot size is 1 as it is a reference
@@ -307,14 +308,14 @@ public final class JavaBuilder {
 		return javaSlot;
 	}
 
-	protected int findSlotIndex(int slot, boolean isUpvalue) {
+	private int findSlotIndex(int slot, boolean isUpvalue) {
 		return isUpvalue ?
 			findSlot(slot, upvalueSlotVars) :
 			findSlot(slot, plainSlotVars);
 	}
 
 	public void loadLocal(int pc, int slot) {
-		boolean isUpvalue = pi.isUpvalueRefer(pc, slot);
+		boolean isUpvalue = pi.getVariable(pc, slot).isUpvalueRefer();
 		int index = findSlotIndex(slot, isUpvalue);
 
 		main.visitVarInsn(ALOAD, index);
@@ -324,10 +325,11 @@ public final class JavaBuilder {
 	}
 
 	public void storeLocal(int pc, int slot) {
-		boolean isUpvalue = pi.isUpvalueAssign(pc, slot);
+		VarInfo var = pc < 0 ? pi.params[slot] : pi.vars[pc][slot];
+		boolean isUpvalue = var.isUpvalueAssign();
 		int index = findSlotIndex(slot, isUpvalue);
 		if (isUpvalue) {
-			boolean isUpCreate = pi.isUpvalueCreate(pc, slot);
+			boolean isUpCreate = var.isUpvalueCreate(pc);
 			if (isUpCreate) {
 				// If we are creating the upvalue for the first time then we call LibFunction.emptyUpvalue (but actually call
 				// <className>.emptyUpvalue but I need to check that). The we duplicate the object, so it remains on the stack
@@ -336,7 +338,6 @@ public final class JavaBuilder {
 
 				// We should only proxy when we need to switch back into interpreted mode
 				// and this upvalue will be mutated again
-				// METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitInsn(DUP);
 				main.visitVarInsn(ASTORE, index);
 			} else {
@@ -355,24 +356,22 @@ public final class JavaBuilder {
 	public void createUpvalues(int pc, int firstSlot, int numSlots) {
 		for (int i = 0; i < numSlots; i++) {
 			int slot = firstSlot + i;
-			if (pi.isUpvalueCreate(pc, slot)) {
+			if (pi.getVariable(pc, slot).isUpvalueCreate(pc)) {
 				int index = findSlotIndex(slot, true);
 				METHOD_NEW_UPVALUE_NIL.inject(main);
-				METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitVarInsn(ASTORE, index);
 			}
 		}
 	}
 
 	public void convertToUpvalue(int pc, int slot) {
-		boolean isUpvalueAssign = pi.isUpvalueAssign(pc, slot);
+		boolean isUpvalueAssign = pi.vars[pc][slot].isUpvalueAssign();
 		if (isUpvalueAssign) {
 			int index = findSlotIndex(slot, false);
 
 			// Load it from the slot, convert to an array and store it to the upvalue slot
 			main.visitVarInsn(ALOAD, index);
 			METHOD_NEW_UPVALUE_VALUE.inject(main);
-			METHOD_NEW_UPVALUE_PROXY.inject(main);
 			int upvalueIndex = findSlotIndex(slot, true);
 			main.visitVarInsn(ASTORE, upvalueIndex);
 		}
@@ -423,7 +422,7 @@ public final class JavaBuilder {
 		}
 	}
 
-	protected int getVarResultIndex() {
+	private int getVarResultIndex() {
 		if (varargsLocal < 0) varargsLocal = ++maxLocals;
 		return varargsLocal;
 	}
@@ -631,9 +630,9 @@ public final class JavaBuilder {
 	}
 
 	public void initUpvalueFromUpvalue(int newUpvalue, int upvalueIndex) {
-		AsmUtils.constantOpcode(main, newUpvalue);
+		constantOpcode(main, newUpvalue);
 		main.visitVarInsn(ALOAD, upvaluesSlot);
-		AsmUtils.constantOpcode(main, upvalueIndex);
+		constantOpcode(main, upvalueIndex);
 		main.visitInsn(AALOAD);
 		main.visitInsn(AASTORE);
 	}
@@ -642,7 +641,7 @@ public final class JavaBuilder {
 		boolean isReadWrite = pi.vars[pc][srcSlot].upvalue.readWrite;
 		int index = findSlotIndex(srcSlot, isReadWrite);
 
-		AsmUtils.constantOpcode(main, newUpvalue);
+		constantOpcode(main, newUpvalue);
 		main.visitVarInsn(ALOAD, index);
 		if (!isReadWrite) METHOD_NEW_UPVALUE_VALUE.inject(main);
 		main.visitInsn(AASTORE);
@@ -757,7 +756,7 @@ public final class JavaBuilder {
 		if (DebugLib.DEBUG_ENABLED) {
 			main.visitVarInsn(ALOAD, debugStateSlot);
 			main.visitVarInsn(ALOAD, debugInfoSlot);
-			AsmUtils.constantOpcode(main, pc);
+			constantOpcode(main, pc);
 			main.visitInsn(ACONST_NULL);
 			main.visitInsn(ICONST_M1);
 			METHOD_BYTECODE.inject(main);

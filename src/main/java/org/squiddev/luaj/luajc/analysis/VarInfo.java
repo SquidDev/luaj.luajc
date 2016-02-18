@@ -24,10 +24,9 @@
  */
 package org.squiddev.luaj.luajc.analysis;
 
-import org.luaj.vm2.LuaValue;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
+import org.squiddev.luaj.luajc.utils.IntArray;
 
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 
 public class VarInfo {
@@ -49,23 +48,6 @@ public class VarInfo {
 			}
 		};
 	}
-
-	/**
-	 * Create a new {@link VarInfo.PhiVarInfo}
-	 *
-	 * @param pi   The prototype this variable is part of
-	 * @param slot The slot the variable is assigned to
-	 * @param pc   The PC this variable is used at
-	 * @return The resulting variable
-	 */
-	public static VarInfo phi(final ProtoInfo pi, final int slot, final int pc) {
-		return new PhiVarInfo(pi, slot, pc);
-	}
-
-	// Counts for value tracking
-	public int booleanCount = 0;
-	public int numberCount = 0;
-	public int valueCount = 0;
 
 	/**
 	 * The slot this variable exists in
@@ -93,6 +75,11 @@ public class VarInfo {
 	 * If this variable is referenced
 	 */
 	public boolean isReferenced;
+
+	/**
+	 * List of instructions that reference this
+	 */
+	public final IntArray references = new IntArray();
 
 	public VarInfo(int slot, int pc) {
 		this.slot = slot;
@@ -129,7 +116,7 @@ public class VarInfo {
 	}
 
 	/**
-	 * Is this variable a {@link PhiVarInfo}
+	 * Is this variable a {@link PhiInfo}
 	 *
 	 * @return If it is a Phi var
 	 */
@@ -137,109 +124,36 @@ public class VarInfo {
 		return false;
 	}
 
-	public final void increment(LuaValue value) {
-		switch (value.type()) {
-			case LuaValue.TBOOLEAN:
-				booleanCount++;
-				break;
-			case LuaValue.TNUMBER:
-				numberCount++;
-				break;
-			default:
-				valueCount++;
-				break;
-		}
+	public void reference(int pc) {
+		isReferenced = true;
+		references.add(pc);
 	}
 
 	/**
-	 * This stores a list of potential variables this could resolve to
-	 * This is created as a result of multiple blocks
+	 * Check if this variable is a reference to a read/write upvalue
+	 *
+	 * @return If this is a reference to a read/write upvalue
 	 */
-	private static final class PhiVarInfo extends VarInfo {
-		private final ProtoInfo pi;
+	public final boolean isUpvalueRefer() {
+		return upvalue != null && upvalue.readWrite;
+	}
 
-		/**
-		 * A list of variables this could resolve to
-		 */
-		protected VarInfo[] values;
+	/**
+	 * Check if this variable's creation is an assignment to an upvalue
+	 *
+	 * @return If an upvalue is assigned to at this point
+	 */
+	public final boolean isUpvalueAssign() {
+		return upvalue != null && upvalue.readWrite;
+	}
 
-		private PhiVarInfo(ProtoInfo pi, int slot, int pc) {
-			super(slot, pc);
-			this.pi = pi;
-		}
-
-		@Override
-		public boolean isPhiVar() {
-			return true;
-		}
-
-		public String toString() {
-			StringBuilder sb = new StringBuilder();
-			sb.append(super.toString()).append("={");
-			for (int i = 0, n = (values != null ? values.length : 0); i < n; i++) {
-				if (i > 0) {
-					sb.append(",");
-				}
-				sb.append(String.valueOf(values[i]));
-			}
-			sb.append("}");
-			return sb.toString();
-		}
-
-		/**
-		 * Return replacement variable if there is exactly one value possible,
-		 * otherwise compute entire collection of variables and return null.
-		 * Computes the list of all variable values, and saves it for the future.
-		 * <p>
-		 * This will set all child variables' isReferenced if this variable is
-		 *
-		 * @return new Variable to replace with if there is only one value, or null to leave alone.
-		 * @see #isReferenced
-		 */
-		@Override
-		public VarInfo resolvePhiVariableValues() {
-			Set<BasicBlock> visitedBlocks = new HashSet<BasicBlock>();
-			Set<VarInfo> vars = new HashSet<VarInfo>();
-			collectUniqueValues(visitedBlocks, vars);
-
-			if (vars.contains(INVALID)) return INVALID;
-
-			int n = vars.size();
-			Iterator<VarInfo> it = vars.iterator();
-			if (n == 1) {
-				VarInfo v = it.next();
-				v.isReferenced |= isReferenced;
-				return v;
-			}
-			values = new VarInfo[n];
-			for (int i = 0; i < n; i++) {
-				values[i] = it.next();
-				values[i].isReferenced |= isReferenced;
-			}
-			return null;
-		}
-
-		/**
-		 * Used to create unique variables
-		 *
-		 * @param visitedBlocks The list of blocks already visited
-		 * @param vars          The list of unique variables
-		 */
-		@Override
-		protected void collectUniqueValues(Set<BasicBlock> visitedBlocks, Set<VarInfo> vars) {
-			BasicBlock b = pi.blocks[pc];
-			if (pc == 0) {
-				vars.add(pi.params[slot]);
-			}
-			for (int i = 0, n = b.prev != null ? b.prev.length : 0; i < n; i++) {
-				BasicBlock bp = b.prev[i];
-				if (visitedBlocks.add(bp)) {
-					VarInfo v = pi.vars[bp.pc1][slot];
-					if (v != null) {
-						v.collectUniqueValues(visitedBlocks, vars);
-					}
-				}
-			}
-		}
+	/**
+	 * Check if this is the creation of an upvalue
+	 *
+	 * @param pc The current PC
+	 * @return If this is where the upvalue is created
+	 */
+	public final boolean isUpvalueCreate(int pc) {
+		return upvalue != null && upvalue.readWrite && allocUpvalue && pc == this.pc;
 	}
 }

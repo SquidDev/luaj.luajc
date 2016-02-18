@@ -25,6 +25,7 @@
 package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.Lua;
+import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,7 +131,7 @@ public final class UpvalueInfo {
 				// If it hasn't changed then scan next instructions
 				if (b.next != null) {
 					for (BasicBlock b1 : b.next) {
-						VarInfo v1 = pi.vars[b1.pc0][slot];
+						VarInfo v1 = b1.entry[slot];
 						if (v1 != prior) {
 							loopDetected |= includeVarAndPosteriorVars(v1);
 							if (v1.isPhiVar()) {
@@ -141,11 +142,19 @@ public final class UpvalueInfo {
 				}
 			} else {
 				// Otherwise it may have changed within this block. Scan in reverse to find the correct instruction.
+				boolean hit = false;
 				for (int pc = b.pc1 - 1; pc >= b.pc0; pc--) {
 					// This is the same, so the next instruction must be a modification
 					if (pi.vars[pc][slot] == prior) {
 						loopDetected |= includeVarAndPosteriorVars(pi.vars[pc + 1][slot]);
+						hit = true;
 						break;
+					}
+				}
+
+				if (!hit) {
+					if (b.entry[slot] == prior) {
+						loopDetected |= includeVarAndPosteriorVars(pi.vars[b.pc0][slot]);
 					}
 				}
 			}
@@ -156,23 +165,27 @@ public final class UpvalueInfo {
 	private void includePriorVarsIgnoreLoops(VarInfo poster) {
 		for (BasicBlock b : pi.blockList) {
 			// Get the variable definition at the first instruction in this block
-			VarInfo var = pi.vars[b.pc0][slot];
+			VarInfo var = b.entry[slot];
 
 			// If it hasn't changed
 			if (var == poster) {
 				if (b.prev != null) {
 					for (BasicBlock b0 : b.prev) {
-						VarInfo v0 = pi.vars[b0.pc1][slot];
+						VarInfo v0 = b0.entry[slot];
 						if (v0 != poster) {
 							includeVarAndPosteriorVars(v0);
 						}
 					}
 				}
 			} else {
-				for (int pc = b.pc0 + 1; pc <= b.pc1; pc++) {
-					if (pi.vars[pc][slot] == poster) {
-						includeVarAndPosteriorVars(pi.vars[pc - 1][slot]);
-						break;
+				if (pi.vars[b.pc0][slot] == poster) {
+					includeVarAndPosteriorVars(var);
+				} else {
+					for (int pc = b.pc0 + 1; pc <= b.pc1; pc++) {
+						if (pi.vars[pc][slot] == poster) {
+							includeVarAndPosteriorVars(pi.vars[pc - 1][slot]);
+							break;
+						}
 					}
 				}
 			}
