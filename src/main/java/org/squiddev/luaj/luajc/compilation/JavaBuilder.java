@@ -29,7 +29,6 @@ import org.luaj.vm2.lib.DebugLib;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.analysis.VarInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
@@ -38,7 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.squiddev.luaj.luajc.Constants.*;
+import static org.squiddev.luaj.luajc.compilation.Constants.*;
 import static org.squiddev.luaj.luajc.utils.AsmUtils.constantOpcode;
 
 public final class JavaBuilder {

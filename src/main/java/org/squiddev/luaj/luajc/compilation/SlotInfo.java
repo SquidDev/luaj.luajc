@@ -3,7 +3,7 @@ package org.squiddev.luaj.luajc.compilation;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
-import static org.squiddev.luaj.luajc.Constants.*;
+import static org.squiddev.luaj.luajc.compilation.Constants.*;
 
 /**
  * Tracks information in a slot

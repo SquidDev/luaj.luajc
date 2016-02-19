@@ -4,7 +4,6 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.objectweb.asm.ClassWriter;
 import org.squiddev.luaj.luajc.CompileOptions;
-import org.squiddev.luaj.luajc.Constants;
 import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionExecutor;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;

@@ -7,7 +7,7 @@ import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.utils.AsmUtils;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.squiddev.luaj.luajc.Constants.*;
+import static org.squiddev.luaj.luajc.compilation.Constants.*;
 
 /**
  * Creates a static storage instance for {@link org.squiddev.luaj.luajc.analysis.ProtoInfo}
