@@ -3,6 +3,5 @@
 loadk 0 k(0)
 ::start::
 add 0 0 k(1)
-call 0 2 1
-le 0 k(10) 0
+le 1 k(10) 0
 jmp start
