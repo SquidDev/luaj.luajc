@@ -68,7 +68,6 @@ public final class BasicBlock {
 	 */
 	public final VarInfo[] entry;
 
-
 	public BasicBlock(int pc, int maxStack) {
 		pc0 = pc1 = pc;
 		entry = new VarInfo[maxStack];
@@ -157,7 +156,7 @@ public final class BasicBlock {
 		final int[] nPrevious = new int[n];
 		new BranchVisitor(isBeginning) {
 			@Override
-			public void visitBranch(int pc0, int pc1) {
+			protected void visitBranch(int pc0, int pc1) {
 				nNext[pc0]++;
 				nPrevious[pc1]++;
 			}
@@ -166,7 +165,7 @@ public final class BasicBlock {
 		// Create the blocks and reference previous and next blocks
 		new BranchVisitor(isBeginning) {
 			@Override
-			public void visitBranch(int pc0, int pc1) {
+			protected void visitBranch(int pc0, int pc1) {
 				if (blocks[pc0].next == null) blocks[pc0].next = new BasicBlock[nNext[pc0]];
 				if (blocks[pc1].prev == null) blocks[pc1].prev = new BasicBlock[nPrevious[pc1]];
 				blocks[pc0].next[--nNext[pc0]] = blocks[pc1];

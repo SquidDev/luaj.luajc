@@ -41,8 +41,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.squiddev.luaj.luajc.Constants.*;
 import static org.squiddev.luaj.luajc.compilation.BuilderHelpers.*;
+import static org.squiddev.luaj.luajc.compilation.Constants.*;
 import static org.squiddev.luaj.luajc.utils.AsmUtils.constantOpcode;
 
 public final class JavaBuilder {
@@ -148,13 +148,14 @@ public final class JavaBuilder {
 
 	public final VariableLoaderGeneric genericLoader;
 	public final VariableLoaderSpecialised specialisedLoader;
+	private final SlotInfo[] slots;
 
 	public JavaBuilder(ProtoInfo pi, String prefix, String filename) {
 		this.pi = pi;
 		this.p = pi.prototype;
 		this.prefix = prefix;
 		this.tracker = new LivenessTracker(pi);
-		this.slots = new SlotInfo[pi.prototype.maxstacksize];
+		this.slots = new SlotInfo[p.maxstacksize];
 
 		String className = this.className = prefix + pi.name;
 
@@ -399,7 +400,6 @@ public final class JavaBuilder {
 			if (pi.getVariable(pc, slot).isUpvalueCreate(pc)) {
 				int index = findUpvalueIndex(slot);
 				METHOD_NEW_UPVALUE_NIL.inject(main);
-				METHOD_NEW_UPVALUE_PROXY.inject(main);
 				main.visitVarInsn(ASTORE, index);
 			}
 		}

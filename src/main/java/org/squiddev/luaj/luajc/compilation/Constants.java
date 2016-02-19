@@ -1,4 +1,4 @@
-package org.squiddev.luaj.luajc;
+package org.squiddev.luaj.luajc.compilation;
 
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.DebugLib;

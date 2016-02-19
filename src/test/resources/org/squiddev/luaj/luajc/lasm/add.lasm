@@ -1,0 +1,9 @@
+; Used to test LASM compiler
+
+; assertEquals(15, 10 + 5)
+loadk 0 k(10)
+loadk 1 k(5)
+add 2 0 1
+loadk 1 k(15)
+getglobal 0 'assertEquals'
+call 0 3 1

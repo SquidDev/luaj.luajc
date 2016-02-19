@@ -7,20 +7,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.luaj.vm2.LoadState;
 import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
 import org.luaj.vm2.compiler.LuaC;
-import org.luaj.vm2.lib.ThreeArgFunction;
-import org.luaj.vm2.lib.VarArgFunction;
-import org.luaj.vm2.lib.jse.JseBaseLib;
-import org.luaj.vm2.lib.jse.JsePlatform;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
-
-import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 public class CompilerTest {
@@ -32,25 +22,25 @@ public class CompilerTest {
 	@Parameterized.Parameters(name = "{0}")
 	public static Collection<Object[]> getLua() {
 		return Arrays.asList(new Object[][]{
-			{"new-fragment/BranchUpvalue"},
-			{"new-fragment/BranchUpvalue2"},
-			{"new-fragment/DebugInfo"},
-			{"new-fragment/DoBlock"},
-			{"new-fragment/EdgeCases"},
-			{"new-fragment/Error"},
-			{"new-fragment/Function"},
-			{"new-fragment/LoadBytecode"},
-			{"new-fragment/NForLoop"},
-			{"new-fragment/NilCallReturn"},
-			{"new-fragment/Recursive"},
-			{"new-fragment/RecursiveTrace"},
-			{"new-fragment/SetFEnv"},
-			{"new-fragment/StringDump"},
-			{"new-fragment/TailCall"},
-			{"new-fragment/TailRecursion"},
-			{"new-fragment/UpvalueArgument"},
-			{"new-fragment/Upvalues"},
-			{"new-fragment/WhileLoop"},
+			{"lua/BranchUpvalue"},
+			{"lua/BranchUpvalue2"},
+			{"lua/DebugInfo"},
+			{"lua/DoBlock"},
+			{"lua/EdgeCases"},
+			{"lua/Error"},
+			{"lua/Function"},
+			{"lua/LoadBytecode"},
+			{"lua/NForLoop"},
+			{"lua/NilCallReturn"},
+			{"lua/Recursive"},
+			{"lua/RecursiveTrace"},
+			{"lua/SetFEnv"},
+			{"lua/StringDump"},
+			{"lua/TailCall"},
+			{"lua/TailRecursion"},
+			{"lua/UpvalueArgument"},
+			{"lua/Upvalues"},
+			{"lua/WhileLoop"},
 
 			{"fragment/ForLoopParamUpvalues"},
 			{"fragment/VarVarargsUseArg"},
@@ -108,19 +98,9 @@ public class CompilerTest {
 
 	@Before
 	public void setup() {
-		globals = JsePlatform.debugGlobals();
-
-		JseBaseLib lib = new JseBaseLib();
-		lib.STDOUT = new PrintStream(new OutputStream() {
-			@Override
-			public void write(int b) throws IOException {
-			}
-		});
-
-		globals.load(lib);
-		globals.set("assertEquals", new AssertFunction());
-		globals.set("assertMany", new AssertManyFunction());
+		globals = LuaEnv.makeGlobals();
 	}
+
 
 	/**
 	 * Test the {@link LuaJC} compiler.
@@ -157,37 +137,5 @@ public class CompilerTest {
 
 	protected void run() throws Exception {
 		LoadState.load(Loader.load(name), name + ".lua", globals).invoke();
-	}
-
-	private class AssertFunction extends ThreeArgFunction {
-		@Override
-		public LuaValue call(LuaValue expected, LuaValue actual, LuaValue message) {
-			String msg = message.toString();
-			if (message.isnil()) {
-				msg = "(No message)";
-			}
-
-			assertEquals(msg, expected.tojstring(), actual.tojstring());
-			assertEquals(msg, expected.typename(), actual.typename());
-
-			return LuaValue.NONE;
-		}
-	}
-
-	private class AssertManyFunction extends VarArgFunction {
-		@Override
-		public Varargs invoke(Varargs args) {
-			int nArgs = args.narg() / 2;
-			for (int i = 1; i <= nArgs; i++) {
-				LuaValue expected = args.arg(i);
-				LuaValue actual = args.arg(i + nArgs);
-
-				assertEquals("Type mismatch at arg #" + i, expected.typename(), actual.typename());
-				assertEquals("Value mismatch at arg #" + i, expected.tojstring(), actual.tojstring());
-			}
-
-
-			return LuaValue.NONE;
-		}
 	}
 }

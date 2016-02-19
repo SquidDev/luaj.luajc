@@ -278,9 +278,9 @@ util = _W(function()
 		local ints = {}
 		for i = 0, n - 1 do
 			ints[i] = putByte(bytes[start + (i * 4)], 3)
-					+ putByte(bytes[start + (i * 4) + 1], 2)
-					+ putByte(bytes[start + (i * 4) + 2], 1)
-					+ putByte(bytes[start + (i * 4) + 3], 0)
+				+ putByte(bytes[start + (i * 4) + 1], 2)
+				+ putByte(bytes[start + (i * 4) + 2], 1)
+				+ putByte(bytes[start + (i * 4) + 3], 0)
 
 			if n % 10000 == 0 then sleepCheckIn() end
 		end
@@ -375,9 +375,9 @@ util = _W(function()
 		end
 
 		local dataLength = putByte(string.byte(data, 5), 3)
-				+ putByte(string.byte(data, 6), 2)
-				+ putByte(string.byte(data, 7), 1)
-				+ putByte(string.byte(data, 8), 0)
+			+ putByte(string.byte(data, 6), 2)
+			+ putByte(string.byte(data, 7), 1)
+			+ putByte(string.byte(data, 8), 0)
 
 		return string.sub(data, 9, 8 + dataLength)
 	end
@@ -517,21 +517,21 @@ aes = _W(function()
 		for x = 0, 255 do
 			byte = SBox[x]
 			table0[x] = putByte(gf.mul(0x03, byte), 0)
-					+ putByte(byte, 1)
-					+ putByte(byte, 2)
-					+ putByte(gf.mul(0x02, byte), 3)
+				+ putByte(byte, 1)
+				+ putByte(byte, 2)
+				+ putByte(gf.mul(0x02, byte), 3)
 			table1[x] = putByte(byte, 0)
-					+ putByte(byte, 1)
-					+ putByte(gf.mul(0x02, byte), 2)
-					+ putByte(gf.mul(0x03, byte), 3)
+				+ putByte(byte, 1)
+				+ putByte(gf.mul(0x02, byte), 2)
+				+ putByte(gf.mul(0x03, byte), 3)
 			table2[x] = putByte(byte, 0)
-					+ putByte(gf.mul(0x02, byte), 1)
-					+ putByte(gf.mul(0x03, byte), 2)
-					+ putByte(byte, 3)
+				+ putByte(gf.mul(0x02, byte), 1)
+				+ putByte(gf.mul(0x03, byte), 2)
+				+ putByte(byte, 3)
 			table3[x] = putByte(gf.mul(0x02, byte), 0)
-					+ putByte(gf.mul(0x03, byte), 1)
-					+ putByte(byte, 2)
-					+ putByte(byte, 3)
+				+ putByte(gf.mul(0x03, byte), 1)
+				+ putByte(byte, 2)
+				+ putByte(byte, 3)
 		end
 	end
 
@@ -544,21 +544,21 @@ aes = _W(function()
 		for x = 0, 255 do
 			byte = iSBox[x]
 			tableInv0[x] = putByte(gf.mul(0x0b, byte), 0)
-					+ putByte(gf.mul(0x0d, byte), 1)
-					+ putByte(gf.mul(0x09, byte), 2)
-					+ putByte(gf.mul(0x0e, byte), 3)
+				+ putByte(gf.mul(0x0d, byte), 1)
+				+ putByte(gf.mul(0x09, byte), 2)
+				+ putByte(gf.mul(0x0e, byte), 3)
 			tableInv1[x] = putByte(gf.mul(0x0d, byte), 0)
-					+ putByte(gf.mul(0x09, byte), 1)
-					+ putByte(gf.mul(0x0e, byte), 2)
-					+ putByte(gf.mul(0x0b, byte), 3)
+				+ putByte(gf.mul(0x09, byte), 1)
+				+ putByte(gf.mul(0x0e, byte), 2)
+				+ putByte(gf.mul(0x0b, byte), 3)
 			tableInv2[x] = putByte(gf.mul(0x09, byte), 0)
-					+ putByte(gf.mul(0x0e, byte), 1)
-					+ putByte(gf.mul(0x0b, byte), 2)
-					+ putByte(gf.mul(0x0d, byte), 3)
+				+ putByte(gf.mul(0x0e, byte), 1)
+				+ putByte(gf.mul(0x0b, byte), 2)
+				+ putByte(gf.mul(0x0d, byte), 3)
 			tableInv3[x] = putByte(gf.mul(0x0e, byte), 0)
-					+ putByte(gf.mul(0x0b, byte), 1)
-					+ putByte(gf.mul(0x0d, byte), 2)
-					+ putByte(gf.mul(0x09, byte), 3)
+				+ putByte(gf.mul(0x0b, byte), 1)
+				+ putByte(gf.mul(0x0d, byte), 2)
+				+ putByte(gf.mul(0x09, byte), 3)
 		end
 	end
 
@@ -578,9 +578,9 @@ aes = _W(function()
 	--
 	local function subWord(word)
 		return putByte(SBox[getByte(word, 0)], 0)
-				+ putByte(SBox[getByte(word, 1)], 1)
-				+ putByte(SBox[getByte(word, 2)], 2)
-				+ putByte(SBox[getByte(word, 3)], 3)
+			+ putByte(SBox[getByte(word, 1)], 1)
+			+ putByte(SBox[getByte(word, 2)], 2)
+			+ putByte(SBox[getByte(word, 3)], 3)
 	end
 
 	--
@@ -604,9 +604,9 @@ aes = _W(function()
 
 		for i = 0, keyWords - 1 do
 			keySchedule[i] = putByte(key[i * 4 + 1], 3)
-					+ putByte(key[i * 4 + 2], 2)
-					+ putByte(key[i * 4 + 3], 1)
-					+ putByte(key[i * 4 + 4], 0)
+				+ putByte(key[i * 4 + 2], 2)
+				+ putByte(key[i * 4 + 3], 1)
+				+ putByte(key[i * 4 + 4], 0)
 		end
 
 		for i = keyWords, (keySchedule[ROUNDS] + 1) * 4 - 1 do
@@ -642,15 +642,15 @@ aes = _W(function()
 			gf.mul(0x0d, b2)),
 			gf.mul(0x09, b3)),
 			gf.mul(0x0e, b0)), 3)
-				+ putByte(gf.add(gf.add(gf.add(gf.mul(0x0b, b2),
+			+ putByte(gf.add(gf.add(gf.add(gf.mul(0x0b, b2),
 			gf.mul(0x0d, b3)),
 			gf.mul(0x09, b0)),
 			gf.mul(0x0e, b1)), 2)
-				+ putByte(gf.add(gf.add(gf.add(gf.mul(0x0b, b3),
+			+ putByte(gf.add(gf.add(gf.add(gf.mul(0x0b, b3),
 			gf.mul(0x0d, b0)),
 			gf.mul(0x09, b1)),
 			gf.mul(0x0e, b2)), 1)
-				+ putByte(gf.add(gf.add(gf.add(gf.mul(0x0b, b0),
+			+ putByte(gf.add(gf.add(gf.add(gf.mul(0x0b, b0),
 			gf.mul(0x0d, b1)),
 			gf.mul(0x09, b2)),
 			gf.mul(0x0e, b3)), 0)
@@ -675,9 +675,9 @@ aes = _W(function()
 		v = bit.bxor(v, gf.mul(0x04, bit.bxor(b3, b1)))
 
 		return putByte(bit.bxor(bit.bxor(b3, v), gf.mul(0x02, bit.bxor(b0, b3))), 0)
-				+ putByte(bit.bxor(bit.bxor(b2, w), gf.mul(0x02, t)), 1)
-				+ putByte(bit.bxor(bit.bxor(b1, v), gf.mul(0x02, bit.bxor(b0, b3))), 2)
-				+ putByte(bit.bxor(bit.bxor(b0, w), gf.mul(0x02, u)), 3)
+			+ putByte(bit.bxor(bit.bxor(b2, w), gf.mul(0x02, t)), 1)
+			+ putByte(bit.bxor(bit.bxor(b1, v), gf.mul(0x02, bit.bxor(b0, b3))), 2)
+			+ putByte(bit.bxor(bit.bxor(b0, w), gf.mul(0x02, u)), 3)
 	end
 
 	--
@@ -740,24 +740,24 @@ aes = _W(function()
 	--
 	local function doLastRound(origState, dstState)
 		dstState[0] = putByte(SBox[getByte(origState[0], 3)], 3)
-				+ putByte(SBox[getByte(origState[1], 2)], 2)
-				+ putByte(SBox[getByte(origState[2], 1)], 1)
-				+ putByte(SBox[getByte(origState[3], 0)], 0)
+			+ putByte(SBox[getByte(origState[1], 2)], 2)
+			+ putByte(SBox[getByte(origState[2], 1)], 1)
+			+ putByte(SBox[getByte(origState[3], 0)], 0)
 
 		dstState[1] = putByte(SBox[getByte(origState[1], 3)], 3)
-				+ putByte(SBox[getByte(origState[2], 2)], 2)
-				+ putByte(SBox[getByte(origState[3], 1)], 1)
-				+ putByte(SBox[getByte(origState[0], 0)], 0)
+			+ putByte(SBox[getByte(origState[2], 2)], 2)
+			+ putByte(SBox[getByte(origState[3], 1)], 1)
+			+ putByte(SBox[getByte(origState[0], 0)], 0)
 
 		dstState[2] = putByte(SBox[getByte(origState[2], 3)], 3)
-				+ putByte(SBox[getByte(origState[3], 2)], 2)
-				+ putByte(SBox[getByte(origState[0], 1)], 1)
-				+ putByte(SBox[getByte(origState[1], 0)], 0)
+			+ putByte(SBox[getByte(origState[3], 2)], 2)
+			+ putByte(SBox[getByte(origState[0], 1)], 1)
+			+ putByte(SBox[getByte(origState[1], 0)], 0)
 
 		dstState[3] = putByte(SBox[getByte(origState[3], 3)], 3)
-				+ putByte(SBox[getByte(origState[0], 2)], 2)
-				+ putByte(SBox[getByte(origState[1], 1)], 1)
-				+ putByte(SBox[getByte(origState[2], 0)], 0)
+			+ putByte(SBox[getByte(origState[0], 2)], 2)
+			+ putByte(SBox[getByte(origState[1], 1)], 1)
+			+ putByte(SBox[getByte(origState[2], 0)], 0)
 	end
 
 	--
@@ -790,24 +790,24 @@ aes = _W(function()
 	--
 	local function doInvLastRound(origState, dstState)
 		dstState[0] = putByte(iSBox[getByte(origState[0], 3)], 3)
-				+ putByte(iSBox[getByte(origState[3], 2)], 2)
-				+ putByte(iSBox[getByte(origState[2], 1)], 1)
-				+ putByte(iSBox[getByte(origState[1], 0)], 0)
+			+ putByte(iSBox[getByte(origState[3], 2)], 2)
+			+ putByte(iSBox[getByte(origState[2], 1)], 1)
+			+ putByte(iSBox[getByte(origState[1], 0)], 0)
 
 		dstState[1] = putByte(iSBox[getByte(origState[1], 3)], 3)
-				+ putByte(iSBox[getByte(origState[0], 2)], 2)
-				+ putByte(iSBox[getByte(origState[3], 1)], 1)
-				+ putByte(iSBox[getByte(origState[2], 0)], 0)
+			+ putByte(iSBox[getByte(origState[0], 2)], 2)
+			+ putByte(iSBox[getByte(origState[3], 1)], 1)
+			+ putByte(iSBox[getByte(origState[2], 0)], 0)
 
 		dstState[2] = putByte(iSBox[getByte(origState[2], 3)], 3)
-				+ putByte(iSBox[getByte(origState[1], 2)], 2)
-				+ putByte(iSBox[getByte(origState[0], 1)], 1)
-				+ putByte(iSBox[getByte(origState[3], 0)], 0)
+			+ putByte(iSBox[getByte(origState[1], 2)], 2)
+			+ putByte(iSBox[getByte(origState[0], 1)], 1)
+			+ putByte(iSBox[getByte(origState[3], 0)], 0)
 
 		dstState[3] = putByte(iSBox[getByte(origState[3], 3)], 3)
-				+ putByte(iSBox[getByte(origState[2], 2)], 2)
-				+ putByte(iSBox[getByte(origState[1], 1)], 1)
-				+ putByte(iSBox[getByte(origState[0], 0)], 0)
+			+ putByte(iSBox[getByte(origState[2], 2)], 2)
+			+ putByte(iSBox[getByte(origState[1], 1)], 1)
+			+ putByte(iSBox[getByte(origState[0], 0)], 0)
 	end
 
 	--

@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.luaj.vm2.Prototype;
 import org.squiddev.luaj.luajc.CompileOptions;
 import org.squiddev.luaj.luajc.Loader;
+import org.squiddev.luaj.luajc.analysis.block.LivenessTracker;
 import org.squiddev.luaj.luajc.compilation.JavaLoader;
 
 import static org.junit.Assert.assertFalse;

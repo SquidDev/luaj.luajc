@@ -18,18 +18,18 @@ local function z(E, T, A, O) local I = "" local N = type(E)
 if
 N == "table" then local S = A[E]
 if S then I = I .. (T .. "--[[ Object@" .. S .. " ]] { }") ..
-		"\n" else
+	"\n" else
 	S = A.length + 1; A[E] = S; A.length = S; I = I ..
-			(T .. "--[[ Object@" .. S .. " ]] {") .. "\n"
+		(T .. "--[[ Object@" .. S .. " ]] {") .. "\n"
 	for H, R in pairs(E) do
 		if
 		type(H) == "table" then I = I .. (T .. "\t{") .. "\n" I = I ..
-				z(H, T .. "\t\t", A, O) I = I .. z(R, T .. "\t\t", A, O) I = I ..
-				(T .. "\t},") .. "\n" elseif type(R) == "table" then
+			z(H, T .. "\t\t", A, O) I = I .. z(R, T .. "\t\t", A, O) I = I ..
+			(T .. "\t},") .. "\n" elseif type(R) == "table" then
 			I = I .. (T ..
-					"\t[" .. x(H) .. "] = {") .. "\n" I = I .. z(R, T .. "\t\t", A, O)
+				"\t[" .. x(H) .. "] = {") .. "\n" I = I .. z(R, T .. "\t\t", A, O)
 			I = I .. (T .. "\t},") .. "\n" else I = I ..
-				(T .. "\t[" .. x(H) .. "] = " .. x(R) .. ",") .. "\n"
+			(T .. "\t[" .. x(H) .. "] = " .. x(R) .. ",") .. "\n"
 		end
 	end
 	if O then local H = getmetatable(E) if H then
@@ -91,7 +91,7 @@ if F == "wild:" then
 	if M then
 		local W = 0
 		C = ((C:gsub(".", H)):gsub("(%*)", function() W = W + 1; return "%" .. W end)) else C = "^" ..
-			((C:gsub(".", H)):gsub("(%*)", "(.*)")) .. "$"
+		((C:gsub(".", H)):gsub("(%*)", "(.*)")) .. "$"
 	end
 end; return { Type = "Pattern", Text = C } else return { Type = "Normal", Text = C }
 end
@@ -110,7 +110,7 @@ return
 end)
 local i = e(function(j, ...) local x, z = type, pairs; local _ = {}
 function _:update(D) if D then self.fn = D.fn or self.fn; self.options = D.options or
-		self.options
+	self.options
 end
 end
 
@@ -245,7 +245,7 @@ local n = e(function(j, ...)
 		for T, A in pairs(self.settings) do local O = '-' if A.takesValue then O = "--" T =
 		T .. "=value"
 		end; if #T > 1 then O = '--' end; o.WriteColor(colors.white, E ..
-				O .. T) local I = "" local N = A.aliases
+			O .. T) local I = "" local N = A.aliases
 		if N and #N > 0 then
 			local H = #N; I = I .. " (" for R = 1, H do local D = "-" .. N[R] if #D > 2 then D = "-" .. D end
 			if R < H then D = D .. ', ' end; I = I .. D
@@ -425,7 +425,7 @@ local r = e(function(j, ...)
 	if #A > 0 then newArgs = {} for H, R in ipairs(A) do
 		table.insert(newArgs, tostring(R))
 	end; O = " (" ..
-			table.concat(newArgs, ", ") .. ")"
+		table.concat(newArgs, ", ") .. ")"
 	end
 	o.PrintColor(colors.cyan, "Running " .. self.name .. O) local I = os.clock() local N, S = true, nil
 	if T.Traceback then
@@ -474,7 +474,7 @@ end
 
 function x:Default(_) local E
 if _ == nil then self.default = nil elseif type(_) ==
-		"string" then self.default = self.tasks[_] if not self.default then
+	"string" then self.default = self.tasks[_] if not self.default then
 	error("Cannot find task " .. _)
 end else
 	self.default = r.Factory("<default>", {}, _)
@@ -488,7 +488,7 @@ function x:RunMany(_)
 		for O, I in ipairs(_) do T = A:Start(I) end
 	end; if A.ShowTime then
 		o.PrintColor(colors.orange, "Took " ..
-				os.clock() - E .. "s in total")
+			os.clock() - E .. "s in total")
 	end; return T
 end
 
@@ -644,8 +644,8 @@ for N in self:Iterate() do
 		O.writeLine("doFile(" .. S .. ", ...)") elseif N.type == "Resource" then
 		O.writeLine("env[" .. j("%q", H) "] = openFile(" .. S .. ")") elseif H then
 		O.writeLine("env[" ..
-				j("%q", H) .. "] = " ..
-				(N.noWrap and "doFile" or "doWithResult") .. "(" .. S .. ")") else O.writeLine("doFile(" .. S .. ")")
+			j("%q", H) .. "] = " ..
+			(N.noWrap and "doFile" or "doWithResult") .. "(" .. S .. ")") else O.writeLine("doFile(" .. S .. ")")
 	end
 end; if T.traceback then O.writeLine(z) end; O.close()
 end
@@ -660,7 +660,7 @@ i.Subscribe({ "Combiner", "include" }, function(x, z, _, E)
 	if E.verify and z.verify ~= false then
 		local T, A = j(_)
 		if not T then local O = z.path; local I = "Could not load " ..
-				(O and ("file " .. O) or "string") if A ~= "nil" then
+			(O and ("file " .. O) or "string") if A ~= "nil" then
 			I = I .. ":\n" .. A
 		end; return false, I
 		end
@@ -830,11 +830,11 @@ end
 end
 do local j = i.GetChannel { "Combiner" } local x = "_W"
 local z = ("local function " .. x ..
-		[[(f)
-            local e=setmetatable({}, {__index = _ENV or getfenv()})
-            if setfenv then setfenv(f, e) end
-            return f(e) or e
-        end]]):gsub("[\t\n ]+", " ")
+	[[(f)
+		local e=setmetatable({}, {__index = _ENV or getfenv()})
+		if setfenv then setfenv(f, e) end
+		return f(e) or e
+	end]]):gsub("[\t\n ]+", " ")
 function l.Dependencies:Combiner(_, E) E = E or {} local T = self.path; local A = self.shouldExport
 local O, I = loadstring, t.serialize
 local N = fs.open(fs.combine(s.CurrentDirectory, _), "w") assert(N, "Could not create " .. _)
@@ -865,9 +865,9 @@ R(M, L.alias or L.path) if P then R('end') end
 end
 end
 if #D > 0 and #self.mainFiles == 0 then local L = {} for U, C in ipairs(D) do L[#L + 1] = C ..
-		"=" .. C .. ", "
+	"=" .. C .. ", "
 end; R("return {" ..
-		table.concat(L) .. "}")
+	table.concat(L) .. "}")
 end
 j:getChannel("end"):publish({}, self, H, E) N.close()
 end
@@ -881,7 +881,7 @@ do
 	function d.Runner:ListTasks(j, x) local z = {} local _ = 0
 	for E, T in pairs(self.tasks) do local A = E:sub(1, 1)
 	if x or
-			(A ~= "_" and A ~= ".") then local O = T.description or "" local I = #E; if I > _ then _ = I end; z[E] = O
+		(A ~= "_" and A ~= ".") then local O = T.description or "" local I = #E; if I > _ then _ = I end; z[E] = O
 	end
 	end; _ = _ + 2; j = j or "" for E, T in pairs(z) do o.WriteColor(colors.white, j .. E)
 	o.PrintColor(colors.lightGray, string.rep(" ",
@@ -963,7 +963,7 @@ end
 end
 
 function z:GetOldVariable(E) return self:GetOldLocal(E) or
-		self:GetOldGlobal(E)
+	self:GetOldGlobal(E)
 end
 
 function z:RenameVariable(E, T)
@@ -1049,7 +1049,7 @@ return _.Type == 'Keyword' and _.Data == z
 end
 
 function x:IsSymbol(z) local _ = self:Peek() return _.Type ==
-		'Symbol' and _.Data == z
+	'Symbol' and _.Data == z
 end
 
 function x:IsEof() return self:Peek().Type == 'Eof' end
@@ -1069,8 +1069,8 @@ local T = u.Symbols; local A = u.HexDigits; local O = u.Keywords; local I = u.St
 local S = setmetatable; local H = {}
 function H:Print() return
 "<" .. (self.Type ..
-		string.rep(' ', math.max(3, 12 - #self.Type))) .. "  " ..
-		(self.Data or '') .. " >"
+	string.rep(' ', math.max(3, 12 - #self.Type))) .. "  " ..
+	(self.Data or '') .. " >"
 end
 
 ; local R = { __index = H }
@@ -1090,7 +1090,7 @@ end
 
 ; local function G(Q)
 	error(">> :" .. W ..
-			":" .. Y .. ": " .. Q, 0)
+		":" .. Y .. ": " .. Q, 0)
 end
 
 local function K() local Q = F
@@ -1099,7 +1099,7 @@ while V(J + 1) == '=' do J = J + 1 end
 if V(J + 1) == '[' then for ea = 0, J + 1 do P() end; local Z = F
 while true do if V() == '' then
 	G("Expected `]" .. string.rep('=', J) ..
-			"]` near <eof>.", 3)
+		"]` near <eof>.", 3)
 end; local ea = true
 if V() == ']' then for eo = 1, J do
 	if V(eo) ~= '=' then ea = false end
@@ -1136,7 +1136,7 @@ end
 end; if J ~= "" then
 	table.insert(Q, S({ Type = 'Comment', CommentType = X and 'LongComment' or 'Comment', Data = J, Line = W, Char = Y }, R))
 end; local Z = W; local ee = Y; local et = ":" .. W .. ":" ..
-		Y .. ":> " local ea = V() local eo = nil
+	Y .. ":> " local ea = V() local eo = nil
 if ea == '' then
 	eo = { Type = 'Eof' } elseif _[ea] or z[ea] or ea == '_' then local ei = F
 repeat P() ea = V() until not (_[ea] or z[ea] or E[ea] or ea == '_') local en = U:sub(ei, F - 1) if O[en] then eo = { Type = 'Keyword', Data = en } else
@@ -1184,13 +1184,13 @@ end
 local function L(U)
 	local function C(Q)
 		local J = ">> :" .. U:Peek().Line ..
-				":" .. U:Peek().Char .. ": " .. Q .. "\n" local X = 0
+			":" .. U:Peek().Char .. ": " .. Q .. "\n" local X = 0
 		if type(src) == 'string' then
 			for Z in src:gmatch("[^\n]*\n?") do if Z:sub(-1, -1) == '\n' then Z = Z:sub(1,
 				-2)
 			end; X = X + 1
 			if X == U:Peek().Line then J = J .. ">> `" ..
-					Z:gsub('\t', '    ') .. "`\n"
+				Z:gsub('\t', '    ') .. "`\n"
 			for ee = 1, U:Peek().Char
 			do local et = Z:sub(ee, ee) if et == '\t' then J = J .. '    ' else J = J .. ' ' end
 			end; J = J .. "   ^^^^" break
@@ -1381,7 +1381,7 @@ local function L(U)
 	U:ConsumeSymbol(',', X) do et[#et + 1] = M(Q)
 	end
 	J = { AstType = 'AssignmentStatement', Lhs = ee, Rhs = et, Tokens = X } elseif Z.AstType == 'CallExpr' or Z.AstType == 'TableCallExpr' or
-			Z.AstType == 'StringCallExpr' then
+		Z.AstType == 'StringCallExpr' then
 		J = { AstType = 'CallStatement', Expression = Z, Tokens = X } else C("Assignment Statement Expected")
 	end
 	end
@@ -1419,22 +1419,22 @@ H = function(U, C) local C = C or 0; local M = 0; local F = false; local W = ""
 if
 U.AstType == 'VarExpr' then
 	if U.Variable then W = W .. U.Variable.Name else W = W .. U.Name end elseif U.AstType == 'NumberExpr' then W = W .. U.Value.Data elseif U.AstType == 'StringExpr' then W = W ..
-		U.Value.Data elseif U.AstType == 'BooleanExpr' then
+	U.Value.Data elseif U.AstType == 'BooleanExpr' then
 	W = W .. tostring(U.Value) elseif U.AstType == 'NilExpr' then W = D(W, "nil") elseif U.AstType == 'BinopExpr' then
 	M = U.OperatorPrecedence; W = D(W, H(U.Lhs, M)) W = D(W, U.Op) W = D(W, H(U.Rhs)) if U.Op == '^' or U.Op ==
-			'..' then M = M - 1
+		'..' then M = M - 1
 	end; if M < C then F = false else F = true end elseif
 U.AstType == 'UnopExpr' then W = D(W, U.Op) W = D(W, H(U.Rhs)) elseif U.AstType == 'DotsExpr' then W = W ..
-		"..." elseif U.AstType == 'CallExpr' then W = W .. H(U.Base) W = W .. "(" for Y = 1, #U.Arguments do W =
+	"..." elseif U.AstType == 'CallExpr' then W = W .. H(U.Base) W = W .. "(" for Y = 1, #U.Arguments do W =
 W .. H(U.Arguments[Y])
 if Y ~= #U.Arguments then W = W .. "," end
 end; W = W .. ")" elseif
 U.AstType == 'TableCallExpr' then W = W .. H(U.Base) W = W .. H(U.Arguments[1]) elseif U.AstType ==
-		'StringCallExpr' then W = W .. H(U.Base)
+	'StringCallExpr' then W = W .. H(U.Base)
 W = W .. U.Arguments[1].Data elseif U.AstType == 'IndexExpr' then W = W ..
-		H(U.Base) .. "[" .. H(U.Index) .. "]" elseif U.AstType == 'MemberExpr' then W = W .. H(U.Base) .. U.Indexer ..
-		U.Ident.Data elseif U.AstType ==
-		'Function' then U.Scope:ObfuscateLocals() W = W .. "function("
+	H(U.Base) .. "[" .. H(U.Index) .. "]" elseif U.AstType == 'MemberExpr' then W = W .. H(U.Base) .. U.Indexer ..
+	U.Ident.Data elseif U.AstType ==
+	'Function' then U.Scope:ObfuscateLocals() W = W .. "function("
 if #U.Arguments > 0 then for Y = 1, #U.Arguments do W = W .. U.Arguments[Y].Name
 if Y ~= #U.Arguments then W = W .. "," elseif U.VarArg then W = W .. ",..." end
 end elseif U.VarArg then
@@ -1443,9 +1443,9 @@ end; W = W .. ")" W = D(W, S(U.Body)) W = D(W, "end") elseif
 U.AstType == 'ConstructorExpr' then W = W .. "{"
 for Y = 1, #U.EntryList do local P = U.EntryList[Y]
 if P.Type == 'Key' then W = W .. "[" .. H(P.Key) .. "]=" ..
-		H(P.Value) elseif
+	H(P.Value) elseif
 P.Type == 'Value' then W = W .. H(P.Value) elseif P.Type == 'KeyString' then W = W .. P.Key ..
-		"=" .. H(P.Value)
+	"=" .. H(P.Value)
 end; if Y ~= #U.EntryList then W = W .. "," end
 end; W = W .. "}" elseif U.AstType == 'Parentheses' then
 	W = W .. "(" .. H(U.Inner) .. ")"
@@ -1493,7 +1493,7 @@ C = D(C, S(U.Body)) C = D(C, "until") C = D(C, H(U.Condition)) elseif U.AstType 
 		end elseif U.VarArg then C = C .. "..."
 	end; C = C .. ")" C = D(C, S(U.Body)) C = D(C, "end") elseif
 U.AstType == 'GenericForStatement' then U.Scope:ObfuscateLocals() C = "for " for M = 1, #U.VariableList do C = C ..
-		U.VariableList[M].Name
+	U.VariableList[M].Name
 if M ~= #U.VariableList then C = C .. "," end
 end; C = C .. " in"
 for M = 1, #U.Generators do
@@ -1501,11 +1501,11 @@ for M = 1, #U.Generators do
 end; C = D(C, "do") C = D(C, S(U.Body)) C = D(C, "end") elseif
 U.AstType == 'NumericForStatement' then U.Scope:ObfuscateLocals() C = "for "
 C = C .. U.Variable.Name .. "=" C = C .. H(U.Start) .. "," .. H(U.End) if U.Step then C = C .. "," ..
-		H(U.Step)
+	H(U.Step)
 end; C = D(C, "do")
 C = D(C, S(U.Body)) C = D(C, "end") elseif U.AstType == 'LabelStatement' then
 	C = "::" .. U.Label .. "::" elseif U.AstType == 'GotoStatement' then C = "goto " .. U.Label elseif U.AstType == 'Comment' then elseif U.AstType ==
-		'Eof' then else
+	'Eof' then else
 	error("Unknown AST Type: " .. U.AstType)
 end; R = R + #C; return C
 end
@@ -1537,7 +1537,7 @@ function d.Runner:Minify(z, _, E, T)
 			assert(A == #E, "Tables must be the same length") for O = 1, A do j(_[O], E[O]) end else j(_, E)
 		end
 	end):Description("Minifies '" ..
-			fs.getName(_) .. "' into '" .. fs.getName(E) .. "'"):Requires(_):Produces(E)
+		fs.getName(_) .. "' into '" .. fs.getName(E) .. "'"):Requires(_):Produces(E)
 end
 
 function d.Runner:MinifyAll(z, _, E) z = z or "_minify" return
@@ -1825,7 +1825,7 @@ end
 		for S, U in pairs(L) do local C = D[U] if not C then C = {} D[U] = C end; D = C end; D[fs.getName(N)] = R
 	end
 	local O = j .. "local files = " .. t.serialize(A) ..
-			"\n" .. string.format(x, self.startup, self.startup) if _.minify then O = w.MinifyString(O) end
+		"\n" .. string.format(x, self.startup, self.startup) if _.minify then O = w.MinifyString(O) end
 	local I = fs.open(fs.combine(s.CurrentDirectory, z), "w") I.write(O) I.close()
 	end
 
@@ -1862,7 +1862,7 @@ function d.Runner:Busted(H, R, D)
 	return
 	self:AddTask(H, D, function() local T
 	if R and R.busted then T = I(R.busted) else T = N() end; if not T then error("Cannot find busted") end; local L = S() for M, F in pairs(R or
-			{}) do L[M] = F
+		{}) do L[M] = F
 	end; local U, C = T.run(L, S())
 	if U ~= 0 then
 		o.VerboseLog(messages) error("Not all tests passed")
@@ -1879,7 +1879,7 @@ p:Option "trace":Description "Print a stack trace on errors"
 p:Option "help":Alias "?":Alias "h":Description "Print this help" local g, k = s.FindHowl()
 if not g then
 	if p:Get("help") or
-			(#b == 1 and b[1] == "help") then o.PrintColor(colors.yellow, "Howl")
+		(#b == 1 and b[1] == "help") then o.PrintColor(colors.yellow, "Howl")
 	o.PrintColor(colors.lightGrey, "Howl is a simple build system for Lua")
 	o.PrintColor(colors.grey, "You can read the full documentation online: https://github.com/SquidDev-CC/Howl/wiki/")
 	o.PrintColor(colors.white, (([[

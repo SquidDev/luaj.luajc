@@ -268,7 +268,7 @@ public final class AnalysisBuilder {
 						int c = Lua.GETARG_C(ins);
 						pcVar[a].reference(pc);
 
-						int max = b == 0 ? info.prototype.maxstacksize : a + b;
+						int max = b == 0 ? nStack : a + b;
 						for (int i = a + 1; i < max; i++) {
 							VarInfo info = pcVar[i];
 							if (info == VarInfo.INVALID) break;
@@ -289,7 +289,7 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						pcVar[a].reference(pc);
 
-						int max = b == 0 ? info.prototype.maxstacksize : a + b;
+						int max = b == 0 ? nStack : a + b;
 						for (int i = a + 1; i < max; i++) {
 							VarInfo info = pcVar[i];
 							if (info == VarInfo.INVALID) break;
@@ -302,7 +302,7 @@ public final class AnalysisBuilder {
 					{
 						int a = Lua.GETARG_A(ins);
 						int b = Lua.GETARG_B(ins);
-						int max = b == 0 ? info.prototype.maxstacksize : a + b - 1;
+						int max = b == 0 ? nStack : a + b - 1;
 						for (int i = a; i < max; i++) {
 							VarInfo info = pcVar[i];
 							if (info == VarInfo.INVALID) break;
@@ -361,7 +361,7 @@ public final class AnalysisBuilder {
 						int b = Lua.GETARG_B(ins);
 						pcVar[a].reference(pc);
 
-						int max = b == 0 ? info.prototype.maxstacksize : a + b + 1;
+						int max = b == 0 ? nStack : a + b + 1;
 						for (int i = a + 1; i < max; i++) {
 							VarInfo info = pcVar[i];
 							if (info == VarInfo.INVALID) break;
@@ -393,7 +393,7 @@ public final class AnalysisBuilder {
 						break;
 
 					default:
-						throw new IllegalStateException("unhandled opcode: " + ins);
+						throw new IllegalStateException("unhandled opcode: " + Lua.GET_OPCODE(op));
 				}
 			}
 		}

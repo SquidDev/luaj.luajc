@@ -25,7 +25,6 @@
 package org.squiddev.luaj.luajc.analysis;
 
 import org.luaj.vm2.LuaValue;
-import org.squiddev.luaj.luajc.analysis.block.BasicBlock;
 import org.squiddev.luaj.luajc.analysis.type.BasicType;
 import org.squiddev.luaj.luajc.analysis.type.TypeInfo;
 import org.squiddev.luaj.luajc.utils.IntArray;
