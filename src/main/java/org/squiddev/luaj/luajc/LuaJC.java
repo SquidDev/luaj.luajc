@@ -73,7 +73,7 @@ public class LuaJC implements LoadState.LuaCompiler {
 	public LuaFunction load(InputStream stream, String name, LuaValue env) throws IOException {
 		Prototype p = LuaC.compile(stream, name);
 
-		JavaLoader loader = new JavaLoader(LuaJC.class.getClassLoader(), options, toStandardJavaClassName(name), name);
+		JavaLoader loader = new JavaLoader(LuaJC.class.getClassLoader(), options, toClassName(name), name);
 		try {
 			return loader.load(env, p);
 		} catch (IOException e) {
@@ -83,7 +83,7 @@ public class LuaJC implements LoadState.LuaCompiler {
 		}
 	}
 
-	private static String toStandardJavaClassName(String chunkName) {
+	public static String toClassName(String chunkName) {
 		String stub = (chunkName.endsWith(".lua") ? chunkName.substring(0, chunkName.length() - 4) : chunkName);
 		String className = stub.replace('/', '.').replaceAll(NON_IDENTIFIER, "_");
 

@@ -543,7 +543,7 @@ local l = 256
 local str = ""
 for i = 1, l do
 	str = str ..
-			string.char(math.random(128))
+		string.char(math.random(128))
 end
 local sha = sha256.sha256
 local hsh = Test.New("hsh", "Math", maxCalls, maxTime, true, sha, str)

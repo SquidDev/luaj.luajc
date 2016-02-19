@@ -65,6 +65,18 @@ public final class IntArray {
 		return false;
 	}
 
+	public void set(int index, int value) {
+		values[index] = value;
+	}
+
+	public int get(int index) {
+		return values[index];
+	}
+
+	public int[] toArray() {
+		return Arrays.copyOf(values, size);
+	}
+
 	@Override
 	public String toString() {
 		return Arrays.toString(values);
