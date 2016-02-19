@@ -3,18 +3,32 @@ package org.squiddev.luaj.luajc.utils;
 import org.luaj.vm2.*;
 
 import java.io.PrintStream;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Dumps the contents of a Lua prototype to a readable format
  */
 public final class DumpInstructions {
-	protected static final String[] OPCODE_NAMES = {
+	public static final String[] OPCODE_NAMES = {
 		"MOVE", "LOADK", "LOADBOOL", "LOADNIL", "GETUPVAL", "GETGLOBAL",
 		"GETTABLE", "SETGLOBAL", "SETUPVAL", "SETTABLE", "NEWTABLE", "SELF",
 		"ADD", "SUB", "MUL", "DIV", "MOD", "POW", "UNM", "NOT", "LEN", "CONCAT",
 		"JMP", "EQ", "LT", "LE", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN",
 		"FORLOOP", "FORPREP", "TFORLOOP", "SETLIST", "CLOSE", "CLOSURE", "VARARG",
 	};
+
+	public static final Map<String, Integer> OPCODES;
+
+	static {
+		Map<String, Integer> opcodes = new HashMap<String, Integer>();
+		for (int i = 0; i < OPCODE_NAMES.length; i++) {
+			opcodes.put(OPCODE_NAMES[i], i);
+		}
+
+		OPCODES = Collections.unmodifiableMap(opcodes);
+	}
 
 	public enum ArgType {
 		Unused,
@@ -23,10 +37,11 @@ public final class DumpInstructions {
 		Constant,
 		ConstantOrRegister,
 		Upvalue,
+		Closure,
 		JumpDistance,
 	}
 
-	protected static final ArgType[][] ARG_TYPES = {
+	public static final ArgType[][] ARG_TYPES = {
 		new ArgType[]{ArgType.Register, ArgType.Register, ArgType.Unused}, // OP_MOVE
 		new ArgType[]{ArgType.Register, ArgType.Constant, ArgType.Unused}, // OP_LOADK
 		new ArgType[]{ArgType.Register, ArgType.General, ArgType.General}, // OP_LOADBOOL
@@ -63,7 +78,7 @@ public final class DumpInstructions {
 		new ArgType[]{ArgType.Register, ArgType.JumpDistance, ArgType.General}, // OP_TFORLOOP
 		new ArgType[]{ArgType.Register, ArgType.General, ArgType.General}, // OP_SETLIST
 		new ArgType[]{ArgType.Register, ArgType.Unused, ArgType.Unused}, // OP_CLOSE
-		new ArgType[]{ArgType.Register, ArgType.General, ArgType.Unused}, // OP_CLOSURE
+		new ArgType[]{ArgType.Register, ArgType.Closure, ArgType.Unused}, // OP_CLOSURE
 		new ArgType[]{ArgType.Register, ArgType.Register, ArgType.Unused}, // OP_VARARG
 	};
 
@@ -99,15 +114,6 @@ public final class DumpInstructions {
 		write(".options " + chunk.nups + " " + chunk.numparams + " " + chunk.is_vararg + " " + chunk.maxstacksize);
 		write("; Above contains: Upvalue count, Argument count, Vararg flag, Max Stack Size");
 		write();
-
-		if (chunk.k.length > 0) {
-			write("; Constants");
-			for (LuaValue k : chunk.k) {
-				write(".const " + formatConstant(k));
-			}
-
-			write();
-		}
 
 		if (chunk.locvars.length > 0) {
 			write("; Locals");
@@ -189,7 +195,7 @@ public final class DumpInstructions {
 		} else if (type == ArgType.Upvalue) {
 			return "up-" + arg + "";
 		} else if (type == ArgType.JumpDistance) {
-			return "+" + arg;
+			return "^" + arg;
 		} else if (type == ArgType.Unused) {
 			return "";
 		}

@@ -7,20 +7,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.luaj.vm2.LoadState;
 import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
 import org.luaj.vm2.compiler.LuaC;
-import org.luaj.vm2.lib.ThreeArgFunction;
-import org.luaj.vm2.lib.VarArgFunction;
-import org.luaj.vm2.lib.jse.JseBaseLib;
-import org.luaj.vm2.lib.jse.JsePlatform;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
-
-import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 public class CompilerTest {
@@ -108,19 +98,9 @@ public class CompilerTest {
 
 	@Before
 	public void setup() {
-		globals = JsePlatform.debugGlobals();
-
-		JseBaseLib lib = new JseBaseLib();
-		lib.STDOUT = new PrintStream(new OutputStream() {
-			@Override
-			public void write(int b) throws IOException {
-			}
-		});
-
-		globals.load(lib);
-		globals.set("assertEquals", new AssertFunction());
-		globals.set("assertMany", new AssertManyFunction());
+		globals = LuaEnv.makeGlobals();
 	}
+
 
 	/**
 	 * Test the {@link LuaJC} compiler.
@@ -160,36 +140,5 @@ public class CompilerTest {
 
 	protected void run() throws Exception {
 		LoadState.load(Loader.load(name), name + ".lua", globals).invoke();
-	}
-
-	private class AssertFunction extends ThreeArgFunction {
-		@Override
-		public LuaValue call(LuaValue expected, LuaValue actual, LuaValue message) {
-			String msg = message.toString();
-			if (message.isnil()) {
-				msg = "(No message)";
-			}
-
-			assertEquals(msg, expected.tojstring(), actual.tojstring());
-			assertEquals(msg, expected.typename(), actual.typename());
-
-			return LuaValue.NONE;
-		}
-	}
-
-	private class AssertManyFunction extends VarArgFunction {
-		@Override
-		public Varargs invoke(Varargs args) {
-			int nArgs = args.narg() / 2;
-			for (int i = 1; i <= nArgs; i++) {
-				LuaValue expected = args.arg(i);
-				LuaValue actual = args.arg(i + nArgs);
-
-				assertEquals("Type mismatch at arg #" + i, expected.typename(), actual.typename());
-				assertEquals("Value mismatch at arg #" + i, expected.tojstring(), actual.tojstring());
-			}
-
-			return LuaValue.NONE;
-		}
 	}
 }
