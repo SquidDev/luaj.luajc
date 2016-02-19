@@ -12,7 +12,7 @@ public class Lexer {
 	static {
 		Collections.addAll(keywords,
 			".const", ".local", ".name", ".options", ".local", ".upval", ".upvalue",
-			".stacksize", ".maxstacksize", ".vararg", ".function", ".func", ".end",
+			".stack", ".maxstack", ".vararg", ".function", ".func", ".end",
 			".params", ".args", ".arguments", ".argcount",
 			"true", "false", "nil", "null"
 		);

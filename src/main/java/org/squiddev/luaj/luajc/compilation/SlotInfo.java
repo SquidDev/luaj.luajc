@@ -3,8 +3,7 @@ package org.squiddev.luaj.luajc.compilation;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
-import static org.squiddev.luaj.luajc.Constants.PREFIX_LOCAL_SLOT;
-import static org.squiddev.luaj.luajc.Constants.TYPE_LUAVALUE;
+import static org.squiddev.luaj.luajc.Constants.*;
 
 /**
  * Tracks information in a slot
@@ -26,7 +25,7 @@ public final class SlotInfo {
 		}
 
 		if (upvalueSlot >= 0) {
-			visitor.visitLocalVariable(PREFIX_LOCAL_SLOT + "_" + luaSlot, TYPE_LUAVALUE, null, start, end, upvalueSlot);
+			visitor.visitLocalVariable(PREFIX_UPVALUE_SLOT + "_" + luaSlot, TYPE_UPVALUE, null, start, end, upvalueSlot);
 		}
 	}
 }

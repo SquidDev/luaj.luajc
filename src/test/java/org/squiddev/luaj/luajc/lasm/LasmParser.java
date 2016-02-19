@@ -55,8 +55,6 @@ public final class LasmParser {
 				Integer target = labels.get(jump.label);
 				if (target == null) throw new RuntimeException("No such label " + jump.label);
 
-				System.out.println("Jump from " + jump.pc + " to " + target);
-
 				code.set(jump.pc, LuaC.SETARG_sBx(code.get(jump.pc), target - jump.pc - 1));
 			}
 
