@@ -66,6 +66,11 @@ public class StringLibTest implements ResourceFinder {
 		loadScript("strings").call();
 	}
 
+	@Test
+	public void testStringMisc() throws Exception {
+		loadScript("stringMisc").call();
+	}
+
 	//region Loading
 	/**
 	 * Runs a test and compares the output

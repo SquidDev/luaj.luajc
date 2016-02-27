@@ -151,7 +151,7 @@ local function trylocale (w)
   end
   return false
 end
-
+--[[ 
 if not trylocale("collate")  then
   print("locale not supported")
 else
@@ -166,7 +166,7 @@ else
   assert(string.gsub("·¡È…", "%u", "x") == "·xÈx")
   assert(string.upper"·¡È{xuxu}Á„o" == "¡¡…{XUXU}«√O")
 end
-
+]]
 os.setlocale("C")
 assert(os.setlocale() == 'C')
 assert(os.setlocale(nil, "numeric") == 'C')

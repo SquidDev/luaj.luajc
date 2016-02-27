@@ -416,6 +416,8 @@ public class StringLib extends OneArgFunction {
 						precision = precision * 10 + (c - '0');
 						c = ((p < n) ? strfrmt.luaByte(p++) : 0);
 					}
+				} else {
+					precision = 0;
 				}
 			}
 
@@ -505,9 +507,20 @@ public class StringLib extends OneArgFunction {
 			}
 		}
 
-		public void format(Buffer buf, double x) {
-			// TODO
-			buf.append(String.valueOf(x));
+		public void format(Buffer buf, double number) {
+			StringBuilder format = new StringBuilder("%");
+			if (explicitPlus) format.append("+");
+			if (space) format.append(" ");
+			if (width >= 0) {
+				if (leftAdjust) format.append("-");
+				if (zeroPad) format.append("0");
+				format.append(width);
+			}
+
+			format.append('.').append(precision >= 0 ? precision : 6);
+			format.append((char) conversion);
+
+			buf.append(String.format(format.toString(), number));
 		}
 
 		public void format(Buffer buf, LuaString s) {
@@ -515,7 +528,18 @@ public class StringLib extends OneArgFunction {
 			if (nullindex != -1) {
 				s = s.substring(0, nullindex);
 			}
+
+			if (precision >= 0 && s.length() > precision) {
+				s = s.substring(0, precision);
+			}
+
+			int minwidth = s.length();
+			int nspaces = width > minwidth ? width - minwidth : 0;
+			if (!leftAdjust) pad(buf, ' ', nspaces);
+
 			buf.append(s);
+
+			if (leftAdjust) pad(buf, ' ', nspaces);
 		}
 
 		public static void pad(Buffer buf, char c, int n) {
@@ -574,7 +598,9 @@ public class StringLib extends OneArgFunction {
 				int res = ms.match(soffset, 0);
 				if (res >= 0) {
 					int soff = soffset;
+
 					soffset = res;
+					if (res == soff) soffset++;
 					return ms.push_captures(true, soff, res);
 				}
 			}
@@ -868,6 +894,7 @@ public class StringLib extends OneArgFunction {
 		CHAR_TABLE['\t'] |= MASK_SPACE;
 		CHAR_TABLE[0x0C /* '\v' */] |= MASK_SPACE;
 		CHAR_TABLE['\f'] |= MASK_SPACE;
+		CHAR_TABLE[11] |= MASK_SPACE;
 	}
 
 	static class MatchState {
@@ -1255,7 +1282,7 @@ public class StringLib extends OneArgFunction {
 			if (poff == plen || poff + 1 == plen) {
 				error("unbalanced pattern");
 			}
-			if (s.luaByte(soff) != p.luaByte(poff)) {
+			if (soff >= s.length() || s.luaByte(soff) != p.luaByte(poff)) {
 				return -1;
 			} else {
 				int b = p.luaByte(poff);
