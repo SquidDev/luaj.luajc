@@ -816,6 +816,8 @@ public class StringLib extends OneArgFunction {
 		if (fastMatch) {
 			int result = s.indexOf(pat, init);
 			if (result != -1) {
+				// indexOf is broken and includes m_offset
+				result -= s.m_offset;
 				return varargsOf(valueOf(result + 1), valueOf(result + pat.length()));
 			}
 		} else {

@@ -53,3 +53,7 @@ for _, i in ipairs(chars) do
 	assert(string.char(i):find("%s"), "Expected whitespace for " .. i)
 end
 
+-- string.find
+local start, finish = ("--foo=bar"):match("%-%-(.+)"):find("=")
+assert(start == 4, "expected 4, got " .. start)
+assert(finish == 4, "expected 4, got " .. finish)
