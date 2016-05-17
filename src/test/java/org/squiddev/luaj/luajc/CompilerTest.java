@@ -30,6 +30,7 @@ public class CompilerTest {
 			{"lua/Error"},
 			{"lua/Function"},
 			{"lua/LoadBytecode"},
+			{"lua/MakeError"},
 			{"lua/NForLoop"},
 			{"lua/NilCallReturn"},
 			{"lua/Recursive"},

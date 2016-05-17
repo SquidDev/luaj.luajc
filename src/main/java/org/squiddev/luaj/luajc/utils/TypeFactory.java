@@ -1,12 +1,16 @@
-package org.squiddev.luaj.luajc.upvalue;
+package org.squiddev.luaj.luajc.utils;
 
+import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
+import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
+import org.squiddev.luaj.luajc.upvalue.ProxyUpvalue;
+import org.squiddev.luaj.luajc.upvalue.ReferenceUpvalue;
 
 /**
  * A static factory class for creating upvalues
  */
-public final class UpvalueFactory {
-	private UpvalueFactory() {
+public final class TypeFactory {
+	private TypeFactory() {
 	}
 
 	/**
@@ -45,5 +49,15 @@ public final class UpvalueFactory {
 	 */
 	public static ProxyUpvalue proxy(AbstractUpvalue upvalue) {
 		return new ProxyUpvalue(upvalue);
+	}
+
+	/**
+	 * Wrap an exception
+	 *
+	 * @param e The exception to wrap
+	 * @return The wrapped exception
+	 */
+	public static LuaError wrapException(Exception e) {
+		return new LuaError(e);
 	}
 }

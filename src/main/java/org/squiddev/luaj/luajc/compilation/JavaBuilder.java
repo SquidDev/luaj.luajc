@@ -77,8 +77,9 @@ public final class JavaBuilder {
 	private int varargsLocal = -1;
 
 	// Labels for locals
-	private final Label start;
-	private final Label end;
+	private final Label start = new Label();
+	private final Label end = new Label();
+	private final Label handler = new Label();
 
 	// the superclass arg count, 0-3 args, 4=varargs
 	private final FunctionType superclass;
@@ -156,11 +157,6 @@ public final class JavaBuilder {
 		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, EXECUTE_NAME, superType.signature, null, null);
 		main.visitCode();
 
-		// Beginning and end of methods for visitors
-		start = new Label();
-		end = new Label();
-		main.visitLabel(start);
-
 		// On method call, store callstack in slot
 		callStackSlot = ++maxLocals;
 		main.visitVarInsn(ALOAD, 1);
@@ -192,6 +188,13 @@ public final class JavaBuilder {
 
 		// Initialize the values in the slots
 		initializeSlots();
+
+		// Beginning for variable names
+		// Also for try catch block
+		main.visitTryCatchBlock(start, end, end, "org/luaj/vm2/LuaError");
+		main.visitTryCatchBlock(start, end, handler, "java/lang/Exception");
+		main.visitTryCatchBlock(start, end, end, null);
+		main.visitLabel(start);
 
 		{
 			// Generate a label for every instruction
@@ -260,6 +263,16 @@ public final class JavaBuilder {
 
 		// Finish main function
 		main.visitLabel(end);
+		main.visitVarInsn(ALOAD, callStackSlot);
+		METHOD_ONRETURN.inject(main);
+		main.visitInsn(ATHROW);
+
+		main.visitLabel(handler);
+		METHOD_WRAP_ERROR.inject(main);
+		main.visitVarInsn(ALOAD, callStackSlot);
+		METHOD_ONRETURN.inject(main);
+		main.visitInsn(ATHROW);
+
 		main.visitMaxs(0, 0);
 
 		// Add upvalue & local value slot names

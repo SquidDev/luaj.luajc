@@ -7,8 +7,8 @@ import org.squiddev.luaj.luajc.analysis.ProtoInfo;
 import org.squiddev.luaj.luajc.function.FunctionWrapper;
 import org.squiddev.luaj.luajc.function.executors.*;
 import org.squiddev.luaj.luajc.upvalue.AbstractUpvalue;
-import org.squiddev.luaj.luajc.upvalue.UpvalueFactory;
 import org.squiddev.luaj.luajc.utils.TinyMethod;
+import org.squiddev.luaj.luajc.utils.TypeFactory;
 
 /**
  * Various constants for the builder
@@ -122,12 +122,13 @@ public final class Constants {
 	public static final TinyMethod METHOD_TO_CHARARRAY = new TinyMethod(String.class, "toCharArray");
 	public static final TinyMethod METHOD_RAWSET = new TinyMethod(LuaValue.class, "rawset", int.class, LuaValue.class);
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(LuaValue.class, "rawsetlist", int.class, Varargs.class);
+	public static final TinyMethod METHOD_WRAP_ERROR = new TinyMethod(TypeFactory.class, "wrapException", Exception.class);
 
 	// Upvalue creation
-	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(UpvalueFactory.class, "emptyUpvalue");
-	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(UpvalueFactory.class, "nilUpvalue");
-	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(UpvalueFactory.class, "valueUpvalue", LuaValue.class);
-	public static final TinyMethod METHOD_NEW_UPVALUE_PROXY = new TinyMethod(UpvalueFactory.class, "proxy", AbstractUpvalue.class);
+	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(TypeFactory.class, "emptyUpvalue");
+	public static final TinyMethod METHOD_NEW_UPVALUE_NIL = new TinyMethod(TypeFactory.class, "nilUpvalue");
+	public static final TinyMethod METHOD_NEW_UPVALUE_VALUE = new TinyMethod(TypeFactory.class, "valueUpvalue", LuaValue.class);
+	public static final TinyMethod METHOD_NEW_UPVALUE_PROXY = new TinyMethod(TypeFactory.class, "proxy", AbstractUpvalue.class);
 
 	// Upvalue modification
 	public static final TinyMethod METHOD_SET_UPVALUE = new TinyMethod(AbstractUpvalue.class, "setUpvalue", LuaValue.class);

@@ -3,6 +3,7 @@ package org.squiddev.luaj.luajc;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
+import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JseBaseLib;
@@ -37,6 +38,7 @@ public class LuaEnv {
 		}
 		globals.set("assertEquals", new AssertFunction());
 		globals.set("assertMany", new AssertManyFunction());
+		globals.set("makeError", new MakeErrorFunction());
 
 		return globals;
 	}
@@ -69,6 +71,13 @@ public class LuaEnv {
 			}
 
 			return LuaValue.NONE;
+		}
+	}
+
+	public static class MakeErrorFunction extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			throw new RuntimeException(arg.optjstring("An error happened"));
 		}
 	}
 
