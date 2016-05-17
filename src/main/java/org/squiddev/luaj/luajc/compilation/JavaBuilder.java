@@ -462,7 +462,7 @@ public final class JavaBuilder {
 		switch (o) {
 			default:
 			case Lua.OP_UNM:
-				op = "min";
+				op = "neg";
 				break;
 			case Lua.OP_NOT:
 				op = "not";

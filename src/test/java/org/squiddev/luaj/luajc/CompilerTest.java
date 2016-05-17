@@ -39,6 +39,7 @@ public class CompilerTest {
 			{"lua/StringDump"},
 			{"lua/TailCall"},
 			{"lua/TailRecursion"},
+			{"lua/UnaryMinus"},
 			{"lua/UpvalueArgument"},
 			{"lua/Upvalues"},
 			{"lua/WhileLoop"},
