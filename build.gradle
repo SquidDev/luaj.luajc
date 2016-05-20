@@ -11,10 +11,16 @@ sourceCompatibility = 1.6
 
 repositories {
 	mavenCentral()
+
+	maven {
+		name = "squiddev"
+		url = "https://dl.bintray.com/squiddev/maven"
+	}
 }
 
 dependencies {
 	compile group: 'org.ow2.asm', name: 'asm-debug-all', version: '5.+'
+	compile 'org.squiddev:Cobalt:0.1.7'
 	compile group: 'org.luaj', name: 'luaj-jse', version: '2.+'
 
 	testCompile group: 'junit', name: 'junit', version: '4.+'
@@ -39,13 +45,13 @@ bintray {
 	publications = ['mavenJava']
 	pkg {
 		repo = 'maven'
-		name = 'luaj.luajc'
+		name = 'cobalt.luajc'
 		licenses = ['MIT']
-		vcsUrl = 'https://github.com/SquidDev/luaj.luajc'
+		vcsUrl = 'https://github.com/SquidDev/cobalt.luajc'
 
 		version {
 			name = project.version
-			desc = 'LuaJ\'s LuaJC ported to the ASM framework'
+			desc = 'Lua to Java compiler for Cobalt'
 			released = new Date()
 		}
 	}
@@ -74,7 +80,7 @@ gradle.projectsEvaluated {
 }
 
 task executeProfile(type: JavaExec) {
-	main = "org.squiddev.luaj.luajc.PerformanceRunner"
+	main = "org.squiddev.cobalt.luajc.PerformanceRunner"
 	args = ["--prompt", "--luac"]
 	classpath = sourceSets.test.runtimeClasspath
 	standardInput = System.in

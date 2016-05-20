@@ -35,14 +35,14 @@ repositories {
 }
 
 dependencies {
-	compile 'org.squiddev:luaj.luajc:1.+'
+	compile 'org.squiddev:cobalt.luajc:1.+'
 }
 ```
 
 Then install it as a compiler after setting up the globals.
 
 ```java
-import org.squiddev.luaj.luajc.LuaJC;
+import org.squiddev.cobalt.luajc.LuaJC;
 
 public LuaValue load(InputStream stream, String name) throws IOException {
 	LuaValue globals = JsePlatform.debugGlobals();
