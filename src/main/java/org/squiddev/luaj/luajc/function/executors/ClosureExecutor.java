@@ -21,7 +21,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(FunctionWrapper function) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(function);
 		}
 
@@ -37,7 +37,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(function, arg);
 		}
 
@@ -60,7 +60,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg1, LuaValue arg2) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(function, arg1, arg2);
 		}
 
@@ -87,7 +87,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(FunctionWrapper function, LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(function, arg1, arg2, arg3);
 		}
 
@@ -119,7 +119,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final Varargs execute(FunctionWrapper function, Varargs varargs) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(function, varargs);
 		}
 

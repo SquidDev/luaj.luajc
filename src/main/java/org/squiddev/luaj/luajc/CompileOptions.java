@@ -15,6 +15,16 @@ public class CompileOptions {
 	public static final int THRESHOLD = 10;
 
 	/**
+	 * Default value for {@link #maximumCount}
+	 */
+	public static final int MAXIMUM_COUNT = 2000;
+
+	/**
+	 * Default value for {@link #threadedThreshold}
+	 */
+	public static final int THREADED_THRESHOLD = 500;
+
+	/**
 	 * The prefix for all classes in slash form
 	 */
 	public final String prefix;
@@ -30,6 +40,20 @@ public class CompileOptions {
 	 * 0 or less compiles when loaded
 	 */
 	public final int compileThreshold;
+
+	/**
+	 * Maximum number of instructions that can be compiled.
+	 * This is to prevent there being more than 16384 (64kb) Java instructions.
+	 * Set to 0 or less to have no maximum.
+	 */
+	public final int maximumCount;
+
+	/**
+	 * Number of instructions before compilation is delegated to a thread.
+	 * This prevents delays when compiling.
+	 * Set to 0 or less to never delegate in a thread.
+	 */
+	public final int threadedThreshold;
 
 	/**
 	 * Verify the compiled sources
@@ -54,12 +78,35 @@ public class CompileOptions {
 	public CompileOptions(String prefix, int compileThreshold, boolean verify, ErrorHandler handler) {
 		this.prefix = prefix;
 		this.compileThreshold = compileThreshold;
+		this.maximumCount = MAXIMUM_COUNT;
+		this.threadedThreshold = THREADED_THRESHOLD;
+		this.verify = verify;
+		this.handler = handler;
+		dotPrefix = prefix.replace('/', '.');
+	}
+
+
+	/**
+	 * Create a new compilation options
+	 *
+	 * @param prefix            Set {@link #prefix}. The default is {@link #PREFIX}.
+	 * @param compileThreshold  Set {@link #compileThreshold}. The default is {@link #THRESHOLD}.
+	 * @param maximumCount      Set {@link #maximumCount}. The default is {@link #MAXIMUM_COUNT}
+	 * @param threadedThreshold Set {@link #threadedThreshold}. The default is {@link #THREADED_THRESHOLD}.
+	 * @param verify            Set {@link #verify}. The default is true.
+	 * @param handler           Set {@link #handler}. The default is {@code null}.
+	 */
+	public CompileOptions(String prefix, int compileThreshold, int maximumCount, int threadedThreshold, boolean verify, ErrorHandler handler) {
+		this.prefix = prefix;
+		this.compileThreshold = compileThreshold;
+		this.maximumCount = maximumCount;
+		this.threadedThreshold = threadedThreshold;
 		this.verify = verify;
 		this.handler = handler;
 		dotPrefix = prefix.replace('/', '.');
 	}
 
 	public CompileOptions() {
-		this(PREFIX, THRESHOLD, true, null);
+		this(PREFIX, THRESHOLD, MAXIMUM_COUNT, THREADED_THRESHOLD, true, null);
 	}
 }

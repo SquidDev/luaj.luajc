@@ -56,7 +56,7 @@ public final class Loader {
 	};
 
 	public static CompileOptions getOptions(int threshold) {
-		return new CompileOptions(CompileOptions.PREFIX, threshold, true, handler);
+		return new CompileOptions(CompileOptions.PREFIX, threshold, CompileOptions.MAXIMUM_COUNT, 0, true, handler);
 	}
 
 	public static void install(int threshold) {

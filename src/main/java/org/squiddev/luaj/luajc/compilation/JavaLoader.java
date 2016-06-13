@@ -49,14 +49,33 @@ public class JavaLoader extends ClassLoader {
 		return new FunctionWrapper(info, env);
 	}
 
-	public FunctionExecutor include(JavaGen jg) throws Exception {
+	private FunctionExecutor include(JavaGen jg) throws Exception {
 		String wholeName = options.dotPrefix + name.replace('/', '.') + jg.prototype.name;
 
 		Class<?> klass = defineClass(wholeName, jg.bytecode);
 		return (FunctionExecutor) klass.getConstructor().newInstance();
 	}
 
+	/**
+	 * Compile the prototype and set its executor
+	 *
+	 * @param info The prototype to compile
+	 * @return The compiled executor (the result or {@link ProtoInfo#executor}).
+	 */
 	public FunctionExecutor include(ProtoInfo info) {
+		int length = info.prototype.code.length;
+		if (options.maximumCount > 0 && length >= options.maximumCount) {
+			return info.executor = FallbackExecutor.INSTANCE;
+		} else if (options.threadedThreshold > 0 && length >= options.threadedThreshold) {
+			info.executor = FallbackExecutor.INSTANCE;
+			ThreadedCompilation.scheduleCompilation(info, this);
+			return FallbackExecutor.INSTANCE;
+		} else {
+			return info.executor = includeImpl(info);
+		}
+	}
+
+	FunctionExecutor includeImpl(ProtoInfo info) {
 		try {
 			return include(new JavaGen(info, this, filename));
 		} catch (RuntimeException e) {
@@ -83,7 +102,7 @@ public class JavaLoader extends ClassLoader {
 		}
 	}
 
-	protected Class<?> defineClass(String className, byte[] bytes) {
+	private Class<?> defineClass(String className, byte[] bytes) {
 		if (options.verify) AsmUtils.validateClass(bytes, this);
 		return defineClass(className, bytes, 0, bytes.length);
 	}
