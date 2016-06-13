@@ -894,9 +894,8 @@ public class StringLib extends OneArgFunction {
 		CHAR_TABLE['\r'] |= MASK_SPACE;
 		CHAR_TABLE['\n'] |= MASK_SPACE;
 		CHAR_TABLE['\t'] |= MASK_SPACE;
-		CHAR_TABLE[0x0B /* '\v' */] |= MASK_SPACE;
+		CHAR_TABLE[0x0B] |= MASK_SPACE; // \v
 		CHAR_TABLE['\f'] |= MASK_SPACE;
-		CHAR_TABLE[11] |= MASK_SPACE;
 	}
 
 	static class MatchState {
