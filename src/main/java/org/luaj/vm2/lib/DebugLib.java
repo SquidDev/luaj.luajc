@@ -27,6 +27,8 @@ package org.luaj.vm2.lib;
 import org.luaj.vm2.*;
 import org.squiddev.luaj.luajc.IGetPrototype;
 
+import java.lang.ref.WeakReference;
+
 /**
  * Subclass of {@link LibFunction} which implements the lua standard {@code debug}
  * library.
@@ -274,8 +276,8 @@ public class DebugLib extends VarArgFunction {
 	/**
 	 * DebugState is associated with a Thread
 	 */
-	public static final class DebugState {
-		private final LuaThread thread;
+	public static class DebugState {
+		private final WeakReference<LuaThread> thread_ref;
 		private int debugCalls = 0;
 		private final DebugInfo[] debugInfo = new DebugInfo[LuaThread.MAX_CALLSTACK + 1];
 		private LuaValue hookfunc;
@@ -284,7 +286,7 @@ public class DebugLib extends VarArgFunction {
 		private int line;
 
 		DebugState(LuaThread thread) {
-			this.thread = thread;
+			this.thread_ref = new WeakReference<LuaThread>(thread);
 		}
 
 		public DebugInfo nextInfo() {
@@ -330,8 +332,8 @@ public class DebugLib extends VarArgFunction {
 				} finally {
 					ds.popInfo(n);
 				}
-			} catch (Throwable t) {
-				t.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
 			} finally {
 				inhook = false;
 			}
@@ -348,7 +350,7 @@ public class DebugLib extends VarArgFunction {
 		public DebugInfo getDebugInfo() {
 			try {
 				return debugInfo[debugCalls - 1];
-			} catch (Throwable t) {
+			} catch (Exception e) {
 				if (debugCalls <= 0) {
 					return debugInfo[debugCalls++] = new DebugInfo();
 				}
@@ -370,7 +372,8 @@ public class DebugLib extends VarArgFunction {
 		}
 
 		public String tojstring() {
-			return DebugLib.traceback(thread, 0);
+			LuaThread thread = (LuaThread) thread_ref.get();
+			return thread != null ? DebugLib.traceback(thread, 0) : "orphaned thread";
 		}
 	}
 
