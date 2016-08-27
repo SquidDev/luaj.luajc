@@ -96,6 +96,7 @@ public final class JavaGen {
 					case Lua.OP_UNM: // A B R(A):= -R(B)
 					case Lua.OP_NOT: // A B R(A):= not R(B)
 					case Lua.OP_LEN: // A B R(A):= length of R(B)
+						builder.loadState();
 						builder.loadLocal(pc, b);
 						builder.unaryOp(o);
 						builder.storeLocal(pc, a);
@@ -107,6 +108,7 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_GETGLOBAL: // A Bx R(A):= Gbl[Kst(Bx)]
+						builder.loadState();
 						builder.loadEnv();
 						builder.loadConstant(p.k[bx]);
 						builder.getTable();
@@ -114,6 +116,7 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_SETGLOBAL: // A Bx Gbl[Kst(Bx)]:= R(A)
+						builder.loadState();
 						builder.loadEnv();
 						builder.loadConstant(p.k[bx]);
 						builder.loadLocal(pc, a);
@@ -131,6 +134,7 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_GETTABLE: // A B C R(A):= R(B)[RK(C)]
+						builder.loadState();
 						builder.loadLocal(pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
 						builder.getTable();
@@ -138,6 +142,7 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_SETTABLE: // A B C R(A)[RK(B)]:= RK(C)
+						builder.loadState();
 						builder.loadLocal(pc, a);
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
@@ -150,6 +155,7 @@ public final class JavaGen {
 					case Lua.OP_DIV: // A B C R(A):= RK(B) / RK(C)
 					case Lua.OP_MOD: // A B C R(A):= RK(B) % RK(C)
 					case Lua.OP_POW: // A B C R(A):= RK(B) ^ RK(C)
+						builder.loadState();
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
 						builder.binaryOp(o);
@@ -160,24 +166,22 @@ public final class JavaGen {
 						builder.loadLocal(pc, b);
 						builder.dup();
 						builder.storeLocal(pc, a + 1);
+						builder.loadState();
+						builder.swap();
 						loadLocalOrConstant(p, builder, pc, c);
 						builder.getTable();
 						builder.storeLocal(pc, a);
 						break;
 
 					case Lua.OP_CONCAT: // A B C R(A):= R(B).. ... ..R(C)
-						for (int k = b; k <= c; k++) {
-							builder.loadLocal(pc, k);
-						}
-						if (c > b + 1) {
-							builder.visitTobuffer();
-							for (int k = c; --k >= b; ) {
-								builder.visitConcatBuffer();
-							}
-							builder.visitTovalue();
-						} else {
+						builder.loadLocal(pc, c);
+						while (--c >= b) {
+							builder.loadState();
+							builder.swap();
+							builder.loadLocal(pc, c);
 							builder.visitConcatValue();
 						}
+
 						builder.storeLocal(pc, a);
 						break;
 
@@ -196,6 +200,7 @@ public final class JavaGen {
 					case Lua.OP_EQ: // A B C if ((RK(B) == RK(C)) ~= A) then pc++
 					case Lua.OP_LT: // A B C if ((RK(B) <  RK(C)) ~= A) then pc++
 					case Lua.OP_LE: // A B C if ((RK(B) <= RK(C)) ~= A) then pc++
+						builder.loadState();
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
 						builder.compareOp(o);
@@ -218,6 +223,7 @@ public final class JavaGen {
 
 					case Lua.OP_CALL: // A B C R(A), ... ,R(A+C-2):= R(A)(R(A+1), ... ,R(A+B-1))
 						// load function
+						builder.loadState();
 						builder.loadLocal(pc, a);
 
 						// load args
@@ -322,6 +328,7 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_FORPREP: // A sBx R(A)-=R(A+2): pc+=sBx
+						builder.loadState();
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
 						builder.binaryOp(Lua.OP_SUB);
@@ -330,6 +337,8 @@ public final class JavaGen {
 						break;
 
 					case Lua.OP_FORLOOP: // A sBx R(A)+=R(A+2): if R(A) <?= R(A+1) then { pc+=sBx: R(A+3)=R(A) }
+						builder.loadState();
+						builder.loadState();
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
 						builder.binaryOp(Lua.OP_ADD);
@@ -338,6 +347,7 @@ public final class JavaGen {
 						builder.storeLocal(pc, a);
 						builder.storeLocal(pc, a + 3);
 						builder.loadLocal(pc, a + 1); // limit
+						builder.loadState();
 						builder.loadLocal(pc, a + 2); // step
 						builder.testForLoop();
 						builder.addBranch(JavaBuilder.BRANCH_IFNE, pc + 1 + sbx);
@@ -349,9 +359,7 @@ public final class JavaGen {
 						 	R(A+2)): if R(A+3) ~= nil then R(A+2)=R(A+3)
 						 	else pc++
 						*/
-						// v = stack[a].invoke(varargsOf(stack[a+1],stack[a+2]));
-						// if ( (o=v.arg1()).isnil() )
-						//	++pc;
+						builder.loadState();
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 1);
 						builder.loadLocal(pc, a + 2);

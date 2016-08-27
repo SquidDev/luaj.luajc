@@ -44,6 +44,11 @@ import static org.squiddev.cobalt.luajc.compilation.Constants.*;
 import static org.squiddev.cobalt.luajc.utils.AsmUtils.constantOpcode;
 
 public final class JavaBuilder {
+	private static final int SLOT_THIS = 0;
+	private static final int SLOT_STATE = 1;
+	private static final int SLOT_FUNC = 2;
+	private static final int SLOT_VARARGS = 3;
+
 	public static final int BRANCH_GOTO = 1;
 	public static final int BRANCH_IFNE = 2;
 	public static final int BRANCH_IFEQ = 3;
@@ -93,6 +98,11 @@ public final class JavaBuilder {
 	private final Label[] branchDestinations;
 
 	/**
+	 * Slot for {@link org.squiddev.cobalt.debug.DebugHandler}
+	 */
+	private final int debugHandlerSlot;
+
+	/**
 	 * Slot for {@link org.squiddev.cobalt.debug.DebugFrame}
 	 */
 	private final int debugInfoSlot;
@@ -106,6 +116,16 @@ public final class JavaBuilder {
 	 * Slot the upvalues live in
 	 */
 	private final int upvaluesSlot;
+
+	/**
+	 * Counter for setting lists
+	 */
+	private int counterSlot = -1;
+
+	/**
+	 * Limit for setting lists
+	 */
+	private int limitSlot = -1;
 
 	private int line = 0;
 
@@ -155,22 +175,32 @@ public final class JavaBuilder {
 		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, EXECUTE_NAME, superType.signature, null, null);
 		main.visitCode();
 
-		// On method call, store callstack in slot
-		main.visitVarInsn(ALOAD, 1);
-		METHOD_ONCALL.inject(main);
-
+		// Setup debug slots
+		debugHandlerSlot = ++maxLocals;
 		debugStateSlot = ++maxLocals;
 		debugInfoSlot = ++maxLocals;
 
+		// On method call, store callstack in slot
+		main.visitVarInsn(ALOAD, SLOT_STATE);
+		main.visitFieldInsn(GETFIELD, CLASS_STATE, "debug", TYPE_HANDLER);
+		main.visitVarInsn(ASTORE, debugHandlerSlot);
+
+		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		METHOD_GETSTATE.inject(main);
-		main.visitInsn(DUP);
 		main.visitVarInsn(ASTORE, debugStateSlot);
-		METHOD_GETINFO.inject(main);
+
+		main.visitVarInsn(ALOAD, debugHandlerSlot);
+		main.visitVarInsn(ALOAD, debugStateSlot);
+		main.visitVarInsn(ALOAD, SLOT_FUNC);
+		loadNone();
+		main.visitInsn(ACONST_NULL); // TODO: Patch Cobalt so this won't break
+		METHOD_ONCALL.inject(main);
+
 		main.visitVarInsn(ASTORE, debugInfoSlot);
 
 		if (p.nups > 0) {
 			upvaluesSlot = ++maxLocals;
-			main.visitVarInsn(ALOAD, 1);
+			main.visitVarInsn(ALOAD, SLOT_FUNC);
 			upvaluesGet();
 			main.visitVarInsn(ASTORE, upvaluesSlot);
 		} else {
@@ -182,7 +212,7 @@ public final class JavaBuilder {
 
 		// Beginning for variable names
 		// Also for try catch block
-		main.visitTryCatchBlock(start, end, end, "org/luaj/vm2/LuaError");
+		main.visitTryCatchBlock(start, end, end, "org/squiddev/cobalt/LuaError");
 		main.visitTryCatchBlock(start, end, handler, "java/lang/Exception");
 		main.visitTryCatchBlock(start, end, end, null);
 		main.visitLabel(start);
@@ -207,7 +237,7 @@ public final class JavaBuilder {
 		if (superclass == SUPERTYPE_VARARGS) {
 			for (slot = 0; slot < p.numparams; slot++) {
 				if (pi.params[slot].isReferenced) {
-					main.visitVarInsn(ALOAD, VARARGS_SLOT);
+					main.visitVarInsn(ALOAD, SLOT_VARARGS);
 					constantOpcode(main, slot + 1);
 					METHOD_VARARGS_ARG.inject(main, INVOKEVIRTUAL);
 					storeLocal(-1, slot);
@@ -215,23 +245,23 @@ public final class JavaBuilder {
 			}
 			boolean needsArg = ((p.is_vararg & Lua.VARARG_NEEDSARG) != 0);
 			if (needsArg) {
-				main.visitVarInsn(ALOAD, VARARGS_SLOT);
+				main.visitVarInsn(ALOAD, SLOT_VARARGS);
 				constantOpcode(main, p.numparams + 1);
 				METHOD_TABLEOF.inject(main, INVOKESTATIC);
 				storeLocal(-1, slot++);
 			} else if (p.numparams > 0) {
-				main.visitVarInsn(ALOAD, VARARGS_SLOT);
+				main.visitVarInsn(ALOAD, SLOT_VARARGS);
 				constantOpcode(main, p.numparams + 1);
 				METHOD_VARARGS_SUBARGS.inject(main, INVOKEVIRTUAL);
-				main.visitVarInsn(ASTORE, VARARGS_SLOT);
+				main.visitVarInsn(ASTORE, SLOT_VARARGS);
 			}
 		} else {
 			// fixed arg function between 0 and 3 arguments
 			for (slot = 0; slot < p.numparams; slot++) {
 				SlotInfo info = slots[slot] = new SlotInfo(slot);
-				info.valueSlot = slot + VARARGS_SLOT;
+				info.valueSlot = slot + SLOT_VARARGS;
 				if (pi.params[slot].isUpvalueCreate(-1)) {
-					main.visitVarInsn(ALOAD, slot + VARARGS_SLOT);
+					main.visitVarInsn(ALOAD, slot + SLOT_VARARGS);
 					storeLocal(-1, slot);
 				}
 			}
@@ -254,12 +284,14 @@ public final class JavaBuilder {
 
 		// Finish main function
 		main.visitLabel(end);
+		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		main.visitVarInsn(ALOAD, debugStateSlot);
 		METHOD_ONRETURN.inject(main);
 		main.visitInsn(ATHROW);
 
 		main.visitLabel(handler);
 		METHOD_WRAP_ERROR.inject(main);
+		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		main.visitVarInsn(ALOAD, debugStateSlot);
 		METHOD_ONRETURN.inject(main);
 		main.visitInsn(ATHROW);
@@ -286,17 +318,20 @@ public final class JavaBuilder {
 		main.visitInsn(POP);
 	}
 
+	public void swap() {
+		main.visitInsn(SWAP);
+	}
+
 	public void loadNil() {
-		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", "NIL", "Lorg/luaj/vm2/LuaValue;");
+		main.visitFieldInsn(GETSTATIC, "org/squiddev/cobalt/Constants", "NIL", "Lorg/squiddev/cobalt/LuaValue;");
 	}
 
 	public void loadNone() {
-		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", "NONE", "Lorg/luaj/vm2/LuaValue;");
+		main.visitFieldInsn(GETSTATIC, "org/squiddev/cobalt/Constants", "NONE", "Lorg/squiddev/cobalt/LuaValue;");
 	}
 
 	public void loadBoolean(boolean b) {
-		String field = (b ? "TRUE" : "FALSE");
-		main.visitFieldInsn(GETSTATIC, "org/luaj/vm2/LuaValue", field, "Lorg/luaj/vm2/LuaBoolean;");
+		main.visitFieldInsn(GETSTATIC, "org/squiddev/cobalt/Constants", b ? "TRUE" : "FALSE", "Lorg/squiddev/cobalt/LuaBoolean;");
 	}
 
 	private int findSlotIndex(int slot, boolean isUpvalue) {
@@ -399,13 +434,17 @@ public final class JavaBuilder {
 		METHOD_TABLEOF_DIMS.inject(main);
 	}
 
+	public void loadState() {
+		main.visitVarInsn(ALOAD, SLOT_STATE);
+	}
+
 	public void loadEnv() {
-		main.visitVarInsn(ALOAD, 1);
+		main.visitVarInsn(ALOAD, SLOT_FUNC);
 		METHOD_GETENV.inject(main);
 	}
 
 	public void loadVarargs() {
-		main.visitVarInsn(ALOAD, VARARGS_SLOT);
+		main.visitVarInsn(ALOAD, SLOT_VARARGS);
 	}
 
 	public void loadVarargs(int index) {
@@ -459,11 +498,11 @@ public final class JavaBuilder {
 				op = "not";
 				break;
 			case Lua.OP_LEN:
-				op = "len";
+				op = "length";
 				break;
 		}
 
-		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "()" + TYPE_LUAVALUE, false);
+		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
 	}
 
 	public void binaryOp(int o) {
@@ -489,7 +528,7 @@ public final class JavaBuilder {
 				op = "pow";
 				break;
 		}
-		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "(" + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
+		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
 	}
 
 	public void compareOp(int o) {
@@ -497,20 +536,21 @@ public final class JavaBuilder {
 		switch (o) {
 			default:
 			case Lua.OP_EQ:
-				op = "eq_b";
+				op = "eq";
 				break;
 			case Lua.OP_LT:
-				op = "lt_b";
+				op = "lt";
 				break;
 			case Lua.OP_LE:
-				op = "lteq_b";
+				op = "le";
 				break;
 		}
-		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, op, "(" + TYPE_LUAVALUE + ")Z", false);
+		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + TYPE_LUAVALUE + ")Z", false);
 	}
 
 	public void visitReturn() {
 		// Pop call stack
+		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		main.visitVarInsn(ALOAD, debugStateSlot);
 		METHOD_ONRETURN.inject(main);
 
@@ -526,7 +566,15 @@ public final class JavaBuilder {
 	}
 
 	public void testForLoop() {
-		METHOD_TESTFOR_B.inject(main);
+		loadConstant(org.squiddev.cobalt.Constants.ZERO);
+		compareOp(Lua.OP_LE);
+		main.visitInsn(ICONST_0);
+
+		Label lt = new Label();
+		main.visitJumpInsn(IF_ICMPEQ, lt);
+		swap();
+		main.visitLabel(lt);
+		compareOp(Lua.OP_LE);
 	}
 
 	public void loadArrayArgs(int pc, int firstSlot, int nargs) {
@@ -598,23 +646,24 @@ public final class JavaBuilder {
 	public void invoke(int nargs) {
 		switch (nargs) {
 			case -1:
-				METHOD_INVOKE_VAR.inject(main);
 				break;
 			case 0:
-				METHOD_INVOKE_NONE.inject(main);
+				loadNone();
 				break;
 			case 1:
-				METHOD_INVOKE_VAR.inject(main); // It is only one item so we can call it with a varargs
+				// It is only one item so we can call it with a varargs
 				break;
 			case 2:
-				METHOD_INVOKE_TWO.inject(main);
+				METHOD_VARARGS_ONE.inject(main);
 				break;
 			case 3:
-				METHOD_INVOKE_THREE.inject(main);
+				METHOD_VARARGS_TWO.inject(main);
 				break;
 			default:
 				throw new IllegalArgumentException("can't invoke with " + nargs + " args");
 		}
+
+		METHOD_INVOKE_VAR.inject(main);
 	}
 
 	public void closureCreate(ProtoInfo info) {
@@ -622,7 +671,7 @@ public final class JavaBuilder {
 		main.visitInsn(DUP);
 		main.visitFieldInsn(GETSTATIC, prefix + PROTOTYPE_STORAGE, PROTOTYPE_NAME + info.name, TYPE_PROTOINFO);
 		loadEnv();
-		main.visitMethodInsn(INVOKESPECIAL, CLASS_WRAPPER, "<init>", "(" + TYPE_PROTOINFO + TYPE_LUAVALUE + ")V", false);
+		main.visitMethodInsn(INVOKESPECIAL, CLASS_WRAPPER, "<init>", "(" + TYPE_PROTOINFO + TYPE_LUATABLE + ")V", false);
 	}
 
 	public void upvaluesGet() {
@@ -699,13 +748,15 @@ public final class JavaBuilder {
 
 		LuaString ls = value.checkLuaString();
 
-		char[] c = new char[ls.length];
+		constantOpcode(init, ls.length);
+		init.visitIntInsn(NEWARRAY, T_BYTE);
 		for (int j = 0; j < ls.length; j++) {
-			c[j] = (char) (0xff & (int) (ls.bytes[ls.offset + j]));
+			init.visitInsn(DUP);
+			constantOpcode(init, j);
+			constantOpcode(init, ls.luaByte(j));
+			init.visitInsn(BASTORE);
 		}
-		init.visitLdcInsn(new String(c));
-		METHOD_TO_CHARARRAY.inject(init);
-		METHOD_VALUEOF_CHARARRAY.inject(init);
+		METHOD_VALUEOF_BYTEARRAY.inject(init);
 		init.visitFieldInsn(PUTSTATIC, className, name, TYPE_LUAVALUE);
 		return name;
 	}
@@ -747,6 +798,7 @@ public final class JavaBuilder {
 			}
 		}
 
+		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		main.visitVarInsn(ALOAD, debugStateSlot);
 		main.visitVarInsn(ALOAD, debugInfoSlot);
 		constantOpcode(main, pc);
@@ -765,24 +817,12 @@ public final class JavaBuilder {
 	}
 
 	public void visitSetlistVarargs(int index) {
-		constantOpcode(main, index);
 		loadVarResult();
+		constantOpcode(main, index);
 		METHOD_RAWSET_LIST.inject(main);
 	}
 
 	public void visitConcatValue() {
 		METHOD_STRING_CONCAT.inject(main);
-	}
-
-	public void visitConcatBuffer() {
-		METHOD_BUFFER_CONCAT.inject(main);
-	}
-
-	public void visitTobuffer() {
-		METHOD_VALUE_TO_BUFFER.inject(main);
-	}
-
-	public void visitTovalue() {
-		METHOD_BUFFER_TO_VALUE.inject(main);
 	}
 }

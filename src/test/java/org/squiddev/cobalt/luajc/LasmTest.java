@@ -42,7 +42,7 @@ public class LasmTest {
 		state = LuaEnv.makeState();
 		globals = LuaEnv.makeGlobals(state);
 
-		InputStream stream = Loader.class.getResourceAsStream("/org/squiddev/luaj/luajc/lasm/" + name + ".lasm");
+		InputStream stream = Loader.class.getResourceAsStream("/org/squiddev/cobalt/luajc/lasm/" + name + ".lasm");
 		if (stream == null) throw new IOException("Cannot load " + name);
 
 		Scanner s = new Scanner(stream).useDelimiter("\\A");
