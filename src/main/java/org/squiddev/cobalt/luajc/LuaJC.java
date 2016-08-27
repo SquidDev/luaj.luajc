@@ -26,7 +26,7 @@ package org.squiddev.cobalt.luajc;
 
 import org.squiddev.cobalt.LuaState;
 import org.squiddev.cobalt.LuaString;
-import org.squiddev.cobalt.LuaValue;
+import org.squiddev.cobalt.LuaTable;
 import org.squiddev.cobalt.Prototype;
 import org.squiddev.cobalt.compiler.LoadState;
 import org.squiddev.cobalt.compiler.LuaC;
@@ -62,7 +62,7 @@ public class LuaJC implements LoadState.LuaCompiler {
 	}
 
 	@Override
-	public LuaFunction load(InputStream stream, LuaString luaName, LuaValue env) throws IOException {
+	public LuaFunction load(InputStream stream, LuaString luaName, LuaTable env) throws IOException {
 		Prototype p = LuaC.compile(stream, luaName);
 		String name = luaName.toString();
 
@@ -70,6 +70,8 @@ public class LuaJC implements LoadState.LuaCompiler {
 		try {
 			return loader.load(env, p);
 		} catch (IOException e) {
+			throw e;
+		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
 			throw new IOException(e.getMessage(), e);

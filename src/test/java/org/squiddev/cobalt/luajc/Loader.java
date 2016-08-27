@@ -65,7 +65,7 @@ public final class Loader {
 	}
 
 	public static InputStream load(String path) throws IOException {
-		InputStream stream = Loader.class.getResourceAsStream("/org/squiddev/luaj/luajc/" + path + ".lua");
+		InputStream stream = Loader.class.getResourceAsStream("/org/squiddev/cobalt/luajc/" + path + ".lua");
 		if (stream == null) throw new IOException("Cannot load " + path);
 
 		return stream;

@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.squiddev.cobalt.LuaState;
-import org.squiddev.cobalt.LuaValue;
+import org.squiddev.cobalt.LuaTable;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,7 +27,7 @@ public class CompileOnlyTest {
 	}
 
 	protected final String name;
-	protected LuaValue globals;
+	protected LuaTable globals;
 	protected LuaState state;
 
 	public CompileOnlyTest(String name) {

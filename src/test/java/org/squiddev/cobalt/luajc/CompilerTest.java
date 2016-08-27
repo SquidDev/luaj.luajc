@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.squiddev.cobalt.LuaState;
-import org.squiddev.cobalt.LuaValue;
+import org.squiddev.cobalt.LuaTable;
 import org.squiddev.cobalt.compiler.LuaC;
 
 import java.util.Arrays;
@@ -93,7 +93,7 @@ public class CompilerTest {
 	}
 
 	protected final String name;
-	private LuaValue globals;
+	private LuaTable globals;
 	private LuaState state;
 
 	public CompilerTest(String name) {

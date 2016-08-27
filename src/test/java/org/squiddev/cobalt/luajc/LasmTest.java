@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.squiddev.cobalt.LuaState;
-import org.squiddev.cobalt.LuaValue;
+import org.squiddev.cobalt.LuaTable;
 import org.squiddev.cobalt.Prototype;
 import org.squiddev.cobalt.function.LuaInterpreter;
 import org.squiddev.cobalt.luajc.compilation.JavaLoader;
@@ -30,7 +30,7 @@ public class LasmTest {
 
 	protected final String name;
 	private Prototype prototype;
-	private LuaValue globals;
+	private LuaTable globals;
 	private LuaState state;
 
 	public LasmTest(String name) {

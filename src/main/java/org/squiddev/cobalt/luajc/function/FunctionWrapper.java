@@ -1,9 +1,6 @@
 package org.squiddev.cobalt.luajc.function;
 
-import org.squiddev.cobalt.LuaState;
-import org.squiddev.cobalt.LuaValue;
-import org.squiddev.cobalt.Prototype;
-import org.squiddev.cobalt.Varargs;
+import org.squiddev.cobalt.*;
 import org.squiddev.cobalt.function.LuaClosure;
 import org.squiddev.cobalt.function.LuaFunction;
 import org.squiddev.cobalt.luajc.analysis.ProtoInfo;
@@ -18,7 +15,7 @@ public final class FunctionWrapper extends LuaClosure {
 
 	public final AbstractUpvalue[] upvalues;
 
-	public FunctionWrapper(ProtoInfo info, LuaValue env) {
+	public FunctionWrapper(ProtoInfo info, LuaTable env) {
 		super(env);
 		this.info = info;
 		this.prototype = info.prototype;

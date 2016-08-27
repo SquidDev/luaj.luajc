@@ -1,7 +1,7 @@
 package org.squiddev.cobalt.luajc.compilation;
 
 import org.objectweb.asm.ClassWriter;
-import org.squiddev.cobalt.LuaValue;
+import org.squiddev.cobalt.LuaTable;
 import org.squiddev.cobalt.Prototype;
 import org.squiddev.cobalt.luajc.CompileOptions;
 import org.squiddev.cobalt.luajc.analysis.ProtoInfo;
@@ -36,7 +36,7 @@ public class JavaLoader extends ClassLoader {
 		this.name = name;
 	}
 
-	public FunctionWrapper load(LuaValue env, Prototype prototype) throws Exception {
+	public FunctionWrapper load(LuaTable env, Prototype prototype) throws Exception {
 		ProtoInfo info = new ProtoInfo(prototype, this);
 
 		// Setup the prototype storage

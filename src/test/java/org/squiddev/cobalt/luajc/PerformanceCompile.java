@@ -6,7 +6,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.squiddev.cobalt.LuaState;
-import org.squiddev.cobalt.LuaValue;
+import org.squiddev.cobalt.LuaTable;
 import org.squiddev.cobalt.compiler.LuaC;
 
 import java.io.IOException;
@@ -26,7 +26,7 @@ public class PerformanceCompile {
 	}
 
 	protected final String name;
-	protected LuaValue globals;
+	protected LuaTable globals;
 	private LuaState state;
 
 	public PerformanceCompile(String name) {
