@@ -120,8 +120,8 @@ public class PerformanceRunner {
 			InputStream speedStream = PerformanceRunner.class.getResourceAsStream("/org/squiddev/luaj/luajc/aes/AesSpeed.lua");
 
 			long start = System.nanoTime();
-			LuaFunction aes = state.compiler.load(aesStream, valueOf("AesLua.lua"), globals);
-			LuaFunction speed = state.compiler.load(speedStream, valueOf("AesSpeed.lua"), globals);
+			LuaFunction aes = state.compiler.load(aesStream, valueOf("@AesLua.lua"), globals);
+			LuaFunction speed = state.compiler.load(speedStream, valueOf("@AesSpeed.lua"), globals);
 
 			long compiled = System.nanoTime();
 

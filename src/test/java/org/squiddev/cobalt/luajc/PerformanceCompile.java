@@ -53,7 +53,7 @@ public class PerformanceCompile {
 
 	public void load() throws IOException {
 		for (int i = 0; i < 10; i++) {
-			state.compiler.load(Loader.load("compileonly/" + name), valueOf(name + ".lua"), globals);
+			state.compiler.load(Loader.load("compileonly/" + name), valueOf("@" + name + ".lua"), globals);
 		}
 	}
 }

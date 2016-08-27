@@ -72,6 +72,6 @@ public final class Loader {
 	}
 
 	public static Prototype loadPrototype(String path, String name) throws IOException {
-		return LuaC.compile(load(path), name);
+		return LuaC.compile(load(path), "@" + name);
 	}
 }

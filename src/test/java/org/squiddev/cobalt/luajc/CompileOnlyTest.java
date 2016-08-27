@@ -43,6 +43,6 @@ public class CompileOnlyTest {
 	@Test
 	public void testLuaJC() throws Exception {
 		Loader.install(state, 0);
-		state.compiler.load(Loader.load("compileonly/" + name), valueOf(name + ".lua"), globals);
+		state.compiler.load(Loader.load("compileonly/" + name), valueOf("@" + name + ".lua"), globals);
 	}
 }

@@ -135,6 +135,6 @@ public class CompilerTest {
 	}
 
 	protected void run() throws Exception {
-		state.compiler.load(Loader.load(name), valueOf(name + ".lua"), globals).call(state);
+		state.compiler.load(Loader.load(name), valueOf("@" + name + ".lua"), globals).call(state);
 	}
 }
