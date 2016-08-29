@@ -23,6 +23,7 @@ public class CompileOnlyTest {
 			{"vBenchmark"},
 			{"Howl"},
 			{"luaide"},
+			{"kristwallet"},
 		});
 	}
 

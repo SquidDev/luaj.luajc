@@ -24,7 +24,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(LuaState state, FunctionWrapper function) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(state, function);
 		}
 
@@ -40,7 +40,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(LuaState state, FunctionWrapper function, LuaValue arg) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(state, function, arg);
 		}
 
@@ -63,7 +63,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(LuaState state, FunctionWrapper function, LuaValue arg1, LuaValue arg2) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(state, function, arg1, arg2);
 		}
 
@@ -90,7 +90,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final LuaValue execute(LuaState state, FunctionWrapper function, LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(state, function, arg1, arg2, arg3);
 		}
 
@@ -122,7 +122,7 @@ public final class ClosureExecutor extends FunctionExecutor {
 	public final Varargs execute(LuaState state, FunctionWrapper function, Varargs varargs) {
 		ProtoInfo info = function.info;
 		if (++info.calledClosure >= info.threshold) {
-			FunctionExecutor executor = info.executor = info.loader.include(info);
+			FunctionExecutor executor = info.loader.include(info);
 			return executor.execute(state, function, varargs);
 		}
 

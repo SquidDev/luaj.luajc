@@ -33,7 +33,6 @@ import org.squiddev.cobalt.luajc.function.executors.ClosureExecutor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.List;
 
 /**
  * Prototype information for static single-assignment analysis
@@ -103,8 +102,6 @@ public final class ProtoInfo {
 	 * List of upvalues from outer scope
 	 */
 	public final UpvalueInfo[] upvalues;
-
-	public final List<PhiInfo> phis;
 	//endregion
 
 	public ProtoInfo(Prototype p, JavaLoader loader) {
@@ -129,7 +126,7 @@ public final class ProtoInfo {
 
 		AnalysisBuilder builder = new AnalysisBuilder(this);
 		builder.fillArguments();
-		phis = builder.findVariables();
+		builder.findVariables();
 		builder.findUpvalues();
 
 		if (loader.options.compileThreshold <= 0) {
