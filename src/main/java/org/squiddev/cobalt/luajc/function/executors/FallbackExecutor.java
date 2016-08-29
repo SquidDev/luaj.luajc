@@ -25,7 +25,7 @@ public final class FallbackExecutor extends FunctionExecutor {
 		LuaValue[] stack = new LuaValue[size];
 		System.arraycopy(NILS, 0, stack, 0, size);
 
-		return LuaVM.execute(state, function, stack, NONE, 0).first();
+		return LuaVM.execute(state, function, stack, NONE, 0).eval(state).first();
 	}
 
 	@Override
@@ -39,9 +39,9 @@ public final class FallbackExecutor extends FunctionExecutor {
 		switch (prototype.numparams) {
 			default:
 				stack[0] = arg;
-				return LuaVM.execute(state, function, stack, NONE, 0).first();
+				return LuaVM.execute(state, function, stack, NONE, 0).eval(state).first();
 			case 0:
-				return LuaVM.execute(state, function, stack, arg, 0).first();
+				return LuaVM.execute(state, function, stack, arg, 0).eval(state).first();
 		}
 	}
 
@@ -57,12 +57,12 @@ public final class FallbackExecutor extends FunctionExecutor {
 			default:
 				stack[0] = arg1;
 				stack[1] = arg2;
-				return LuaVM.execute(state, function, stack, NONE, 0).first();
+				return LuaVM.execute(state, function, stack, NONE, 0).eval(state).first();
 			case 1:
 				stack[0] = arg1;
-				return LuaVM.execute(state, function, stack, arg2, 0).first();
+				return LuaVM.execute(state, function, stack, arg2, 0).eval(state).first();
 			case 0:
-				return LuaVM.execute(state, function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2) : NONE, 0).first();
+				return LuaVM.execute(state, function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2) : NONE, 0).eval(state).first();
 		}
 	}
 
@@ -79,16 +79,16 @@ public final class FallbackExecutor extends FunctionExecutor {
 				stack[0] = arg1;
 				stack[1] = arg2;
 				stack[2] = arg3;
-				return LuaVM.execute(state, function, stack, NONE, 0).first();
+				return LuaVM.execute(state, function, stack, NONE, 0).eval(state).first();
 			case 2:
 				stack[0] = arg1;
 				stack[1] = arg2;
-				return LuaVM.execute(state, function, stack, arg3, 0).first();
+				return LuaVM.execute(state, function, stack, arg3, 0).eval(state).first();
 			case 1:
 				stack[0] = arg1;
-				return LuaVM.execute(state, function, stack, prototype.is_vararg != 0 ? varargsOf(arg2, arg3) : NONE, 0).first();
+				return LuaVM.execute(state, function, stack, prototype.is_vararg != 0 ? varargsOf(arg2, arg3) : NONE, 0).eval(state).first();
 			case 0:
-				return LuaVM.execute(state, function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2, arg3) : NONE, 0).first();
+				return LuaVM.execute(state, function, stack, prototype.is_vararg != 0 ? varargsOf(arg1, arg2, arg3) : NONE, 0).eval(state).first();
 		}
 	}
 
