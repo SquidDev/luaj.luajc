@@ -34,6 +34,7 @@ public class CompilerTest {
 			{"lua/MakeError"},
 			{"lua/NForLoop"},
 			{"lua/NilCallReturn"},
+			{"lua/Operations"},
 			{"lua/Recursive"},
 			{"lua/RecursiveTrace"},
 			{"lua/SetFEnv"},

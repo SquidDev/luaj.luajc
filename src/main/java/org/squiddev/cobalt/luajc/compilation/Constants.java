@@ -29,6 +29,8 @@ public final class Constants {
 	public static final String CLASS_STATE = Type.getInternalName(LuaState.class);
 	public static final String TYPE_STATE = Type.getDescriptor(LuaState.class);
 	public static final String TYPE_HANDLER = Type.getDescriptor(DebugHandler.class);
+	public static final String TYPE_LUABOOLEAN = Type.getDescriptor(LuaBoolean.class);
+	public static final String CLASS_CONSTANTS = Type.getInternalName(org.squiddev.cobalt.Constants.class);
 	public static final String TYPE_LUAVALUE = Type.getDescriptor(LuaValue.class);
 	public static final String TYPE_LUATABLE = Type.getDescriptor(LuaTable.class);
 	public static final String CLASS_LUAVALUE = Type.getInternalName(LuaValue.class);
@@ -127,6 +129,7 @@ public final class Constants {
 	public static final TinyMethod METHOD_RAWSET = new TinyMethod(LuaTable.class, "rawset", int.class, LuaValue.class);
 	public static final TinyMethod METHOD_RAWSET_LIST = new TinyMethod(CompilationHelper.class, "rawsetList", LuaTable.class, Varargs.class, int.class);
 	public static final TinyMethod METHOD_WRAP_ERROR = new TinyMethod(TypeFactory.class, "wrapException", Exception.class);
+	public static final TinyMethod METHOD_FILL_TRACEBACK = new TinyMethod(LuaError.class, "fillTraceback", LuaState.class);
 
 	// Upvalue creation
 	public static final TinyMethod METHOD_NEW_UPVALUE_EMPTY = new TinyMethod(TypeFactory.class, "emptyUpvalue");

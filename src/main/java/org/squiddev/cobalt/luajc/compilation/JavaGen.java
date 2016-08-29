@@ -93,8 +93,13 @@ public final class JavaGen {
 						builder.storeLocal(pc, a);
 						break;
 
-					case Lua.OP_UNM: // A B R(A):= -R(B)
 					case Lua.OP_NOT: // A B R(A):= not R(B)
+						builder.loadLocal(pc, b);
+						builder.opNot();
+						builder.storeLocal(pc, a);
+						break;
+
+					case Lua.OP_UNM: // A B R(A):= -R(B)
 					case Lua.OP_LEN: // A B R(A):= length of R(B)
 						builder.loadState();
 						builder.loadLocal(pc, b);
@@ -179,6 +184,7 @@ public final class JavaGen {
 							builder.loadState();
 							builder.swap();
 							builder.loadLocal(pc, c);
+							builder.swap();
 							builder.visitConcatValue();
 						}
 

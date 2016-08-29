@@ -87,7 +87,8 @@ public final class JavaBuilder {
 	// Labels for locals
 	private final Label start = new Label();
 	private final Label end = new Label();
-	private final Label handler = new Label();
+	private final Label exceptionHandler = new Label();
+	private final Label errorHandler = new Label();
 
 	// the superclass arg count, 0-3 args, 4=varargs
 	private final FunctionType superclass;
@@ -116,16 +117,6 @@ public final class JavaBuilder {
 	 * Slot the upvalues live in
 	 */
 	private final int upvaluesSlot;
-
-	/**
-	 * Counter for setting lists
-	 */
-	private int counterSlot = -1;
-
-	/**
-	 * Limit for setting lists
-	 */
-	private int limitSlot = -1;
 
 	private int line = 0;
 
@@ -212,8 +203,8 @@ public final class JavaBuilder {
 
 		// Beginning for variable names
 		// Also for try catch block
-		main.visitTryCatchBlock(start, end, end, "org/squiddev/cobalt/LuaError");
-		main.visitTryCatchBlock(start, end, handler, "java/lang/Exception");
+		main.visitTryCatchBlock(start, end, errorHandler, "org/squiddev/cobalt/LuaError");
+		main.visitTryCatchBlock(start, end, exceptionHandler, "java/lang/Exception");
 		main.visitTryCatchBlock(start, end, end, null);
 		main.visitLabel(start);
 
@@ -283,14 +274,20 @@ public final class JavaBuilder {
 		init.visitEnd();
 
 		// Finish main function
+
+		// On throwable
 		main.visitLabel(end);
 		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		main.visitVarInsn(ALOAD, debugStateSlot);
 		METHOD_ONRETURN.inject(main);
 		main.visitInsn(ATHROW);
 
-		main.visitLabel(handler);
+		// On normal exception
+		main.visitLabel(exceptionHandler);
 		METHOD_WRAP_ERROR.inject(main);
+		main.visitLabel(errorHandler);
+		loadState();
+		METHOD_FILL_TRACEBACK.inject(main);
 		main.visitVarInsn(ALOAD, debugHandlerSlot);
 		main.visitVarInsn(ALOAD, debugStateSlot);
 		METHOD_ONRETURN.inject(main);
@@ -487,6 +484,22 @@ public final class JavaBuilder {
 		METHOD_TABLE_SET.inject(main);
 	}
 
+	public void opNot() {
+		main.visitMethodInsn(INVOKEVIRTUAL, CLASS_LUAVALUE, "toBoolean", "()Z", false);
+		main.visitInsn(ICONST_0);
+
+		Label cont = new Label(), loadTrue = new Label();
+		main.visitJumpInsn(IF_ICMPEQ, loadTrue);
+
+		main.visitFieldInsn(GETSTATIC, CLASS_CONSTANTS, "FALSE", TYPE_LUABOOLEAN);
+		main.visitJumpInsn(GOTO, cont);
+
+		main.visitLabel(loadTrue);
+		main.visitFieldInsn(GETSTATIC, CLASS_CONSTANTS, "TRUE", TYPE_LUABOOLEAN);
+
+		main.visitLabel(cont);
+	}
+
 	public void unaryOp(int o) {
 		String op;
 		switch (o) {
@@ -494,11 +507,11 @@ public final class JavaBuilder {
 			case Lua.OP_UNM:
 				op = "neg";
 				break;
-			case Lua.OP_NOT:
-				op = "not";
-				break;
 			case Lua.OP_LEN:
 				op = "length";
+				break;
+			case Lua.OP_NOT:
+				op = "not";
 				break;
 		}
 
