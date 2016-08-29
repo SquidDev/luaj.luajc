@@ -1,11 +1,11 @@
-# LuaJC [![Build Status](https://travis-ci.org/SquidDev/luaj.luajc.svg?branch=master)](https://travis-ci.org/SquidDev/luaj.luajc)
+# LuaJC [![Build Status](https://travis-ci.org/SquidDev/luaj.luajc.svg?branch=cobalt)](https://travis-ci.org/SquidDev/luaj.luajc)
 LuaJ, but faster
 
 This is a fork of LuaJ's Lua to Java bytecode compiler. It has been
 converted to use the ASM framework and many bugs have been fixed.
 
 ## Changes from the original
- - Core debug support (`debug.traceback`, `debug.getinfo` and all debug hooks - you cannot get or change locals/upvalues though)
+ - Core debug support (`debug.traceback`, `debug.getinfo` and all debug hooks - you cannot get or change locals though)
  - `string.dump` support
  - `getfenv` and `setfenv` support
  - Delayed compilation: only compile after n calls.
