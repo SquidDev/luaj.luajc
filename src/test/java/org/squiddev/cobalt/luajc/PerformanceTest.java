@@ -1,6 +1,5 @@
 package org.squiddev.cobalt.luajc;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.squiddev.cobalt.LuaState;
 import org.squiddev.cobalt.LuaTable;
@@ -9,7 +8,6 @@ import org.squiddev.cobalt.compiler.LuaC;
 /**
  * Test the performance between LuaC and LuaJC
  */
-@Ignore
 public class PerformanceTest {
 	@Test
 	public void testLuaC() {
