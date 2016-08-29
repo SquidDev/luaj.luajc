@@ -9,19 +9,15 @@ converted to use the ASM framework and many bugs have been fixed.
  - `string.dump` support
  - `getfenv` and `setfenv` support
  - Delayed compilation: only compile after n calls.
- - Fixes several bugs with generation (see `BranchUpvalue2`, `EdgeCases` and `NilCallReturn`) 
- 
-## Performance
-It is tricky to compare the default `LuaClosure` and `LuaJC` implementations as several optimisations are applied for
-debug hooks. These could also be applied to the default VM implementation and increase its performance too.
+ - Fixes several bugs with generation (see `BranchUpvalue2`, `EdgeCases` and `NilCallReturn`)
 
-However there are still some performance increases. 
+## Performance
 Testing on [this aes implementation](https://github.com/SquidDev-CC/aeslua) produces these results:
 
-Task        | LuaJC    | LuaC      | Optimised LuaVM
-------------|---------:|----------:|--------------:
-Compilation | 0.007993 |  0.004938 | 0.004938
-Running     | 9.783356 | 16.707443 | 14.739549
+Task        | LuaJC    | LuaC      |
+------------|---------:|----------:|
+Compilation | 0.019550 |  0.031101 |
+Running     | 8.512504 | 20.131379 |
 
 ## Getting started
 Firstly add this as a dependency:
@@ -36,6 +32,7 @@ repositories {
 
 dependencies {
 	compile 'org.squiddev:cobalt.luajc:1.+'
+	compile 'org.squiddev:cobalt:0.2'
 }
 ```
 
@@ -45,9 +42,10 @@ Then install it as a compiler after setting up the globals.
 import org.squiddev.cobalt.luajc.LuaJC;
 
 public LuaValue load(InputStream stream, String name) throws IOException {
-	LuaValue globals = JsePlatform.debugGlobals();
-	LuaC.install();
-	return LoadState.load(stream, name, globals);
+	LuaState state = new LuaState(new FileResourceManipulator());
+	LuaTable globals = JsePlatform.debugGlobals(state);
+	LuaJC.install(state);
+	return state.compiler.load(stream, name, globals);
 }
 ```
 
