@@ -476,11 +476,13 @@ public final class JavaBuilder {
 		METHOD_VARARGS_SUBARGS.inject(main);
 	}
 
-	public void getTable() {
+	public void getTable(int slot) {
+		constantOpcode(main, slot);
 		METHOD_TABLE_GET.inject(main);
 	}
 
-	public void setTable() {
+	public void setTable(int tSlot) {
+		constantOpcode(main, tSlot);
 		METHOD_TABLE_SET.inject(main);
 	}
 
@@ -500,7 +502,7 @@ public final class JavaBuilder {
 		main.visitLabel(cont);
 	}
 
-	public void unaryOp(int o) {
+	public void unaryOp(int o, int slot) {
 		String op;
 		switch (o) {
 			default:
@@ -515,10 +517,11 @@ public final class JavaBuilder {
 				break;
 		}
 
-		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
+		constantOpcode(main, slot);
+		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + "I)" + TYPE_LUAVALUE, false);
 	}
 
-	public void binaryOp(int o) {
+	public void binaryOp(int o, int b, int c) {
 		String op;
 		switch (o) {
 			default:
@@ -541,7 +544,10 @@ public final class JavaBuilder {
 				op = "pow";
 				break;
 		}
-		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + TYPE_LUAVALUE + ")" + TYPE_LUAVALUE, false);
+
+		constantOpcode(main, b);
+		constantOpcode(main, c);
+		main.visitMethodInsn(INVOKESTATIC, CLASS_OPERATION, op, "(" + TYPE_STATE + TYPE_LUAVALUE + TYPE_LUAVALUE + "II)" + TYPE_LUAVALUE, false);
 	}
 
 	public void compareOp(int o) {
@@ -633,7 +639,8 @@ public final class JavaBuilder {
 		METHOD_VARARGS_MANY_VAR.inject(main);
 	}
 
-	public void call(int nargs) {
+	public void call(int nargs, int slot) {
+		constantOpcode(main, slot);
 		switch (nargs) {
 			case 0:
 				METHOD_CALL_NONE.inject(main);
@@ -656,7 +663,8 @@ public final class JavaBuilder {
 		METHOD_TAILCALL.inject(main);
 	}
 
-	public void invoke(int nargs) {
+	public void invoke(int nargs, int slot) {
+		constantOpcode(main, slot);
 		switch (nargs) {
 			case -1:
 				break;

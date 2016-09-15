@@ -81,12 +81,11 @@ public final class Constants {
 	// Table functions
 	public static final TinyMethod METHOD_TABLEOF = new TinyMethod(ValueFactory.class, "tableOf", Varargs.class, int.class);
 	public static final TinyMethod METHOD_TABLEOF_DIMS = new TinyMethod(ValueFactory.class, "tableOf", int.class, int.class);
-	public static final TinyMethod METHOD_TABLE_GET = new TinyMethod(OperationHelper.class, "getTable", LuaState.class, LuaValue.class, LuaValue.class);
-	public static final TinyMethod METHOD_TABLE_SET = new TinyMethod(OperationHelper.class, "setTable", LuaState.class, LuaValue.class, LuaValue.class, LuaValue.class);
+	public static final TinyMethod METHOD_TABLE_GET = new TinyMethod(OperationHelper.class, "getTable", LuaState.class, LuaValue.class, LuaValue.class, int.class);
+	public static final TinyMethod METHOD_TABLE_SET = new TinyMethod(OperationHelper.class, "setTable", LuaState.class, LuaValue.class, LuaValue.class, LuaValue.class, int.class);
 
 	// Strings
 	public static final TinyMethod METHOD_STRING_CONCAT = new TinyMethod(OperationHelper.class, "concat", LuaState.class, LuaValue.class, LuaValue.class);
-	// public static final TinyMethod METHOD_BUFFER_CONCAT = new TinyMethod(LuaValue.class, "concat", Buffer.class);
 
 	// Varargs
 	public static final TinyMethod METHOD_VARARGS_ARG1 = new TinyMethod(Varargs.class, "first");
@@ -109,15 +108,15 @@ public final class Constants {
 
 	// Calling
 	// Normal
-	public static final TinyMethod METHOD_CALL_NONE = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class);
-	public static final TinyMethod METHOD_CALL_ONE = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, LuaValue.class);
-	public static final TinyMethod METHOD_CALL_TWO = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, LuaValue.class, LuaValue.class);
-	public static final TinyMethod METHOD_CALL_THREE = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, LuaValue.class, LuaValue.class, LuaValue.class);
+	public static final TinyMethod METHOD_CALL_NONE = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, int.class);
+	public static final TinyMethod METHOD_CALL_ONE = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, LuaValue.class, int.class);
+	public static final TinyMethod METHOD_CALL_TWO = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, LuaValue.class, LuaValue.class, int.class);
+	public static final TinyMethod METHOD_CALL_THREE = new TinyMethod(OperationHelper.class, "call", LuaState.class, LuaValue.class, LuaValue.class, LuaValue.class, LuaValue.class, int.class);
 
 	// Tail call
 	public static final TinyMethod METHOD_TAILCALL = new TinyMethod(ValueFactory.class, "tailcallOf", LuaValue.class, Varargs.class);
 
-	public static final TinyMethod METHOD_INVOKE_VAR = new TinyMethod(OperationHelper.class, "invoke", LuaState.class, LuaValue.class, Varargs.class);
+	public static final TinyMethod METHOD_INVOKE_VAR = new TinyMethod(OperationHelper.class, "invoke", LuaState.class, LuaValue.class, Varargs.class, int.class);
 
 	// ValueOf
 	public static final TinyMethod METHOD_VALUEOF_INT = new TinyMethod(ValueFactory.class, "valueOf", int.class);

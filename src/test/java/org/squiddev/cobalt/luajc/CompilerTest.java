@@ -29,6 +29,7 @@ public class CompilerTest {
 			{"lua/DoBlock"},
 			{"lua/EdgeCases"},
 			{"lua/Error"},
+			{"lua/FancyMessages"},
 			{"lua/Function"},
 			{"lua/LoadBytecode"},
 			{"lua/MakeError"},

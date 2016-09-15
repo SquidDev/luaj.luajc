@@ -103,7 +103,7 @@ public final class JavaGen {
 					case Lua.OP_LEN: // A B R(A):= length of R(B)
 						builder.loadState();
 						builder.loadLocal(pc, b);
-						builder.unaryOp(o);
+						builder.unaryOp(o, b);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -116,7 +116,7 @@ public final class JavaGen {
 						builder.loadState();
 						builder.loadEnv();
 						builder.loadConstant(p.k[bx]);
-						builder.getTable();
+						builder.getTable(-1);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -125,7 +125,7 @@ public final class JavaGen {
 						builder.loadEnv();
 						builder.loadConstant(p.k[bx]);
 						builder.loadLocal(pc, a);
-						builder.setTable();
+						builder.setTable(-1);
 						break;
 
 					case Lua.OP_LOADNIL: // A B R(A):= ...:= R(B):= nil
@@ -142,7 +142,7 @@ public final class JavaGen {
 						builder.loadState();
 						builder.loadLocal(pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.getTable();
+						builder.getTable(b);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -151,7 +151,7 @@ public final class JavaGen {
 						builder.loadLocal(pc, a);
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.setTable();
+						builder.setTable(a);
 						break;
 
 					case Lua.OP_ADD: // A B C R(A):= RK(B) + RK(C)
@@ -163,7 +163,7 @@ public final class JavaGen {
 						builder.loadState();
 						loadLocalOrConstant(p, builder, pc, b);
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.binaryOp(o);
+						builder.binaryOp(o, b, c);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -174,7 +174,7 @@ public final class JavaGen {
 						builder.loadState();
 						builder.swap();
 						loadLocalOrConstant(p, builder, pc, c);
-						builder.getTable();
+						builder.getTable(b);
 						builder.storeLocal(pc, a);
 						break;
 
@@ -256,9 +256,9 @@ public final class JavaGen {
 						// call or invoke
 						boolean useinvoke = narg < 0 || c < 1 || c > 2;
 						if (useinvoke) {
-							builder.invoke(narg);
+							builder.invoke(narg, a);
 						} else {
-							builder.call(narg);
+							builder.call(narg, a);
 						}
 
 						// handle results
@@ -337,7 +337,7 @@ public final class JavaGen {
 						builder.loadState();
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
-						builder.binaryOp(Lua.OP_SUB);
+						builder.binaryOp(Lua.OP_SUB, -1, -1);
 						builder.storeLocal(pc, a);
 						builder.addBranch(JavaBuilder.BRANCH_GOTO, pc + 1 + sbx);
 						break;
@@ -347,7 +347,7 @@ public final class JavaGen {
 						builder.loadState();
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 2);
-						builder.binaryOp(Lua.OP_ADD);
+						builder.binaryOp(Lua.OP_ADD, -1, -1);
 						builder.dup();
 						builder.dup();
 						builder.storeLocal(pc, a);
@@ -369,7 +369,7 @@ public final class JavaGen {
 						builder.loadLocal(pc, a);
 						builder.loadLocal(pc, a + 1);
 						builder.loadLocal(pc, a + 2);
-						builder.invoke(2); // varresult on stack
+						builder.invoke(2, a); // varresult on stack
 						builder.dup();
 						builder.storeVarResult();
 						builder.arg(1);
