@@ -664,7 +664,6 @@ public final class JavaBuilder {
 	}
 
 	public void invoke(int nargs, int slot) {
-		constantOpcode(main, slot);
 		switch (nargs) {
 			case -1:
 				break;
@@ -684,6 +683,7 @@ public final class JavaBuilder {
 				throw new IllegalArgumentException("can't invoke with " + nargs + " args");
 		}
 
+		constantOpcode(main, slot);
 		METHOD_INVOKE_VAR.inject(main);
 	}
 
