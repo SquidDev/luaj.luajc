@@ -77,6 +77,7 @@ public final class JavaBuilder {
 	private int varargsLocal = -1;
 
 	// Labels for locals
+	private final Label top = new Label();
 	private final Label start = new Label();
 	private final Label end = new Label();
 	private final Label handler = new Label();
@@ -156,6 +157,7 @@ public final class JavaBuilder {
 		// Create the invoke method
 		main = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, EXECUTE_NAME, superType.signature, null, null);
 		main.visitCode();
+		main.visitLabel(top);
 
 		// On method call, store callstack in slot
 		callStackSlot = ++maxLocals;
@@ -273,7 +275,23 @@ public final class JavaBuilder {
 		METHOD_ONRETURN.inject(main);
 		main.visitInsn(ATHROW);
 
+		Label bottom = new Label();
+		main.visitLabel(bottom);
+
 		main.visitMaxs(0, 0);
+
+		main.visitLocalVariable("this", "L" + className + ";", null, top, bottom, 0);
+		main.visitLocalVariable("wrapper", TYPE_WRAPPER, null, start, bottom, 1);
+		main.visitLocalVariable("callStack", TYPE_CALLSTACK, null, start, bottom, callStackSlot);
+
+		if (debugStateSlot != -1) {
+			main.visitLocalVariable("debugState", TYPE_DEBUG_STATE, null, start, bottom, debugStateSlot);
+			main.visitLocalVariable("debugInfo", TYPE_DEBUG_INFO, null, start, bottom, debugInfoSlot);
+		}
+
+		if (upvaluesSlot != -1) {
+			main.visitLocalVariable("upvalues", TYPE_UPVALUE, null, start, bottom, upvaluesSlot);
+		}
 
 		// Add upvalue & local value slot names
 		for (SlotInfo slot : slots) {

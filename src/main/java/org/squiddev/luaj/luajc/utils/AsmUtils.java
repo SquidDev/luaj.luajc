@@ -93,10 +93,12 @@ public final class AsmUtils {
 	}
 
 	public static void dump(byte[] bytes, OutputStream out) {
-		ClassReader reader = new ClassReader(bytes);
-		PrintWriter printWriter = new PrintWriter(out, true);
+		dump(bytes, new PrintWriter(out, true));
+	}
 
-		reader.accept(new TraceClassVisitor(printWriter), 0);
+	public static void dump(byte[] bytes, PrintWriter out) {
+		ClassReader reader = new ClassReader(bytes);
+		reader.accept(new TraceClassVisitor(out), 0);
 	}
 
 	public static void dump(byte[] bytes) {

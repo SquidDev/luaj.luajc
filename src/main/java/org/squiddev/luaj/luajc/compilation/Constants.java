@@ -27,6 +27,10 @@ public final class Constants {
 	public static final String TYPE_PROTOINFO = Type.getDescriptor(ProtoInfo.class);
 	public static final String CLASS_PROTOINFO = Type.getInternalName(ProtoInfo.class);
 	public static final String CLASS_WRAPPER = Type.getInternalName(FunctionWrapper.class);
+	public static final String TYPE_WRAPPER = Type.getDescriptor(FunctionWrapper.class);
+	public static final String TYPE_CALLSTACK = Type.getDescriptor(LuaThread.CallStack.class);
+	public static final String TYPE_DEBUG_STATE = Type.getDescriptor(DebugLib.DebugState.class);
+	public static final String TYPE_DEBUG_INFO = Type.getDescriptor(DebugLib.DebugInfo.class);
 
 	public static final class FunctionType {
 		public final String signature;
